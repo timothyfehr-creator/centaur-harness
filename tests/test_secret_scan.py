@@ -6,6 +6,7 @@ file's location, so the tests pass regardless of the current working directory.
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -59,16 +60,24 @@ def test_findings_are_redacted() -> None:
 # NOTE: sample values must match our (deliberately permissive) regexes yet stay
 # clearly SYNTHETIC -- the repo is on GitHub with push protection, which blocks
 # real-looking provider keys (e.g. Stripe's documented example, live keys). Use
-# test-mode / obviously-fake values so both scanners are satisfied.
+# test-mode / obviously-fake values, and SPLIT provider prefixes with string
+# concatenation (e.g. "xoxb-" + ...) so the contiguous token never appears in the
+# committed source and GitHub push protection does not block it.
 
 _CAUGHT = {
     "aws": "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE",
     "github": "token=ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+    "github_fine_grained": "gh=github_pat_" + "abcdefghij" * 8 + "ab",
     "google": 'key = "AIzaSyB1234567890abcdefghijklmnopqrstuv"',
+    "slack": "hook=xoxb-" + "2233445566-2233445566778-abcdEFGHijklMNOPqrUV",
     "stripe": "STRIPE=sk_test_FAKEstripekey0000000000",
     "anthropic": "key=sk-ant-api03-" + "a" * 40,
+    "openai": "key=sk-proj-" + "A" * 24,
     "private_key": "-----BEGIN OPENSSH PRIVATE KEY-----",
     "generic": 'api_key = "Hunter2RealLooking0xCAFEBABE"',
+    # A genuine high-entropy value that merely CONTAINS the word "test" must still be
+    # caught -- placeholder words only suppress when they appear as a delimited token.
+    "generic_embedded_word": 'api_key = "Atestkey9KdMz7Qp3Rw8Vn2Lf6Hj1Bx4"',
 }
 
 # --- precision: placeholders / env refs / prose must NOT be flagged ---------------
@@ -79,6 +88,8 @@ _IGNORED = {
     "os_environ": 'token = os.environ["CENTAUR_TOKEN"]',
     "prose": "the password policy requires rotation every ninety days",
     "short_value": 'api_key = "abc123"',
+    "uuid": 'session_token = "550e8400-e29b-41d4-a716-446655440000"',
+    "delimited_placeholder": 'api_key = "release_test_build_v2_config"',
 }
 
 
@@ -108,3 +119,21 @@ def test_allowlist_marker_skips_line(tmp_path: Path) -> None:
     # First line caught; the allowlisted line skipped -> exactly one finding.
     assert result.returncode == 1
     assert result.stderr.count("aws-access-key-id") == 1
+
+
+def test_multiple_secrets_on_one_line_all_reported(tmp_path: Path) -> None:
+    target = tmp_path / "multi.txt"
+    target.write_text("a=AKIAIOSFODNN7EXAMPLE b=AKIAIOSFODNN7EXAMPLE\n")
+    result = _scan(str(target))
+    assert result.returncode == 1
+    # finditer reports every match on the line, not just the first.
+    assert result.stderr.count("aws-access-key-id") == 2
+
+
+def test_bare_scan_reports_nonzero_file_count() -> None:
+    # Regression lock for the fail-closed guard: a default scan must actually scan
+    # files, never silently report a clean 0-file scan.
+    result = _scan()
+    assert result.returncode == 0, result.stderr
+    match = re.search(r"\((\d+) files\)", result.stdout)
+    assert match and int(match.group(1)) > 0, result.stdout

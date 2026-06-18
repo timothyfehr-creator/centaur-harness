@@ -29,9 +29,16 @@ agents.
   / Stripe / Anthropic / OpenAI keys, PEM private-key headers) plus one precise
   generic keyword/value rule. Matched values are masked in output.
 - It is a **minimum gate, not a guarantee** — it will miss obfuscated or novel
-  secrets. A clean scan means "no obvious secret", not "provably secret-free".
+  secrets, and it skips binary (NUL-containing) and files larger than ~1 MB. A clean
+  scan means "no obvious secret", not "provably secret-free". If `git ls-files` fails
+  or matches no files, the default scan exits non-zero (fail-closed) rather than
+  reporting clean.
 - To exempt a deliberately non-secret line (a documented example or a fixture),
-  append the marker `pragma: allowlist secret` to that line.
+  append the marker `pragma: allowlist secret` to that line; this skips the whole
+  line for all rules.
+- The default scan excludes `tests/fixtures/secret_scan/` and
+  `tests/test_secret_scan.py` (which hold deliberate sample secrets), so those paths
+  are **not** scanned in CI and must only ever contain fake values.
 
 ## Destructive-command checklist
 

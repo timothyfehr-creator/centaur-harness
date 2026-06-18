@@ -5,6 +5,7 @@
 api_key: "your_api_key_here"
 db_password: "${DB_PASSWORD}"
 auth_token: ""
+session_token: "550e8400-e29b-41d4-a716-446655440000"  # a UUID id, not a secret
 slack_webhook: "https://example.com/hooks/REDACTED"
 aws_region: "us-east-1"
 note: "Load the token via os.environ['CENTAUR_TOKEN'] at runtime."

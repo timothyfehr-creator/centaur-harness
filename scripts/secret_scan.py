@@ -4,8 +4,9 @@
 A minimal, dependency-free secret scanner for long-running coding sessions. It is
 a MINIMUM GATE, not a semantic oracle: it matches a curated set of high-precision
 patterns (based on gitleaks / detect-secrets rules) plus one precise generic
-"keyword = value" rule. It will miss obfuscated or novel secrets -- treat a clean
-scan as "no obvious secret", not "provably secret-free".
+"keyword = value" rule. It will miss obfuscated or novel secrets, and it skips
+binary (NUL-containing) and >1 MB files -- treat a clean scan as "no obvious
+secret", not "provably secret-free".
 
 Usage:
     python scripts/secret_scan.py            # scan tracked repo files (git ls-files)
@@ -49,8 +50,10 @@ MAX_BYTES = 1_000_000  # skip files larger than ~1 MB
 # during development to confirm this.
 _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("aws-access-key-id", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
-    ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36}\b")),
-    ("github-fine-grained-pat", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{82}\b")),
+    # GitHub tokens are variable length (gitleaks uses {36,255}); use {N,} so longer
+    # tokens are still caught rather than missed by an exact-length anchor.
+    ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{36,}\b")),
+    ("github-fine-grained-pat", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{82,}\b")),
     ("google-api-key", re.compile(r"\bAIza[A-Za-z0-9_\-]{35}\b")),
     ("slack-token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
     ("stripe-secret-key", re.compile(r"\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b")),
@@ -68,19 +71,40 @@ _GENERIC = re.compile(
     re.IGNORECASE,
 )
 
-# Substrings that mark a value as a placeholder / non-secret. Checked case-folded.
-_PLACEHOLDERS = (
-    "your_", "your-", "yourkey", "example", "changeme", "change_me", "placeholder",
-    "dummy", "sample", "fake", "test", "xxxx", "redacted", "none", "null",
-    "${", "{{", "os.environ", "getenv", "process.env", "...", "abc123",
+# Template / env-reference markers: rejected as a substring ANYWHERE in the value.
+_PLACEHOLDER_SUBSTRINGS = ("${", "{{", "os.environ", "getenv", "process.env", "<", "...")
+
+# Placeholder WORDS: rejected only when they appear as a DELIMITED token (bounded by
+# start/end or a _-./ separator). Matching these as bare substrings would suppress a
+# genuine high-entropy secret that merely contains, say, "test" or "none" -- e.g. the
+# canonical AWS demo secret "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY".
+_PLACEHOLDER_WORDS = (
+    "your", "yourkey", "example", "changeme", "change", "placeholder", "dummy",
+    "sample", "fake", "test", "redacted", "none", "null", "abc123",
+)
+_PLACEHOLDER_WORD_RE = re.compile(
+    r"(?:^|[_\-./])(?:" + "|".join(_PLACEHOLDER_WORDS) + r")(?:$|[_\-./])",
+    re.IGNORECASE,
+)
+
+# A UUID is a common non-secret value (ids, correlation keys) that would otherwise
+# trip the generic rule. NOTE: high-entropy hex hashes (git SHAs, content hashes) or
+# file paths assigned to a secret-named field can still false-positive -- that is an
+# accepted minimum-gate trade-off; allowlist such a line with the pragma.
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
 
 
 def _is_secret_value(value: str) -> bool:
-    """Heuristic for the generic rule: reject placeholders and low-diversity
-    strings so ordinary prose / identifiers don't trip the scanner."""
+    """Heuristic for the generic rule: reject placeholders, UUIDs, and low-diversity
+    strings so ordinary prose / identifiers do not trip the scanner."""
     low = value.lower()
-    if any(p in low for p in _PLACEHOLDERS):
+    if any(s in low for s in _PLACEHOLDER_SUBSTRINGS):
+        return False
+    if _PLACEHOLDER_WORD_RE.search(value):
+        return False
+    if _UUID_RE.match(value):
         return False
     classes = sum(
         bool(re.search(pat, value)) for pat in (r"[a-z]", r"[A-Z]", r"[0-9]")
@@ -95,7 +119,9 @@ def _mask(matched: str) -> str:
     return f"{matched[:4]}…{matched[-2:]}"
 
 
-def _tracked_files(root: Path) -> list[Path]:
+def _tracked_files(root: Path) -> list[Path] | None:
+    """Tracked files via ``git ls-files``. Returns None (not []) if git is absent or
+    errors, so the caller can FAIL CLOSED instead of reporting a clean 0-file scan."""
     try:
         out = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z"],
@@ -104,37 +130,28 @@ def _tracked_files(root: Path) -> list[Path]:
             check=True,
         ).stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return []
+        return None
     return [root / rel for rel in out.split("\0") if rel]
 
 
-def _gather(paths: list[str], root: Path, missing: list[str]) -> list[Path]:
-    """Resolve the file list to scan.
+def _gather_explicit(paths: list[str], missing: list[str]) -> list[Path]:
+    """Resolve explicitly-requested files/dirs (recursing dirs). DEFAULT_EXCLUDES are
+    NOT applied, so callers/tests can target the fixtures directly."""
+    files: list[Path] = []
+    for p in paths:
+        pp = Path(p)
+        pp = pp if pp.is_absolute() else (Path.cwd() / pp)
+        if pp.is_dir():
+            files.extend(sorted(f for f in pp.rglob("*") if f.is_file()))
+        elif pp.is_file():
+            files.append(pp)
+        else:
+            missing.append(p)
+    return [f for f in files if "/.git/" not in f.as_posix()]
 
-    - Explicit paths: scan exactly those (recursing dirs); DEFAULT_EXCLUDES are
-      NOT applied, so callers/tests can target the fixtures directly.
-    - No paths: tracked files (``git ls-files``) minus DEFAULT_EXCLUDES.
-    """
-    if paths:
-        files: list[Path] = []
-        for p in paths:
-            pp = Path(p)
-            pp = pp if pp.is_absolute() else (Path.cwd() / pp)
-            if pp.is_dir():
-                files.extend(sorted(f for f in pp.rglob("*") if f.is_file()))
-            elif pp.is_file():
-                files.append(pp)
-            else:
-                missing.append(p)
-        return [f for f in files if "/.git/" not in f.as_posix()]
 
-    files = []
-    for f in _tracked_files(root):
-        rel = f.relative_to(root).as_posix()
-        if any(rel.startswith(prefix) for prefix in DEFAULT_EXCLUDES):
-            continue
-        files.append(f)
-    return files
+def _excluded(rel: str) -> bool:
+    return any(rel.startswith(prefix) for prefix in DEFAULT_EXCLUDES)
 
 
 def _display(path: Path) -> str:
@@ -161,14 +178,13 @@ def _scan_file(path: Path) -> list[tuple[str, str, int, str]]:
         if ALLOWLIST_MARKER in line:
             continue
         for name, pattern in _RULES:
-            match = pattern.search(line)
-            if match:
+            for match in pattern.finditer(line):  # report every match, not just the first
                 findings.append((name, display, lineno, _mask(match.group(0))))
-        gmatch = _GENERIC.search(line)
-        if gmatch and _is_secret_value(gmatch.group("value")):
-            findings.append(
-                ("generic-assignment", display, lineno, _mask(gmatch.group("value")))
-            )
+        for gmatch in _GENERIC.finditer(line):
+            if _is_secret_value(gmatch.group("value")):
+                findings.append(
+                    ("generic-assignment", display, lineno, _mask(gmatch.group("value")))
+                )
     return findings
 
 
@@ -184,12 +200,30 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    missing: list[str] = []
-    files = _gather(args.paths, REPO_ROOT, missing)
-    if missing:
-        for p in missing:
-            print(f"error: path not found: {p}", file=sys.stderr)
-        return 2
+    if args.paths:
+        missing: list[str] = []
+        files = _gather_explicit(args.paths, missing)
+        if missing:
+            for p in missing:
+                print(f"error: path not found: {p}", file=sys.stderr)
+            return 2
+    else:
+        tracked = _tracked_files(REPO_ROOT)
+        if tracked is None:
+            print(
+                "error: could not list tracked files (is git installed and is this a "
+                "git repository?). Refusing to report a clean scan.",
+                file=sys.stderr,
+            )
+            return 2
+        files = [f for f in tracked if not _excluded(f.relative_to(REPO_ROOT).as_posix())]
+        if not files:
+            print(
+                "error: default scan matched 0 files; refusing to report clean. Pass "
+                "explicit paths to scan a non-repo location.",
+                file=sys.stderr,
+            )
+            return 2
 
     findings: list[tuple[str, str, int, str]] = []
     for f in files:

@@ -1,0 +1,4 @@
+# Defect: no description  ->  missing-field / description
+schema_version: "1.0"
+id: evt-001
+category: DIPLOMATIC

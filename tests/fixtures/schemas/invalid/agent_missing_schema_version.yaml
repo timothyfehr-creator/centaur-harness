@@ -1,0 +1,4 @@
+# Defect: no schema_version  ->  missing-schema-version
+id: agent-001
+name: "Placeholder Agent"
+type: STATE

@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Centaur scenario-schema validator.
+"""Centaur schema validator.
 
-Structural validation only -- it checks the SHAPE of a scenario file, not whether
-its claims are source-backed (sourcing is WP2.3). Uses PyYAML's ``safe_load`` plus
-hand-rolled cross-field rules (probability sum, signpost/falsifier counts, and the
-rationale-or-update rule), which a declarative schema engine cannot express alone.
+Structural validation only -- it checks the SHAPE of a document, not whether its
+claims are source-backed (sourcing is WP2.x). Uses PyYAML's ``safe_load`` plus
+hand-rolled rules. The default kind is ``scenario`` (rich cross-field rules); the
+other kinds (agent / source / claim / event / turn) are flat declarative skeletons.
 
 Usage:
-    python scripts/validate_schemas.py            # validate examples/**/scenario.yaml
-    python scripts/validate_schemas.py PATH ...   # validate given files, or scenario.yaml under given dirs
+    python scripts/validate_schemas.py                    # validate examples/**/scenario.yaml
+    python scripts/validate_schemas.py PATH ...           # validate given files / dirs (scenario)
+    python scripts/validate_schemas.py --kind source PATH # validate as a different kind
 
 Exit codes: 0 = all valid, 1 = validation failure(s), 2 = usage / nothing-to-validate.
 
 Fail-closed: a default (no-args) scan, or a directory scan, that discovers ZERO
-scenario files exits 2 -- a gate that validated nothing must not report success.
+files of the chosen kind exits 2 -- a gate that validated nothing must not report
+success.
 """
 from __future__ import annotations
 
@@ -24,7 +26,6 @@ from pathlib import Path
 import yaml  # only third-party dependency; safe_load only
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCENARIO_GLOB = "examples/**/scenario.yaml"
 PROB_SUM_TOLERANCE = 0.05  # loose on purpose; tightening is backlog
 
 
@@ -107,6 +108,101 @@ def validate_doc(doc: object, where: str) -> list[tuple[str, str, str]]:
     return problems
 
 
+# --- Skeleton kinds (WP1.2) ------------------------------------------------------
+# Flat, declarative skeletons for the non-scenario document kinds: required
+# non-empty-string fields, required integer fields, and enum fields. STRUCTURAL only
+# -- no cross-refs or semantics (those are WP2.x / WP5). Enum values are PROVISIONAL
+# "label vocabularies" grounded in established frameworks (semantics deferred):
+# agent.type (IR actor typology), source.tier (NATO STANAG 2511 / OSINT),
+# claim.confidence (ICD-203 / Kent), event.category (DIME).
+# Keep each SPEC in sync with its schemas/<kind>.schema.md contract -- nothing tests
+# that the human-readable prose matches these dicts.
+AGENT_SPEC = {
+    "required_str": ("schema_version", "id", "name"),
+    "required_int": (),
+    "enums": {"type": ("STATE", "INSTITUTION", "NON_STATE")},
+}
+SOURCE_SPEC = {
+    "required_str": ("schema_version", "id", "title"),
+    "required_int": (),
+    "enums": {"tier": ("OFFICIAL", "MAINSTREAM", "SOCIAL")},
+}
+CLAIM_SPEC = {
+    "required_str": ("schema_version", "id", "text"),
+    "required_int": (),
+    "enums": {"confidence": ("HIGH", "MODERATE", "LOW", "UNASSESSED")},
+}
+EVENT_SPEC = {
+    "required_str": ("schema_version", "id", "description"),
+    "required_int": (),
+    "enums": {"category": ("DIPLOMATIC", "INFORMATION", "MILITARY", "ECONOMIC")},
+}
+TURN_SPEC = {
+    "required_str": ("schema_version", "id"),
+    "required_int": ("number",),  # type only; ordering/replay semantics are WP7
+    "enums": {},
+}
+
+
+def _validate_skeleton(doc: object, where: str, spec: dict) -> list[tuple[str, str, str]]:
+    """Validate a flat skeleton document against a spec. Structural only."""
+    problems: list[tuple[str, str, str]] = []
+
+    def add(code: str, msg: str) -> None:
+        problems.append((code, where, msg))
+
+    if not isinstance(doc, dict):
+        add("yaml-parse-error", "top-level YAML must be a mapping")
+        return problems
+
+    for field in spec["required_str"]:
+        if not _is_nonempty_str(doc.get(field)):
+            if field == "schema_version":
+                add("missing-schema-version",
+                    "schema_version is required and must be a non-empty string")
+            else:
+                add("missing-field", f"{field} is required and must be a non-empty string")
+
+    for field in spec["required_int"]:
+        value = doc.get(field)
+        if value is None:
+            add("missing-field", f"{field} is required")
+        elif isinstance(value, bool) or not isinstance(value, int):
+            # bool is a subclass of int, so reject it explicitly.
+            add("wrong-type", f"{field} must be an integer; got {type(value).__name__}")
+
+    # An absent enum field is "missing-field" (not "invalid-enum"); only a present,
+    # out-of-set value is "invalid-enum".
+    for field, allowed in spec["enums"].items():
+        value = doc.get(field)
+        if not _is_nonempty_str(value):
+            add("missing-field", f"{field} is required and must be a non-empty string")
+        elif value not in allowed:
+            add("invalid-enum", f"{field} must be one of {sorted(allowed)}; got {value!r}")
+
+    return problems
+
+
+# kind -> (canonical filename, skeleton spec or None, custom validator or None)
+SCHEMA_REGISTRY: dict[str, tuple] = {
+    "scenario": ("scenario.yaml", None, validate_doc),
+    "agent": ("agents.yaml", AGENT_SPEC, None),
+    "source": ("sources.yaml", SOURCE_SPEC, None),
+    "claim": ("claims.yaml", CLAIM_SPEC, None),
+    "event": ("events.yaml", EVENT_SPEC, None),
+    "turn": ("turns.yaml", TURN_SPEC, None),
+}
+FILENAME_TO_KIND = {fname: kind for kind, (fname, _s, _c) in SCHEMA_REGISTRY.items()}
+
+
+def validate_kind(doc: object, where: str, kind: str) -> list[tuple[str, str, str]]:
+    """Dispatch validation to the given kind's validator (custom or skeleton)."""
+    _fname, spec, custom = SCHEMA_REGISTRY[kind]
+    if custom is not None:
+        return custom(doc, where)
+    return _validate_skeleton(doc, where, spec)
+
+
 def _display(path: Path) -> str:
     for base in (Path.cwd(), REPO_ROOT):
         try:
@@ -116,8 +212,15 @@ def _display(path: Path) -> str:
     return str(path)
 
 
-def validate_file(path: Path) -> list[tuple[str, str, str]]:
-    """Parse and validate a single scenario file. Reused by verify.py's scaffold hook."""
+def validate_file(path: Path, kind: str | None = None) -> list[tuple[str, str, str]]:
+    """Parse and validate a single document.
+
+    ``kind`` defaults to inference from the filename (falling back to scenario), so
+    verify.py's ``validate_file(path)`` call stays scenario-compatible. Reused by
+    verify.py's scaffold hook.
+    """
+    if kind is None:
+        kind = FILENAME_TO_KIND.get(path.name, "scenario")
     where = _display(path)
     try:
         text = path.read_text(encoding="utf-8")
@@ -127,19 +230,20 @@ def validate_file(path: Path) -> list[tuple[str, str, str]]:
         doc = yaml.safe_load(text)
     except yaml.YAMLError as exc:
         return [("yaml-parse-error", where, f"YAML parse error: {exc}")]
-    return validate_doc(doc, where)
+    return validate_kind(doc, where, kind)
 
 
-def _discover(paths: list[str], missing: list[str]) -> list[Path] | None:
-    """Resolve scenario files to validate.
+def _discover(paths: list[str], missing: list[str], kind: str = "scenario") -> list[Path] | None:
+    """Resolve files to validate for ``kind``.
 
-    - No paths: glob REPO_ROOT/examples/**/scenario.yaml. Zero found -> None.
-    - A directory arg: glob scenario.yaml beneath it. Zero found -> None.
+    - No paths: glob REPO_ROOT/examples/**/<canonical>. Zero found -> None.
+    - A directory arg: glob <canonical> beneath it. Zero found -> None.
     - A file arg: that file.
     Returns the file list, or None to signal a fail-closed "nothing to validate".
     """
+    canonical = SCHEMA_REGISTRY[kind][0]
     if not paths:
-        found = sorted(REPO_ROOT.glob(SCENARIO_GLOB))
+        found = sorted(REPO_ROOT.glob(f"examples/**/{canonical}"))
         return found or None
 
     files: list[Path] = []
@@ -148,7 +252,7 @@ def _discover(paths: list[str], missing: list[str]) -> list[Path] | None:
         pp = Path(p)
         pp = pp if pp.is_absolute() else (Path.cwd() / pp)
         if pp.is_dir():
-            sub = sorted(pp.glob("**/scenario.yaml"))
+            sub = sorted(pp.glob(f"**/{canonical}"))
             if not sub:
                 saw_empty_dir = True
             files.extend(sub)
@@ -164,33 +268,41 @@ def _discover(paths: list[str], missing: list[str]) -> list[Path] | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="validate_schemas.py",
-        description="Validate scenario YAML files (structural; no source resolution).",
+        description="Validate Centaur YAML documents (structural; no source resolution).",
+    )
+    parser.add_argument(
+        "--kind",
+        choices=sorted(SCHEMA_REGISTRY),
+        default="scenario",
+        help="document kind to validate (default: scenario)",
     )
     parser.add_argument(
         "paths",
         nargs="*",
-        help="scenario files, or dirs to search for scenario.yaml "
-             "(default: examples/**/scenario.yaml)",
+        help="files, or dirs to search for the kind's canonical file "
+             "(default: examples/**/<kind>.yaml)",
     )
     args = parser.parse_args(argv)
+    kind = args.kind
 
     missing: list[str] = []
-    files = _discover(args.paths, missing)
+    files = _discover(args.paths, missing, kind)
     if missing:
         for p in missing:
             print(f"error: path not found: {p}", file=sys.stderr)
         return 2
     if files is None:
-        target = " ".join(args.paths) if args.paths else SCENARIO_GLOB
+        canonical = SCHEMA_REGISTRY[kind][0]
+        target = " ".join(args.paths) if args.paths else f"examples/**/{canonical}"
         print(
-            f"error: no scenario files found ({target}); refusing to report clean.",
+            f"error: no {kind} files found ({target}); refusing to report clean.",
             file=sys.stderr,
         )
         return 2
 
     findings: list[tuple[str, str, str]] = []
     for path in files:
-        findings.extend(validate_file(path))
+        findings.extend(validate_file(path, kind))
 
     if findings:
         print(f"schema validation FAILED: {len(findings)} problem(s):", file=sys.stderr)
@@ -198,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {code}  {where}  {msg}", file=sys.stderr)
         return 1
 
-    print(f"schema validation OK ({len(files)} scenario file(s))")
+    print(f"schema validation OK ({len(files)} {kind} file(s))")
     return 0
 
 

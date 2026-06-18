@@ -1,0 +1,3 @@
+# Defect: int field 'number' absent  ->  missing-field / number
+schema_version: "1.0"
+id: turn-001

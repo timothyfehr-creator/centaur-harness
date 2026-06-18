@@ -1,0 +1,5 @@
+# Defect: tier not in enum  ->  invalid-enum / tier
+schema_version: "1.0"
+id: src-001
+title: "Placeholder Source"
+tier: GOSSIP

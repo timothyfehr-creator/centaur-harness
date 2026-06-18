@@ -1,0 +1,5 @@
+# Defect: confidence not in enum  ->  invalid-enum / confidence
+schema_version: "1.0"
+id: claim-001
+text: "Placeholder claim text."
+confidence: CERTAIN

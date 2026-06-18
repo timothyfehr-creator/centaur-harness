@@ -1,0 +1,4 @@
+# Defect: no text  ->  missing-field / text
+schema_version: "1.0"
+id: claim-001
+confidence: MODERATE

@@ -1,0 +1,4 @@
+# Defect: enum field 'type' absent  ->  missing-field / type  (NOT invalid-enum)
+schema_version: "1.0"
+id: agent-001
+name: "Placeholder Agent"

@@ -91,3 +91,46 @@ def test_scaffold_validates_example_and_stays_green() -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "scaffold verification OK" in result.stdout
+
+
+# --- WP1.2 skeleton kinds (agent / source / claim / event / turn) -----------------
+# Skeletons are validated via the explicit --kind flag (they have no real instances
+# yet, so bare/scaffold discovery stays scenario-only; CI coverage rides on pytest).
+
+_SKELETON_VALID = [
+    "agent_minimal", "source_minimal", "claim_minimal", "event_minimal", "turn_minimal",
+]
+
+
+@pytest.mark.parametrize("name", _SKELETON_VALID)
+def test_skeleton_valid_fixture_passes(name: str) -> None:
+    kind = name.split("_", 1)[0]
+    result = _validate("--kind", kind, str(FIXTURES / "valid" / f"{name}.yaml"))
+    assert result.returncode == 0, result.stderr
+
+
+# (fixture name, kind, expected code, expected field token in message)
+_SKELETON_INVALID = [
+    ("agent_missing_schema_version", "agent", "missing-schema-version", "schema_version"),
+    ("agent_missing_name", "agent", "missing-field", "name"),
+    ("agent_missing_type", "agent", "missing-field", "type"),       # absent enum != invalid-enum
+    ("agent_invalid_type", "agent", "invalid-enum", "type"),
+    ("source_missing_title", "source", "missing-field", "title"),
+    ("source_invalid_tier", "source", "invalid-enum", "tier"),
+    ("claim_missing_text", "claim", "missing-field", "text"),
+    ("claim_invalid_confidence", "claim", "invalid-enum", "confidence"),
+    ("event_missing_description", "event", "missing-field", "description"),
+    ("event_invalid_category", "event", "invalid-enum", "category"),
+    ("turn_missing_id", "turn", "missing-field", "id"),
+    ("turn_missing_number", "turn", "missing-field", "number"),     # absent int field
+    ("turn_wrong_type_number", "turn", "wrong-type", "number"),
+]
+
+
+@pytest.mark.parametrize("name,kind,code,token", _SKELETON_INVALID)
+def test_skeleton_invalid_fixture_single_fault(name: str, kind: str, code: str, token: str) -> None:
+    result = _validate("--kind", kind, str(FIXTURES / "invalid" / f"{name}.yaml"))
+    assert result.returncode == 1, result.stdout
+    findings = [ln for ln in result.stderr.splitlines() if ln.lstrip().startswith("- ")]
+    assert len(findings) == 1, f"{name}: expected exactly one finding; got {findings}"
+    assert code in findings[0] and token in findings[0], f"{name}: {findings[0]!r}"

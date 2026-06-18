@@ -1,0 +1,5 @@
+# Defect: category not in enum  ->  invalid-enum / category
+schema_version: "1.0"
+id: evt-001
+description: "Placeholder event description."
+category: WEATHER

@@ -1,0 +1,4 @@
+# Defect: number is a string  ->  wrong-type / number
+schema_version: "1.0"
+id: turn-001
+number: "two"

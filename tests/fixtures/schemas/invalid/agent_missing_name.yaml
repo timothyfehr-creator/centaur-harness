@@ -1,0 +1,4 @@
+# Defect: no name  ->  missing-field / name
+schema_version: "1.0"
+id: agent-001
+type: STATE

@@ -1,0 +1,4 @@
+schema_version: "1.0"
+id: agent-001
+name: "Placeholder Agent"
+type: STATE

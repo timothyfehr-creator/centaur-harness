@@ -27,8 +27,9 @@ the tests, added this ledger, and ran CI for real.
 
 - Tests hardened in commit `d349421` (draft/release assert the clear `unknown
   mode` error; scaffold asserts its `scaffold verification OK` success message).
-- **GitHub Actions:** _recorded after the first run — see the commit that records
-  the CI result._
+- **GitHub Actions:** ✅ success — run
+  [27730539855](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27730539855)
+  on `924d260` (steps *Scaffold verification* and *Tests* both passed).
 - Note: the local machine has `python3` (3.14) but no `python` binary; tests
   invoke via `sys.executable`, and CI provisions `python` via
   `actions/setup-python`.

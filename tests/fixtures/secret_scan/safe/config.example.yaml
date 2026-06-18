@@ -1,0 +1,13 @@
+# Example configuration for the Centaur harness. Contains NO real secrets.
+# Every value here is a placeholder, an environment reference, or explicitly
+# allowlisted -- the scanner must report this directory as clean.
+
+api_key: "your_api_key_here"
+db_password: "${DB_PASSWORD}"
+auth_token: ""
+slack_webhook: "https://example.com/hooks/REDACTED"
+aws_region: "us-east-1"
+note: "Load the token via os.environ['CENTAUR_TOKEN'] at runtime."
+
+# A token-shaped string kept only as documentation, explicitly allowlisted:
+example_github_token: "ghp_abcdefghijklmnopqrstuvwxyz0123456789"  # pragma: allowlist secret

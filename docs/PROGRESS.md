@@ -59,8 +59,35 @@ CI, and flipped the command-safety docs from deferred to implemented.
 - Note: fixture/test secrets are synthetic and prefix-split so GitHub push
   protection does not block the push.
 
+## WP1.1 — Enforceable scenario schema ✅ complete
+
+Made scenario YAML machine-validatable (structural only; sourcing is WP2.3). Chose
+**PyYAML + a hand-rolled validator** (one pinned dep) over jsonschema/pydantic — the
+cross-field rules need custom code regardless.
+
+| Acceptance criterion | Status |
+|---|---|
+| valid fixtures + the real example pass | ✅ |
+| each invalid fixture fails for its EXACT reason | ✅ (9 codes, one finding each) |
+| schema_version / branches / ≥3 signposts / ≥1 falsifier / rationale-or-update / prob sum | ✅ |
+| scenario validation wired into scaffold | ✅ (structural; fails closed without PyYAML) |
+| `pytest` exits 0 | ✅ (46 passed) |
+| existing checks preserved; no out-of-scope work | ✅ |
+
+- Feature commit `ea9973e`: `scripts/validate_schemas.py`,
+  `examples/ukraine_crimea_logistics/scenario.yaml` (ILLUSTRATIVE/unsourced),
+  `schemas/scenario.schema.md`, valid/invalid fixtures + `tests/test_schema_validation.py`,
+  scaffold hook in `verify.py`, `requirements-dev.txt` (pytest + PyYAML), CI step.
+- **GitHub Actions:** ✅ success — run
+  [27733665200](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27733665200)
+  on `ea9973e` (Install deps, Secret scan, Schema validation, Scaffold verification,
+  Tests all passed).
+- Deferred within WP1.1 (flagged): `label`/`as_of_date` enforcement (WP3.2 / §6);
+  tighter probability tolerance (backlog); other schemas (WP1.2). PyYAML is now a
+  required dependency — scaffold **fails closed** without it.
+
 ## Deferred (not started)
 
-Schemas (WP1.x), source/claim validation (WP2.x), safety enforcement & output
-labels (WP3.x), draft mode (WP4.1), release mode (WP8.2), scenario content, and
-engine work.
+Core schema skeletons for agents/sources/claims/events/turns (WP1.2), source/claim
+validation (WP2.x), safety enforcement & output labels (WP3.x), draft mode (WP4.1),
+release mode (WP8.2), and engine work.

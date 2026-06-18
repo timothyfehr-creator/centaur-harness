@@ -53,3 +53,14 @@ commands.
   "OK". A gate that passes when it scanned nothing is worse than no gate. See
   [docs/CONSTITUTION.md](docs/CONSTITUTION.md) §3 (verification must never falsely
   pass).
+
+## Dependencies
+
+- Keep dependencies minimal — prefer the standard library. Add an external dependency
+  only for a real need, pin it to a major range, and declare it in
+  [`requirements-dev.txt`](requirements-dev.txt).
+- Install locally in a virtualenv (the host Python is often externally managed,
+  PEP 668): `python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt`.
+- A gate that depends on a package must **fail closed** if the package is missing —
+  exit non-zero with a clear message, never silently skip the check. (E.g. `scaffold`
+  reports a problem when a scenario is present but PyYAML cannot be imported.)

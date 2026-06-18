@@ -10,10 +10,11 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phase 1 in progress. Implemented: repo-level `scaffold` verification, a secret scan,
-and **structural scenario-schema validation**. Source/claim validation, safety checks,
-draft mode, and release mode are **not** implemented yet — they arrive in later phases,
-in the plan's order. See [docs/PROGRESS.md](docs/PROGRESS.md).
+Phase 1 underway: **WP1.1 complete** (structural scenario schema); WP1.2 (core schema
+skeletons) not started. Implemented so far: repo-level `scaffold` verification, a
+secret scan, and structural scenario-schema validation. Source/claim validation,
+safety checks, draft mode, and release mode are **not** implemented yet — they arrive
+in later phases, in the plan's order. See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 

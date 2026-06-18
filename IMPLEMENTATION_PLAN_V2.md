@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** WP0.1 only
+**Immediate next step:** WP1.2 — core schema skeletons. (WP0.1, WP0.2, and WP1.1 are complete; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
 
 ## 1. Goal
 

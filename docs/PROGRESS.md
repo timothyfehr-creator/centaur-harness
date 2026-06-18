@@ -41,7 +41,7 @@ CI, and flipped the command-safety docs from deferred to implemented.
 
 | Acceptance criterion | Status |
 |---|---|
-| bare `python scripts/secret_scan.py` exits 0 | ✅ (13 files; fail-closed if git fails / 0 files) |
+| bare `python scripts/secret_scan.py` exits 0 | ✅ (13 files at WP0.2, grows with the repo; fail-closed if git fails / 0 files) |
 | safe fixture exits 0 | ✅ |
 | unsafe fixture exits 1 (fake secret caught) | ✅ (masked, names the file) |
 | `pytest` exits 0 | ✅ (30 passed) |
@@ -62,8 +62,8 @@ CI, and flipped the command-safety docs from deferred to implemented.
 ## WP1.1 — Enforceable scenario schema ✅ complete
 
 Made scenario YAML machine-validatable (structural only; sourcing is WP2.3). Chose
-**PyYAML + a hand-rolled validator** (one pinned dep) over jsonschema/pydantic — the
-cross-field rules need custom code regardless.
+**PyYAML + a hand-rolled validator** (one new dependency: PyYAML) over
+jsonschema/pydantic — the cross-field rules need custom code regardless.
 
 | Acceptance criterion | Status |
 |---|---|

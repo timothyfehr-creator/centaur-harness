@@ -10,21 +10,25 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Bootstrap scaffold (pre-WP0.1). Only repo-level `scaffold` verification exists.
-Schemas, source/claim validation, safety checks, draft mode, and release mode are
-**not** implemented yet — they arrive in later phases, in the plan's order.
+Phase 1 in progress. Implemented: repo-level `scaffold` verification, a secret scan,
+and **structural scenario-schema validation**. Source/claim validation, safety checks,
+draft mode, and release mode are **not** implemented yet — they arrive in later phases,
+in the plan's order. See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
 ```bash
-python scripts/verify.py --mode scaffold   # repo-level integrity check
+python scripts/verify.py --mode scaffold   # repo-level integrity (+ structural scenario-schema check)
 python scripts/verify.py                    # defaults to --mode scaffold
+python scripts/secret_scan.py               # secret scan (a minimum gate)
+python scripts/validate_schemas.py          # validate examples/**/scenario.yaml
 pytest                                       # run the test suite
 ```
 
-`scaffold` mode checks repo-level integrity only (required files/dirs present). It
-does **not** require a sourced scenario, factbase, agent grounding, fog-of-war,
-run ledger, review, signoff, or release artifacts.
+`scaffold` mode checks repo-level integrity (required files/dirs present) and
+**structurally** validates any `examples/**/scenario.yaml` that exist. It does
+**not** require a scenario to exist, nor that its claims are sourced (sourcing is a
+later phase) — only that a *present* scenario is well-formed.
 
 Unknown modes — including the not-yet-implemented `draft` and `release` — exit
 nonzero with a clear error, so the harness never falsely reports validity.
@@ -32,6 +36,17 @@ nonzero with a clear error, so the harness never falsely reports validity.
 ## Requirements
 
 - Python 3.11+. On this machine the interpreter is `python3` (there is no `python`
-  binary); use `python3 scripts/verify.py ...` locally. CI provisions `python` via
+  binary); use `python3 scripts/...` locally. CI provisions `python` via
   `actions/setup-python`, so the `python ...` commands above are correct in CI.
-- `pytest` for the test suite (`pip install "pytest>=8,<10"`).
+- Dependencies are declared in [`requirements-dev.txt`](requirements-dev.txt)
+  (`pytest`, `PyYAML`). Install before running:
+
+  ```bash
+  python3 -m pip install -r requirements-dev.txt
+  # On an externally-managed Python (PEP 668), use a venv:
+  #   python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+  ```
+
+- `PyYAML` backs the scenario-schema validator, which `scaffold` mode now invokes.
+  Without it, scaffold **fails closed** with a clear error rather than skipping
+  validation.

@@ -1,0 +1,4 @@
+# Development / CI dependencies for the Centaur harness.
+# Install with:  python -m pip install -r requirements-dev.txt
+pytest>=8,<10
+PyYAML>=6,<7

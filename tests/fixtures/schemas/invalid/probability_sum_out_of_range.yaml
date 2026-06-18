@@ -1,0 +1,13 @@
+# Defect: probabilities sum to 0.85 (outside 1.0 +/- 0.05)  ->  probability-sum-out-of-range
+schema_version: "1.0"
+branches:
+  - id: a
+    probability: 0.40
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: ["F1"]
+    rationale: "r"
+  - id: b
+    probability: 0.45
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

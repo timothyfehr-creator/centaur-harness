@@ -44,6 +44,34 @@ def verify_scaffold(repo_root: Path) -> list[str]:
     for rel in REQUIRED_PATHS:
         if not (repo_root / rel).exists():
             problems.append(f"missing required path: {rel}")
+    problems.extend(_scaffold_schema_problems(repo_root))
+    return problems
+
+
+def _scaffold_schema_problems(repo_root: Path) -> list[str]:
+    """Structurally validate any scenario files that exist.
+
+    Scaffold does NOT require a scenario, but it must FAIL CLOSED on one that is
+    present yet cannot be validated (e.g. PyYAML missing) -- never silently pass.
+    Sourcing is out of scope here (WP2.3); this is structural only.
+    """
+    scenarios = sorted(repo_root.glob("examples/**/scenario.yaml"))
+    if not scenarios:
+        return []  # scenarios are not required at scaffold time
+
+    scripts_dir = str(Path(__file__).resolve().parent)
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    try:
+        import validate_schemas  # imports PyYAML at module top
+    except Exception as exc:  # PyYAML or module unavailable -> fail closed
+        return [f"scenario schema: cannot validate scenarios ({exc})"]
+
+    problems: list[str] = []
+    for path in scenarios:
+        rel = path.relative_to(repo_root).as_posix()
+        for code, _where, msg in validate_schemas.validate_file(path):
+            problems.append(f"scenario schema [{rel}]: {code}: {msg}")
     return problems
 
 

@@ -1,0 +1,13 @@
+# Defect: branch a has no falsifiers  ->  missing-falsifier
+schema_version: "1.0"
+branches:
+  - id: a
+    probability: 0.5
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: []
+    rationale: "r"
+  - id: b
+    probability: 0.5
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

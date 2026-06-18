@@ -1,0 +1,13 @@
+# Defect: no schema_version  ->  missing-schema-version
+title: "Missing schema_version"
+branches:
+  - id: a
+    probability: 0.5
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: ["F1"]
+    rationale: "r"
+  - id: b
+    probability: 0.5
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

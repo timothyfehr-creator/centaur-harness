@@ -15,11 +15,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install test dependencies
-        run: pip install "pytest>=8,<10"
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
 
       - name: Secret scan
         run: python scripts/secret_scan.py
+
+      - name: Schema validation
+        run: python scripts/validate_schemas.py
 
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold

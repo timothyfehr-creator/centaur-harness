@@ -1,0 +1,3 @@
+# Defect: malformed YAML (unclosed flow sequence)  ->  yaml-parse-error
+schema_version: "1.0"
+branches: [a, b

@@ -1,0 +1,15 @@
+# Valid: probabilities sum to 1.05 (the upper ±0.05 boundary, inclusive). Locks the
+# floating-point boundary fix (0.55 + 0.50 must pass, not spuriously fail).
+schema_version: "1.0"
+title: "Valid scenario summing to the upper tolerance boundary"
+branches:
+  - id: a
+    probability: 0.55
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: ["F1"]
+    rationale: "r"
+  - id: b
+    probability: 0.50
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

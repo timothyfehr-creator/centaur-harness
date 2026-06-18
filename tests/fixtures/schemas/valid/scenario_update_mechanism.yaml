@@ -1,0 +1,21 @@
+schema_version: "1.0"
+title: "Valid scenario using update_mechanism instead of rationale"
+branches:
+  - id: a
+    probability: 0.5
+    signposts:
+      - "Signpost A1"
+      - "Signpost A2"
+      - "Signpost A3"
+    falsifiers:
+      - "Falsifier A1"
+    update_mechanism: "If Signpost A1 is observed, raise this branch to 0.6."
+  - id: b
+    probability: 0.5
+    signposts:
+      - "Signpost B1"
+      - "Signpost B2"
+      - "Signpost B3"
+    falsifiers:
+      - "Falsifier B1"
+    update_mechanism: "If Signpost B1 is observed, raise this branch to 0.6."

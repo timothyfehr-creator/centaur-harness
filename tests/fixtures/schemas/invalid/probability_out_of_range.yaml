@@ -1,0 +1,13 @@
+# Defect: branch a probability > 1  ->  probability-out-of-range
+schema_version: "1.0"
+branches:
+  - id: a
+    probability: 1.4
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: ["F1"]
+    rationale: "r"
+  - id: b
+    probability: 0.4
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

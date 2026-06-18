@@ -1,0 +1,23 @@
+schema_version: "1.0"
+title: "Minimal valid scenario"
+branches:
+  - id: a
+    title: "Branch A"
+    probability: 0.6
+    signposts:
+      - "Signpost A1"
+      - "Signpost A2"
+      - "Signpost A3"
+    falsifiers:
+      - "Falsifier A1"
+    rationale: "Placeholder rationale for branch A."
+  - id: b
+    title: "Branch B"
+    probability: 0.4
+    signposts:
+      - "Signpost B1"
+      - "Signpost B2"
+      - "Signpost B3"
+    falsifiers:
+      - "Falsifier B1"
+    rationale: "Placeholder rationale for branch B."

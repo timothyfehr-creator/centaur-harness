@@ -36,3 +36,20 @@ Agent confidence is not an evaluation. Passing the work package's acceptance
 commands is the evaluation. Every work package should include, where applicable, a
 valid fixture, an invalid fixture, a regression test, and the exact acceptance
 commands.
+
+## Test fixtures & gates
+
+- **Fixtures with secret-/credential-shaped content must be SYNTHETIC.** GitHub push
+  protection (and our own `scripts/secret_scan.py`) will block or flag realistic or
+  canonical provider keys (e.g. Stripe's documented example, AWS live keys). Use
+  obviously-fake / test-mode values, and SPLIT provider prefixes via string
+  concatenation (`"xoxb-" + "..."`) so the contiguous token never appears in committed
+  source.
+- Keep such samples under `tests/fixtures/` (and `tests/test_secret_scan.py`), which
+  the secret scan excludes from the default/CI scan. Never place deliberately-fake
+  secrets in other tracked files — they would fail the gate (or block the push).
+- **Gates fail closed.** A check that cannot actually run (missing tool, zero inputs,
+  unreadable file) must exit non-zero with a clear error — never silently report
+  "OK". A gate that passes when it scanned nothing is worse than no gate. See
+  [docs/CONSTITUTION.md](docs/CONSTITUTION.md) §3 (verification must never falsely
+  pass).

@@ -26,6 +26,9 @@ def _run(*args: str) -> subprocess.CompletedProcess[str]:
 def test_scaffold_mode_exits_zero() -> None:
     result = _run("--mode", "scaffold")
     assert result.returncode == 0, result.stderr
+    # The success message proves the required-path check actually ran, rather
+    # than scaffold trivially returning 0 without checking anything.
+    assert "scaffold verification OK" in result.stdout
 
 
 def test_default_invocation_exits_zero_and_is_scaffold() -> None:
@@ -42,13 +45,17 @@ def test_unknown_mode_fails_clearly() -> None:
 
 
 def test_draft_mode_not_implemented_yet() -> None:
-    # WP-1 / WP0.1 must NOT implement draft mode; it should be rejected, not
-    # silently treated as valid.
+    # WP-1 / WP0.1 must NOT implement draft mode; it should be rejected *clearly*
+    # as an unknown mode, not silently treated as valid nor failing via a crash.
     result = _run("--mode", "draft")
     assert result.returncode != 0
+    assert "unknown mode" in result.stderr.lower()
+    assert "draft" in result.stderr.lower()
 
 
 def test_release_mode_never_falsely_passes() -> None:
     # Release mode must be unavailable / fail clearly until its gates exist.
     result = _run("--mode", "release")
     assert result.returncode != 0
+    assert "unknown mode" in result.stderr.lower()
+    assert "release" in result.stderr.lower()

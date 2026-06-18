@@ -86,8 +86,39 @@ jsonschema/pydantic — the cross-field rules need custom code regardless.
   tighter probability tolerance (backlog); other schemas (WP1.2). PyYAML is now a
   required dependency — scaffold **fails closed** without it.
 
+## WP1.2 — Core schema skeletons ✅ complete
+
+Generalized the validator to be **kind-aware** (agent / source / claim / event / turn)
+while leaving the scenario validator and the scaffold/CI wiring byte-for-byte
+unchanged. Flat declarative skeleton specs + a registry; one PROVISIONAL enum per kind
+where natural, grounded in STANAG 2511 / ICD-203 + Kent / DIME / IR typology.
+
+| Acceptance criterion | Status |
+|---|---|
+| schemas exist + enforceable (5 kinds) | ✅ (`--kind`; flat declarative specs) |
+| missing required fields fail | ✅ (`missing-schema-version` / `missing-field`) |
+| invalid enum values fail | ✅ (`invalid-enum`; absent enum ⇒ `missing-field`) |
+| wrong types fail | ✅ (`wrong-type`; e.g. `turn.number`) |
+| valid fixtures pass | ✅ (5 valid + 13 single-fault invalid) |
+| scaffold / CI stay green; no out-of-scope semantics | ✅ |
+| `pytest` exits 0 | ✅ (64 passed) |
+
+- Feature commit `dc9bb10`: `scripts/validate_schemas.py` (kind-aware),
+  `schemas/{agent,source,claim,event,turn}.schema.md`, 18 synthetic fixtures +
+  parametrized tests. `verify.py`, `.github/workflows/ci.yml`, `requirements-dev.txt`
+  unchanged.
+- **GitHub Actions:** ✅ success — run
+  [27735538268](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27735538268)
+  on `dc9bb10` (Secret scan, Schema validation, Scaffold verification, Tests passed).
+- Notes / deferred: enum **semantics** deferred (claim↔source resolution WP2.1, event
+  semantics WP2.2, agent grounding WP5, turn ordering/replay WP7); enum values are
+  PROVISIONAL. **No real instances** added — skeleton CI coverage rides on the `pytest`
+  step, not the bare schema-validation step. Backlog: canonical filenames are plural
+  (`agents.yaml`); a singular `agent.yaml` would currently infer scenario — harden when
+  real instances land.
+
 ## Deferred (not started)
 
-Core schema skeletons for agents/sources/claims/events/turns (WP1.2), source/claim
-validation (WP2.x), safety enforcement & output labels (WP3.x), draft mode (WP4.1),
-release mode (WP8.2), and engine work.
+Source & claim registry validation (WP2.1), event ledger validation (WP2.2), safety
+enforcement & output labels (WP3.x), draft mode (WP4.1), release mode (WP8.2), and
+engine work.

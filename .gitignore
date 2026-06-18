@@ -23,7 +23,19 @@ env/
 .env.*
 *.pem
 *.key
+*.p12
+*.pfx
+*.keystore
+id_rsa
+id_ed25519
+credentials.json
 secrets.*
+.aws/
+.ssh/
+
+# Test fixtures intentionally contain fake key-/secret-shaped files; keep them
+# tracked despite the secret patterns above.
+!tests/fixtures/**
 
 # OS / editor
 .DS_Store

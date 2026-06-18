@@ -1,8 +1,8 @@
 # Command Safety
 
-Guidance for long-running coding sessions in this repo. This is documentation, not
-an enforced gate yet. Enforcement (a secret scan and related checks) arrives in
-WP0.2.
+Guidance for long-running coding sessions in this repo. The secret scan below is
+enforced in CI; the command-safety practices are conventions for contributors and
+agents.
 
 ## Principles
 
@@ -14,10 +14,24 @@ WP0.2.
 
 ## Secrets
 
-- Never commit credentials, API keys, tokens, or `.env` files. These are ignored via
-  [`.gitignore`](../.gitignore).
-- **Secret scanning is deferred to WP0.2** (`scripts/secret_scan.py`). It is
-  documented here but intentionally **not implemented** in the bootstrap scaffold.
+- Never commit credentials, API keys, tokens, or `.env`/key files. These are ignored
+  via [`.gitignore`](../.gitignore).
+- **Secret scanning is implemented** in
+  [`scripts/secret_scan.py`](../scripts/secret_scan.py) and runs in CI. By default it
+  scans tracked files (`git ls-files`); pass paths to scan specific files/dirs:
+
+  ```bash
+  python scripts/secret_scan.py            # scan tracked repo files
+  python scripts/secret_scan.py PATH ...   # scan specific files/dirs
+  ```
+
+- It matches a curated set of high-precision patterns (AWS / GitHub / Google / Slack
+  / Stripe / Anthropic / OpenAI keys, PEM private-key headers) plus one precise
+  generic keyword/value rule. Matched values are masked in output.
+- It is a **minimum gate, not a guarantee** — it will miss obfuscated or novel
+  secrets. A clean scan means "no obvious secret", not "provably secret-free".
+- To exempt a deliberately non-secret line (a documented example or a fixture),
+  append the marker `pragma: allowlist secret` to that line.
 
 ## Destructive-command checklist
 

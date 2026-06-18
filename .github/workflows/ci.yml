@@ -8,15 +8,18 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Install test dependencies
         run: pip install "pytest>=8,<10"
+
+      - name: Secret scan
+        run: python scripts/secret_scan.py
 
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold

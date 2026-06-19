@@ -1,0 +1,7 @@
+# Defect: source ref does not resolve  ->  unresolved-source-ref
+schema_version: "1.0"
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim (not real)."
+    confidence: LIKELY
+    sources: [src-999]

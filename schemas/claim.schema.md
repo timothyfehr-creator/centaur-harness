@@ -16,11 +16,10 @@ enforcement is [`scripts/validate_schemas.py`](../scripts/validate_schemas.py)
 
 ## `confidence` enum (PROVISIONAL)
 
-`HIGH`, `MODERATE`, `LOW`, `UNASSESSED`. **Label vocabulary only**, borrowed from
-ICD-203 analytic-confidence standards and Sherman Kent's Words of Estimative
-Probability; the semantics (numeric ranges, source-tier cross-validation) are
-**deferred to WP2.1**. `UNASSESSED` is a scaffold-stage tag for not-yet-sourced
-claims. Values are provisional and may be refined.
+`CONFIRMED`, `LIKELY`, `UNCERTAIN`, `UNASSESSED` — an intel-style **evidential status**
+vocabulary. `UNASSESSED` is a tag for not-yet-sourced claims. Values are provisional
+and may be refined. The top value, `CONFIRMED`, triggers the WP2.1 source-tier rule
+(see below).
 
 ## Error codes
 
@@ -29,5 +28,9 @@ claims. Values are provisional and may be refined.
 
 ## Limitations
 
-Skeleton only: no `source` references, no claim-to-source resolution, no tier↔
-confidence cross-rules. Those arrive in WP2.1+.
+This contract covers the **standalone** claim skeleton (`--kind claim`): structural
+shape only. Claim→source **resolution** and the **tier rule** (a `CONFIRMED` claim
+needs ≥1 non-`SOCIAL` source) are enforced at the **registry** level (WP2.1) by
+[`scripts/validate_claims.py`](../scripts/validate_claims.py) over `factbase/claims.yaml`
++ `factbase/sources.yaml`, not by the standalone skeleton. Stale-claim decay and OSINT
+ingestion are later WPs.

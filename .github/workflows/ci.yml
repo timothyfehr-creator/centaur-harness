@@ -24,6 +24,12 @@ jobs:
       - name: Schema validation
         run: python scripts/validate_schemas.py
 
+      - name: Source registry validation
+        run: python scripts/validate_sources.py
+
+      - name: Claim registry validation
+        run: python scripts/validate_claims.py
+
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold
 

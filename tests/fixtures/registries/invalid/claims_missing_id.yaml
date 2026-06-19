@@ -1,0 +1,6 @@
+# Defect: claim has no id  ->  missing-field / id  (otherwise valid + resolving)
+schema_version: "1.0"
+claims:
+  - text: "Illustrative synthetic claim (not real)."
+    confidence: LIKELY
+    sources: [src-001]

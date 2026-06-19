@@ -1,0 +1,13 @@
+# ILLUSTRATIVE claim registry — all entries are SYNTHETIC placeholders, NOT real
+# assertions. Each claim resolves to factbase/sources.yaml; the CONFIRMED claim cites
+# a non-SOCIAL source (the tier rule). Real claims/sourcing are WP2.3.
+schema_version: "1.0"
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim; not a real-world assertion."
+    confidence: CONFIRMED
+    sources: [src-001]        # OFFICIAL — satisfies the tier rule
+  - id: claim-002
+    text: "Illustrative synthetic claim; not a real-world assertion."
+    confidence: LIKELY
+    sources: [src-002, src-003]

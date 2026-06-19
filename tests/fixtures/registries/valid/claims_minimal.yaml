@@ -1,0 +1,10 @@
+schema_version: "1.0"
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim (not real)."
+    confidence: CONFIRMED
+    sources: [src-001]        # OFFICIAL — satisfies the tier rule
+  - id: claim-002
+    text: "Illustrative synthetic claim (not real)."
+    confidence: LIKELY
+    sources: [src-003]        # SOCIAL is fine below top confidence

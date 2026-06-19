@@ -1,4 +1,4 @@
 schema_version: "1.0"
 id: claim-001
 text: "Placeholder claim text."
-confidence: MODERATE
+confidence: LIKELY

@@ -1,0 +1,5 @@
+# Defect: registry has no schema_version  ->  missing-schema-version
+sources:
+  - id: src-001
+    title: "Illustrative Source (synthetic)"
+    tier: OFFICIAL

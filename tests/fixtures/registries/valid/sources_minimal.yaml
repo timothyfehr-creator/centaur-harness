@@ -1,0 +1,11 @@
+schema_version: "1.0"
+sources:
+  - id: src-001
+    title: "Illustrative Official Bulletin (synthetic)"
+    tier: OFFICIAL
+  - id: src-002
+    title: "Illustrative Wire Report (synthetic)"
+    tier: MAINSTREAM
+  - id: src-003
+    title: "Illustrative Social Post (synthetic)"
+    tier: SOCIAL

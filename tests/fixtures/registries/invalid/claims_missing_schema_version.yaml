@@ -1,0 +1,6 @@
+# Defect: registry has no schema_version  ->  missing-schema-version
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim (not real)."
+    confidence: LIKELY
+    sources: [src-001]

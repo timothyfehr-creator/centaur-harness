@@ -114,7 +114,8 @@ def validate_doc(doc: object, where: str) -> list[tuple[str, str, str]]:
 # -- no cross-refs or semantics (those are WP2.x / WP5). Enum values are PROVISIONAL
 # "label vocabularies" grounded in established frameworks (semantics deferred):
 # agent.type (IR actor typology), source.tier (NATO STANAG 2511 / OSINT),
-# claim.confidence (ICD-203 / Kent), event.category (DIME).
+# claim.confidence (intel evidential status; the tier rule in validate_claims.py
+# triggers on the top value, CONFIRMED), event.category (DIME).
 # Keep each SPEC in sync with its schemas/<kind>.schema.md contract -- nothing tests
 # that the human-readable prose matches these dicts.
 AGENT_SPEC = {
@@ -130,7 +131,7 @@ SOURCE_SPEC = {
 CLAIM_SPEC = {
     "required_str": ("schema_version", "id", "text"),
     "required_int": (),
-    "enums": {"confidence": ("HIGH", "MODERATE", "LOW", "UNASSESSED")},
+    "enums": {"confidence": ("CONFIRMED", "LIKELY", "UNCERTAIN", "UNASSESSED")},
 }
 EVENT_SPEC = {
     "required_str": ("schema_version", "id", "description"),

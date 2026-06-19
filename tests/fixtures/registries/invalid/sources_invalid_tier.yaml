@@ -1,0 +1,6 @@
+# Defect: tier not in enum  ->  invalid-enum / tier
+schema_version: "1.0"
+sources:
+  - id: src-001
+    title: "Illustrative Source (synthetic)"
+    tier: GOSSIP

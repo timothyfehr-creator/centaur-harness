@@ -1,0 +1,9 @@
+# Defect: src-001 appears twice  ->  duplicate-id
+schema_version: "1.0"
+sources:
+  - id: src-001
+    title: "Illustrative Source A (synthetic)"
+    tier: OFFICIAL
+  - id: src-001
+    title: "Illustrative Source B (synthetic)"
+    tier: MAINSTREAM

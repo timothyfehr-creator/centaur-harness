@@ -1,0 +1,8 @@
+# A CONFIRMED claim citing SOCIAL + OFFICIAL must PASS (>=1 non-SOCIAL present);
+# proves the tier rule does not over-block.
+schema_version: "1.0"
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim (not real)."
+    confidence: CONFIRMED
+    sources: [src-003, src-001]

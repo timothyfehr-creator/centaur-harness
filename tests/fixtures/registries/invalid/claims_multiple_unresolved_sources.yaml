@@ -1,0 +1,7 @@
+# Defect: multiple unresolved source refs  ->  ONE consolidated unresolved-source-ref
+schema_version: "1.0"
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim (not real)."
+    confidence: LIKELY
+    sources: [src-999, src-888]

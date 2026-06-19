@@ -1,0 +1,7 @@
+# Defect: a CONFIRMED claim cites only a SOCIAL source  ->  confidence-tier-violation
+schema_version: "1.0"
+claims:
+  - id: claim-001
+    text: "Illustrative synthetic claim (not real)."
+    confidence: CONFIRMED
+    sources: [src-003]

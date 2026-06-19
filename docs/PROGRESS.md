@@ -117,8 +117,42 @@ where natural, grounded in STANAG 2511 / ICD-203 + Kent / DIME / IR typology.
   (`agents.yaml`); a singular `agent.yaml` would currently infer scenario — harden when
   real instances land.
 
+## WP2.1 — Source & claim registry validation ✅ complete
+
+The first **evidence gate**: `factbase/sources.yaml` + `factbase/claims.yaml`, with
+claim→source resolution and a source-tier rule. Two standalone validators reuse the
+WP1.2 skeleton engine via a derived entry-spec; **scaffold/`verify.py` untouched**
+(resolution is draft-mode/WP4 territory per CONSTITUTION §3).
+
+| Acceptance criterion | Status |
+|---|---|
+| source + claim registries exist + validate clean | ✅ (illustrative/synthetic) |
+| a valid claim resolves to a valid source | ✅ |
+| missing / unresolved source ref fails | ✅ (`missing-source-ref` / `unresolved-source-ref`) |
+| missing claim id fails | ✅ (`missing-field`) |
+| social-only top-confidence claim fails | ✅ (`confidence-tier-violation`) |
+| scaffold + the 64 prior tests stay green; no ingestion | ✅ |
+| `pytest` exits 0 | ✅ (82 passed) |
+
+- **Vocab finalized** (user choice): `claim.confidence` = `CONFIRMED / LIKELY /
+  UNCERTAIN / UNASSESSED` (intel evidential status). "CONFIRMED" in the plan == the
+  implemented top-confidence value; the tier rule triggers on it.
+- **Tier rule** = a `CONFIRMED` claim must cite ≥1 source of a **recognized non-SOCIAL
+  tier** (OFFICIAL/MAINSTREAM) — fail-closed against missing/unknown tiers (review fix).
+- Feature commit `a94d358`: `scripts/validate_sources.py`, `scripts/validate_claims.py`,
+  `factbase/*.yaml` (synthetic), 13 registry fixtures + two test files, the
+  `CLAIM_SPEC` enum migration, two CI steps.
+- **GitHub Actions:** ✅ success — run
+  [27843062841](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27843062841)
+  on `a94d358` (Secret scan, Schema validation, Source/Claim registry validation,
+  Scaffold verification, Tests all passed).
+- **Deferred (named):** the §5 "label unsupported items ASSUMPTION/MODEL_OUTPUT/
+  ILLUSTRATIVE" half is **not** enforced here — WP2.1 requires every *registry* claim
+  to resolve; labeling unsourced *narrative* claims is WP3.2/WP4. `as_of_date` is
+  accepted-but-unvalidated. Real sourcing of the scenario is WP2.3.
+
 ## Deferred (not started)
 
-Source & claim registry validation (WP2.1), event ledger validation (WP2.2), safety
+Event ledger validation (WP2.2), source-or-label the Ukraine example (WP2.3), safety
 enforcement & output labels (WP3.x), draft mode (WP4.1), release mode (WP8.2), and
 engine work.

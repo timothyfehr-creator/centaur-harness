@@ -1,0 +1,3 @@
+# SYNTHETIC safe fixture -- demonstrates the allowlist escape hatch. The line below
+# WOULD match a safety pattern, but the marker exempts it, so the safe dir still exits 0.
+note: "synthesize the <PLACEHOLDER> nerve agent (documented example only)"  # pragma: allowlist safety

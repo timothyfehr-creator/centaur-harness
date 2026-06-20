@@ -361,10 +361,20 @@ tests/fixtures/safety/
 
 **Acceptance criteria**
 
-- unsafe fixtures fail;
-- safe strategic/logistics fixtures pass;
-- unlabeled draft artifacts fail;
-- draft verification invokes safety checks.
+- unsafe fixtures fail;                          <!-- WP3.1 -->
+- safe strategic/logistics fixtures pass;        <!-- WP3.1 -->
+- unlabeled draft artifacts fail;                <!-- WP3.2 (output-label validation), not WP3.1 -->
+- draft verification invokes safety checks.      <!-- WP4 (draft-mode wiring), not WP3.1 -->
+
+(WP3.1 amendment: this phase is delivered in two parts. **WP3.1** ships the safety
+*content* gate — `scripts/safety_check.py` + `checks/safety_patterns.yaml` as a
+standalone CI step — satisfying the first two lines; its exit gate is "unsafe artifacts
+cannot pass". The world-vs-game **label** enforcement on draft artifacts is **WP3.2**,
+and wiring the gate into `verify.py --mode draft` is **WP4**. Recorded in
+`docs/PROGRESS.md`. The patterns file ships a second `broader` tier (operational
+targeting / strike-execution) **defined but disabled** (`enabled_tiers: [conservative]`)
+as forward policy-readiness — inert data-as-config a policy owner flips without a code
+change; the default line stays conservative.)
 
 **Verification commands**
 
@@ -375,7 +385,8 @@ pytest
 ```
 
 **Exit gate**  
-Unsafe or unlabeled draft artifacts cannot pass.
+Unsafe or unlabeled draft artifacts cannot pass. (WP3.1 delivers the **unsafe**
+half — unsafe artifacts cannot pass the safety gate; the **unlabeled** half is WP3.2.)
 
 **Explicitly deferred**
 

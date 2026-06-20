@@ -36,6 +36,9 @@ jobs:
       - name: State validation
         run: python scripts/validate_state.py
 
+      - name: Safety check
+        run: python scripts/safety_check.py
+
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold
 

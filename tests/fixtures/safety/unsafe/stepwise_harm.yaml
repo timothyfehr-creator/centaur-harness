@@ -1,0 +1,4 @@
+# SYNTHETIC unsafe fixture -- placeholder text that TRIGGERS one safety pattern
+# (stepwise-harm-procedure) with NO real harmful content. Concrete tokens are the
+# step marker, the harm verb, and the object noun only; the rest is a placeholder.
+note: "Step 1: combine the <PLACEHOLDER> toxin"

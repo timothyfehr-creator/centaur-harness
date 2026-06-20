@@ -1,0 +1,4 @@
+# SYNTHETIC unsafe fixture -- placeholder text that TRIGGERS one safety pattern
+# (cbrn-synthesis-howto) with NO real harmful content. The only concrete tokens are
+# the imperative verb and the category noun; the instruction slot is a placeholder.
+note: "synthesize the <PLACEHOLDER> nerve agent"

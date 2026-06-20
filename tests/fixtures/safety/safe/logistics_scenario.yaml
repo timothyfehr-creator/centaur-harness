@@ -1,0 +1,13 @@
+# SYNTHETIC safe fixture -- realistic STRATEGIC / logistics content that MUST pass the
+# safety gate. Force posture and logistics signposts at the strategic level; no
+# actionable operational harm-instruction.
+schema_version: "1.0"
+label: ILLUSTRATIVE
+branches:
+  - id: escalation
+    signposts:
+      - "Rail throughput to the front increases quarter over quarter"
+      - "New forward supply depots observed near the land corridor"
+      - "Munitions expenditure rate rises above the prior-quarter baseline"
+    falsifiers:
+      - "A verified, binding ceasefire halts resupply operations"

@@ -1,0 +1,87 @@
+# Centaur safety patterns (CONSTITUTION §7) — a MINIMUM GATE, not a semantic oracle.
+#
+# Each rule is a high-signal detection signature for ACTIONABLE operational
+# harm-instructions. By design every rule requires TWO co-occurring tokens on the
+# SAME physical line — a harm/imperative VERB and a weapon/agent OBJECT (broader-tier
+# targeting rules pair a strike verb with a precision token). This is what lets the
+# gate pass strategic assessment (force levels, logistics, a modeled strike as a
+# scenario event) while blocking construction/synthesis how-to. The gate is
+# line-local: newline-splitting the two tokens evades it (documented limitation).
+#
+# `enabled_tiers` selects the safe/unsafe line WITHOUT touching code:
+#   conservative — weapons/CBRN/explosive CONSTRUCTION or SYNTHESIS instructions and
+#                  explicit step-by-step mass-casualty how-to (the default).
+#   broader      — ALSO operational targeting / strike-execution detail. Higher
+#                  false-positive risk on legitimate scenario content (e.g. an
+#                  analytic "Phase 1: suppress radar" phase description). Off by default.
+#
+# scripts/safety_check.py loads this file (override via CENTAUR_SAFETY_PATTERNS) and
+# fails closed (exit 2) on any unusable rule set. This file is excluded from the
+# default content scan: it is the rule DEFINITIONS, not content to be checked.
+schema_version: "1.0"
+
+enabled_tiers: [conservative]          # change to [conservative, broader] to widen
+
+rules:
+  - id: cbrn-synthesis-howto
+    tier: conservative
+    category: cbrn-synthesis
+    description: >
+      Imperative production instructions for a chemical, biological, radiological, or
+      nuclear agent (a how-to verb co-located with a named agent), not descriptive or
+      strategic discussion of such weapons.
+    regex: '(?i)\b(?:synthesi[sz]e|culture|weaponi[sz]e|enrich|purify|aerosoli[sz]e|disperse)\b[^.\n]{0,40}\b(?:nerve agent|sarin|vx|ricin|anthrax|pathogen|fissile material|uranium hexafluoride|plutonium)\b'
+
+  - id: explosive-device-construction
+    tier: conservative
+    category: explosive-construction
+    description: >
+      Build/assembly instructions for an explosive or improvised device (a build verb
+      co-located with a device noun), not "munitions expenditure" or "supply depot".
+    regex: '(?i)\b(?:build|assemble|construct|fabricate|wire|fuse|detonate)\b[^.\n]{0,40}\b(?:ied|pipe bomb|explosive device|detonator|blasting cap|shaped charge|suicide vest)\b'
+
+  - id: stepwise-harm-procedure
+    tier: conservative
+    category: stepwise-harm-howto
+    description: >
+      A numbered/keyed step whose action is acquire/mix/assemble/deploy a weapon or
+      harmful agent. The step marker, the harm verb, and the harm object together are
+      the signal; a step marker alone (campaign phase modeling) does not match.
+    regex: '(?i)(?:\bstep\s*\d+|\bfirst,|\bthen,|\bnext,)[^.\n]{0,30}\b(?:mix|combine|acquire|obtain|assemble|deploy|release)\b[^.\n]{0,40}\b(?:toxin|explosive|payload|pathogen|nerve agent|chemical agent|biological agent)\b'
+
+  - id: mass-casualty-optimization
+    tier: conservative
+    category: mass-casualty-howto
+    description: >
+      Optimizing a METHOD for maximizing civilian/population casualties (a design
+      objective), distinct from modeling a casualty OUTCOME range.
+    regex: '(?i)\b(?:maximi[sz]e|most (?:lethal|effective)|best way to)\b[^.\n]{0,40}\b(?:civilian|population|mass)\b[^.\n]{0,20}\b(?:casualt\w*|death\w*|kill\w*)'
+
+  - id: precursor-procurement-howto
+    tier: conservative
+    category: weaponization-procurement
+    description: >
+      Sourcing/acquisition guidance for a controlled weaponizable item (an acquisition
+      verb co-located with a controlled item). "Supply-chain constraints on rare earths"
+      does not match (no acquisition verb + controlled-item pairing).
+    regex: '(?i)\b(?:acquire|obtain|purchase|source|buy)\b[^.\n]{0,30}\b(?:weapons-grade|fissile material|precursor chemical|nerve agent precursor|chemical weapon precursor|highly enriched uranium)\b'
+
+  # --- broader tier (NOT enabled by default): operational targeting / strike execution ---
+  - id: operational-targeting-coords
+    tier: broader
+    category: operational-targeting
+    description: >
+      Strike-execution detail: a strike/attack verb bound to precise targeting data
+      (grid/waypoint/bearing/coordinates). A modeled strike-as-event ("Ukraine strikes
+      the bridge") lacks the precision token and does not match.
+    regex: '(?i)\b(?:strike|engage|target|hit)\b[^.\n]{0,30}(?:\b(?:grid|waypoint|bearing|coordinates?|latitude|longitude)\b|\d{1,3}\.\d{3,})'
+
+  - id: operational-strike-sequencing
+    tier: broader
+    category: operational-sequencing
+    description: >
+      Prescriptive tactical phase sequencing against named assets (degrade radar →
+      strike airfield). Strategic campaign-phase MODELING ("degradation, days 1-7")
+      lacks the imperative + asset-class pairing and does not match. Known broader-tier
+      false-positive on analytic prose like "Phase 1: suppress radar" — accepted cost.
+    regex: '(?i)\bphase\s*\d+\b[^.\n]{0,30}\b(?:degrade|suppress|destroy|neutrali[sz]e)\b[^.\n]{0,30}\b(?:radar|air defen[cs]e|early.?warning|sam site|airfield|command post)\b'

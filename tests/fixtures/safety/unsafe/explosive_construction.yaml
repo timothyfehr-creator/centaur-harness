@@ -1,0 +1,4 @@
+# SYNTHETIC unsafe fixture -- placeholder text that TRIGGERS one safety pattern
+# (explosive-device-construction) with NO real harmful content. Concrete tokens are
+# the build verb and the device noun only; the instruction slot is a placeholder.
+note: "assemble the explosive device from <PLACEHOLDER>"

@@ -1,0 +1,5 @@
+# SYNTHETIC unsafe fixture -- placeholder text that TRIGGERS one BROADER-tier safety
+# pattern (operational-targeting-coords) with NO real harmful content. Caught only when
+# `broader` is enabled; under the default `conservative` tier this file is clean.
+# Concrete tokens are the strike verb and the precision token only; coords are a placeholder.
+note: "strike at grid <PLACEHOLDER>"

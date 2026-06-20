@@ -184,7 +184,40 @@ structural twin of `validate_claims.py` minus the tier rule; `verify.py`/scaffol
   registry *structure* is enforced in CI by the resolution validators (each re-runs the
   skeleton on entries), not by the scenario-only bare `validate_schemas.py` step.
 
+## WP2.3 — Source-or-label the Ukraine example ✅ complete (Phase 2 done)
+
+The honesty capstone of Phase 2: scenario **state items** carry a CONSTITUTION-§4
+world-vs-game label, and `validate_state.py` enforces the §5 rule — a
+`REAL_WORLD_BASELINE` item must cite ≥1 claim that resolves to the factbase, or be
+relabeled. Closes the §5 "label-unsupported-items" half deferred since WP2.1.
+
+| Acceptance criterion | Status |
+|---|---|
+| the example state validates clean, asserts no real-world fact | ✅ (all ASSUMPTION/ILLUSTRATIVE) |
+| a REAL_WORLD_BASELINE item w/o a resolving claim fails | ✅ (`unsupported-baseline` / `unresolved-claim-ref`) |
+| an unlabeled / bad-label item fails | ✅ (`missing-field` / `invalid-enum`) |
+| an ASSUMPTION item with no claims passes | ✅ (non-over-block) |
+| 94 prior tests stay green; no out-of-scope work | ✅ |
+| `pytest` exits 0 | ✅ (105 passed) |
+
+- **Decisions (user):** state sourcing triggers on the `REAL_WORLD_BASELINE` **label**
+  only — claim confidence (CONFIRMED/LIKELY) is enforced on claims by `validate_claims`,
+  so **`IMPLEMENTATION_PLAN_V2.md` line 290 was amended**. The shipped example is
+  **all-illustrative** (no REAL_WORLD_BASELINE); that resolution path lives in fixtures.
+- **Design:** §4 labels = a shared `WORLD_VS_GAME_LABELS` constant (reused by WP3.2); state
+  is registry-only and **not** in `SCHEMA_REGISTRY` (avoids a `--kind state` footgun).
+  Resolution-only safety relies on CI ordering (`validate_claims` before `validate_state`).
+- Feature commit `d2edfca`: `scripts/validate_state.py`, `examples/.../initial_state.yaml`,
+  7 registry fixtures + `tests/test_state_validation.py`, `schemas/state.schema.md`, the
+  `WORLD_VS_GAME_LABELS` constant, one CI step, the plan amendment.
+- **GitHub Actions:** ✅ success — run
+  [27884276611](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27884276611)
+  on `d2edfca` (Secret scan, Schema validation, Source/Claim/Event registry validation,
+  **State validation**, Scaffold verification, Tests all passed).
+- Deferred: `as_of_date` accepted-but-unvalidated; a `_registry_id_set(doc, key)` extraction
+  (the `_source_index`/`_claim_id_set` duplication) is a candidate future cleanup, not done here.
+
 ## Deferred (not started)
 
-Source-or-label the Ukraine example (WP2.3), safety enforcement & output labels (WP3.x),
-draft mode (WP4.1), release mode (WP8.2), and engine work.
+Safety enforcement (WP3.1), output-label validation (WP3.2), structural draft mode (WP4.1),
+release mode (WP8.2), and engine work.

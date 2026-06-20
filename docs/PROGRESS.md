@@ -151,8 +151,40 @@ WP1.2 skeleton engine via a derived entry-spec; **scaffold/`verify.py` untouched
   to resolve; labeling unsourced *narrative* claims is WP3.2/WP4. `as_of_date` is
   accepted-but-unvalidated. Real sourcing of the scenario is WP2.3.
 
+## WP2.2 — Event ledger validation ✅ complete
+
+Extended the evidence chain: an `factbase/events.yaml` ledger where **events reference
+claims** (resolution by claim-id, mirroring claims→sources). `validate_events.py` is a
+structural twin of `validate_claims.py` minus the tier rule; `verify.py`/scaffold and
+`validate_sources`/`validate_claims` untouched.
+
+| Acceptance criterion | Status |
+|---|---|
+| event ledger exists + validates clean | ✅ (illustrative/synthetic) |
+| a valid event resolves to claims | ✅ |
+| missing / unresolved claim ref fails | ✅ (`missing-claim-ref` / `unresolved-claim-ref`) |
+| event confidence + category validate | ✅ (`invalid-enum`; `confidence` reuses the claim vocab) |
+| duplicate id fails | ✅ (`duplicate-id`) |
+| 82 prior tests stay green; no ingestion | ✅ |
+| `pytest` exits 0 | ✅ (94 passed) |
+
+- **Vocab:** `event.confidence` = `CONFIRMED / LIKELY / UNCERTAIN / UNASSESSED` (reuses
+  the claim vocab — user choice). **No confidence-consistency cross-rule** and no dead
+  code for one (minimal — user choice).
+- Feature commit `9f61447` (atomic): `scripts/validate_events.py`, `factbase/events.yaml`
+  (synthetic), the `EVENT_SPEC` confidence migration + the 3 schema event fixtures +
+  `event_invalid_confidence`, 8 registry fixtures + `tests/test_event_validation.py`, one
+  CI step.
+- **GitHub Actions:** ✅ success — run
+  [27882984163](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27882984163)
+  on `9f61447` (Secret scan, Schema validation, Source/Claim/Event registry validation,
+  Scaffold verification, Tests all passed).
+- **Deliberate invariant (flagged):** every event references ≥1 claim regardless of
+  confidence — a likely future-relaxation point for raw/unsourced events. Note: factbase
+  registry *structure* is enforced in CI by the resolution validators (each re-runs the
+  skeleton on entries), not by the scenario-only bare `validate_schemas.py` step.
+
 ## Deferred (not started)
 
-Event ledger validation (WP2.2), source-or-label the Ukraine example (WP2.3), safety
-enforcement & output labels (WP3.x), draft mode (WP4.1), release mode (WP8.2), and
-engine work.
+Source-or-label the Ukraine example (WP2.3), safety enforcement & output labels (WP3.x),
+draft mode (WP4.1), release mode (WP8.2), and engine work.

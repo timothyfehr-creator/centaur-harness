@@ -217,7 +217,49 @@ relabeled. Closes the §5 "label-unsupported-items" half deferred since WP2.1.
 - Deferred: `as_of_date` accepted-but-unvalidated; a `_registry_id_set(doc, key)` extraction
   (the `_source_index`/`_claim_id_set` duplication) is a candidate future cleanup, not done here.
 
+## WP3.1 — Safety checker ✅ complete (Phase 3 started)
+
+The first Phase 3 gate: `scripts/safety_check.py` + `checks/safety_patterns.yaml` turn
+CONSTITUTION §7 into an executable **minimum content gate**. It blocks actionable
+operational harm-instructions (weapons/CBRN/explosive construction & synthesis,
+step-by-step mass-casualty how-to) while passing strategic assessment. A near-twin of
+`secret_scan.py`: `git ls-files` default scan, masked findings, fail-closed exit 0/1/2.
+
+| Acceptance criterion | Status |
+|---|---|
+| unsafe fixtures fail | ✅ (5 conservative categories, one finding each, masked) |
+| safe strategic/logistics fixtures pass | ✅ (force levels, depots, modeled strike, casualty-outcome) |
+| the whole repo scans clean | ✅ (`safety check OK (101 files)`) |
+| fail-closed on bad/empty/unknown-tier patterns | ✅ (exit 2; 17 failure modes verified in review) |
+| findings redacted; honesty invariant machine-checked | ✅ (`_mask`; `test_unsafe_fixtures_contain_no_concrete_procedure`) |
+| 105 prior tests stay green; no out-of-scope work | ✅ |
+| `pytest` exits 0 | ✅ (129 passed) |
+
+- **Decision (user):** the safe/unsafe line is **conservative** — flag only
+  construction/synthesis + explicit step-by-step mass-casualty how-to; do NOT flag
+  strategic military discussion (a modeled strike as a scenario event passes). Design =
+  two-token co-occurrence (a harm verb + a weapon/agent object on one physical line).
+- **Tiers:** a second `broader` tier (operational targeting / strike-execution) ships
+  **defined but disabled** (`enabled_tiers: [conservative]`; `CENTAUR_SAFETY_PATTERNS`
+  override) — inert data-as-config, settled as not-overbuild in adversarial review.
+- **Scope reconciliation (plan amended):** Phase 3's acceptance also lists "unlabeled
+  draft artifacts fail" (WP3.2, output-label enforcement) and "draft verification invokes
+  safety checks" (WP4, draft-mode wiring). WP3.1 delivers the **unsafe-content** half only
+  — a standalone CI step; `verify.py`/scaffold and all `validate_*.py` untouched.
+- **Review:** ACCEPT (zero true blockers); folded in a hardened fixture-honesty deny-list
+  (rejects procedure/method hints) and simplified the unsafe fixtures to bare triggers.
+- Feature commit `e86b988`: `scripts/safety_check.py`, `checks/safety_patterns.yaml`,
+  9 safety fixtures + `tests/test_safety_check.py`, `docs/SAFETY_AND_SCOPE.md`, the CI step,
+  the plan annotation.
+- **GitHub Actions:** ✅ success — run
+  [27886573998](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27886573998)
+  on `e86b988` (Secret scan, Schema validation, Source/Claim/Event registry validation,
+  State validation, **Safety check**, Scaffold verification, Tests all passed).
+- Deferred (named): non-digit step numerals / comma-free markers and other paraphrases are
+  accepted minimum-gate false negatives (the gate is line-local; documented in
+  `SAFETY_AND_SCOPE.md`). The `broader` tier is off by default.
+
 ## Deferred (not started)
 
-Safety enforcement (WP3.1), output-label validation (WP3.2), structural draft mode (WP4.1),
-release mode (WP8.2), and engine work.
+Output-label validation (WP3.2), structural draft mode (WP4.1), release mode (WP8.2), and
+engine work.

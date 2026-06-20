@@ -115,7 +115,9 @@ def validate_doc(doc: object, where: str) -> list[tuple[str, str, str]]:
 # "label vocabularies" grounded in established frameworks (semantics deferred):
 # agent.type (IR actor typology), source.tier (NATO STANAG 2511 / OSINT),
 # claim.confidence (intel evidential status; the tier rule in validate_claims.py
-# triggers on the top value, CONFIRMED), event.category (DIME).
+# triggers on the top value, CONFIRMED), event.category (DIME), event.confidence
+# (reuses the claim evidential-status vocabulary; event->claim resolution lives in
+# validate_events.py).
 # Keep each SPEC in sync with its schemas/<kind>.schema.md contract -- nothing tests
 # that the human-readable prose matches these dicts.
 AGENT_SPEC = {
@@ -136,7 +138,10 @@ CLAIM_SPEC = {
 EVENT_SPEC = {
     "required_str": ("schema_version", "id", "description"),
     "required_int": (),
-    "enums": {"category": ("DIPLOMATIC", "INFORMATION", "MILITARY", "ECONOMIC")},
+    "enums": {
+        "category": ("DIPLOMATIC", "INFORMATION", "MILITARY", "ECONOMIC"),
+        "confidence": ("CONFIRMED", "LIKELY", "UNCERTAIN", "UNASSESSED"),
+    },
 }
 TURN_SPEC = {
     "required_str": ("schema_version", "id"),

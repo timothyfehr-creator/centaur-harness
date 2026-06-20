@@ -1,0 +1,8 @@
+# Defect: no claim references  ->  missing-claim-ref
+schema_version: "1.0"
+events:
+  - id: evt-001
+    description: "Illustrative synthetic event (not real)."
+    category: DIPLOMATIC
+    confidence: LIKELY
+    claims: []

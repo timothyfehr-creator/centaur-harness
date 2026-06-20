@@ -1,0 +1,8 @@
+# Defect: multiple unresolved claim refs  ->  ONE consolidated unresolved-claim-ref
+schema_version: "1.0"
+events:
+  - id: evt-001
+    description: "Illustrative synthetic event (not real)."
+    category: DIPLOMATIC
+    confidence: LIKELY
+    claims: [claim-999, claim-888]

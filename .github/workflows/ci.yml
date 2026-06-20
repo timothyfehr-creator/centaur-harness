@@ -30,6 +30,9 @@ jobs:
       - name: Claim registry validation
         run: python scripts/validate_claims.py
 
+      - name: Event registry validation
+        run: python scripts/validate_events.py
+
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold
 

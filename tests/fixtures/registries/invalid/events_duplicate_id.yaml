@@ -1,0 +1,13 @@
+# Defect: evt-001 appears twice  ->  duplicate-id
+schema_version: "1.0"
+events:
+  - id: evt-001
+    description: "Illustrative synthetic event A (not real)."
+    category: DIPLOMATIC
+    confidence: LIKELY
+    claims: [claim-001]
+  - id: evt-001
+    description: "Illustrative synthetic event B (not real)."
+    category: MILITARY
+    confidence: LIKELY
+    claims: [claim-002]

@@ -1,0 +1,12 @@
+schema_version: "1.0"
+events:
+  - id: evt-001
+    description: "Illustrative synthetic event (not real)."
+    category: DIPLOMATIC
+    confidence: CONFIRMED
+    claims: [claim-001]
+  - id: evt-002
+    description: "Illustrative synthetic event (not real)."
+    category: MILITARY
+    confidence: LIKELY
+    claims: [claim-001, claim-002]

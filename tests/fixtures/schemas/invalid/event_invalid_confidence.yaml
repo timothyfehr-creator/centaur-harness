@@ -1,5 +1,6 @@
+# Defect: confidence not in enum  ->  invalid-enum / confidence
 schema_version: "1.0"
 id: evt-001
 description: "Placeholder event description."
 category: DIPLOMATIC
-confidence: CONFIRMED
+confidence: BOGUS

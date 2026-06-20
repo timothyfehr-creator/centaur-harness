@@ -121,6 +121,7 @@ _SKELETON_INVALID = [
     ("claim_invalid_confidence", "claim", "invalid-enum", "confidence"),
     ("event_missing_description", "event", "missing-field", "description"),
     ("event_invalid_category", "event", "invalid-enum", "category"),
+    ("event_invalid_confidence", "event", "invalid-enum", "confidence"),
     ("turn_missing_id", "turn", "missing-field", "id"),
     ("turn_missing_number", "turn", "missing-field", "number"),     # absent int field
     ("turn_wrong_type_number", "turn", "wrong-type", "number"),

@@ -1,0 +1,16 @@
+# ILLUSTRATIVE event ledger — all entries are SYNTHETIC placeholders, NOT real
+# events. Each event references >=1 claim in factbase/claims.yaml. Event semantics
+# (causality, actor/target links, stale decay, multi-tag categories) are out of
+# scope here. Real events/sourcing are WP2.3.
+schema_version: "1.0"
+events:
+  - id: evt-001
+    description: "Illustrative synthetic event; not a real-world occurrence."
+    category: DIPLOMATIC
+    confidence: CONFIRMED
+    claims: [claim-001]
+  - id: evt-002
+    description: "Illustrative synthetic event; not a real-world occurrence."
+    category: MILITARY
+    confidence: LIKELY
+    claims: [claim-001, claim-002]

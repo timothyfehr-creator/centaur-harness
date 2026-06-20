@@ -1,0 +1,7 @@
+# Defect: registry has no schema_version  ->  missing-schema-version
+events:
+  - id: evt-001
+    description: "Illustrative synthetic event (not real)."
+    category: DIPLOMATIC
+    confidence: LIKELY
+    claims: [claim-001]

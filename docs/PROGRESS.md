@@ -258,6 +258,14 @@ step-by-step mass-casualty how-to) while passing strategic assessment. A near-tw
 - Deferred (named): non-digit step numerals / comma-free markers and other paraphrases are
   accepted minimum-gate false negatives (the gate is line-local; documented in
   `SAFETY_AND_SCOPE.md`). The `broader` tier is off by default.
+- **Post-WP3.1 audit pass** (a 4-finder workflow confirmed the gate production-ready —
+  ReDoS-safe, fail-closed on all config-failure modes, masking/encoding sound):
+  docs-accuracy fixes (`bd362f6`) correcting a stale README/CLAUDE gate inventory + adding
+  honesty limits (ASCII/homoglyph-blind, synthetic fixtures) and AGENTS parity for the
+  `pragma: allowlist safety` marker + `CENTAUR_SAFETY_PATTERNS`; and a hardening commit
+  (`0e6e22d`) adding a duplicate-rule-id fail-closed guard and the missing
+  `operational_strike_sequencing` broader fixture. **Now 132 tests.** Backlog (unchanged,
+  deferred): the `_registry_id_set` extraction and the plural-filename footgun.
 
 ## Deferred (not started)
 

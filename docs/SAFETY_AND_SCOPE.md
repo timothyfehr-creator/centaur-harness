@@ -54,6 +54,11 @@ editing the checked-in YAML).
   novel content.
 - It is **line-local**: both trigger tokens must appear on one physical line.
   Newline-splitting them evades it.
+- It is **ASCII and case-insensitive only** — it does not detect homoglyph or script
+  evasion (e.g. a Cyrillic «а» substituted for the Latin "a" in a trigger word).
+- Its tests use **synthetic** safe/unsafe fixtures (`tests/fixtures/safety/`, all
+  placeholder text with no real procedure). They exercise the pattern *shapes*; a
+  passing fixture set is not evidence of real-world coverage.
 - A clean scan means **"no obvious actionable harm-instruction"**, *not* "provably safe".
   Human judgement is still required.
 - False negatives are an accepted cost of a minimum gate; false positives on strategic

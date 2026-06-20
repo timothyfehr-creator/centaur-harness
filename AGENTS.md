@@ -48,6 +48,14 @@ commands.
 - Keep such samples under `tests/fixtures/` (and `tests/test_secret_scan.py`), which
   the secret scan excludes from the default/CI scan. Never place deliberately-fake
   secrets in other tracked files — they would fail the gate (or block the push).
+- **Safety fixtures follow the same convention** (`scripts/safety_check.py`, the §7
+  gate). Synthetic safe/unsafe content lives under `tests/fixtures/safety/` (excluded
+  from the default scan, with the patterns file). Unsafe fixtures are placeholder text
+  that trips a pattern with **no real harmful procedure** — a machine-checked invariant
+  (`test_unsafe_fixtures_contain_no_concrete_procedure`). Use the `pragma: allowlist
+  safety` marker to exempt a deliberately documented matching line. Operators can
+  override the pattern file / enable the broader tier via the `CENTAUR_SAFETY_PATTERNS`
+  env var. See [docs/SAFETY_AND_SCOPE.md](docs/SAFETY_AND_SCOPE.md).
 - **Gates fail closed.** A check that cannot actually run (missing tool, zero inputs,
   unreadable file) must exit non-zero with a clear error — never silently report
   "OK". A gate that passes when it scanned nothing is worse than no gate. See

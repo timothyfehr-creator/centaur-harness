@@ -10,21 +10,30 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phase 1 underway: **WP1.1 complete** (structural scenario schema); WP1.2 (core schema
-skeletons) not started. Implemented so far: repo-level `scaffold` verification, a
-secret scan, and structural scenario-schema validation. Source/claim validation,
-safety checks, draft mode, and release mode are **not** implemented yet — they arrive
-in later phases, in the plan's order. See [docs/PROGRESS.md](docs/PROGRESS.md).
+Phase 3 underway. Complete: repo-level `scaffold` verification and a secret scan
+(Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
+source / claim / event validators and the source-or-label state gate (WP2.1–2.3); and
+the §7 **safety gate** (WP3.1). Next: output-label validation (WP3.2) and draft mode
+(WP4); release mode arrives later, in the plan's order. See
+[docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
 ```bash
 python scripts/verify.py --mode scaffold   # repo-level integrity (+ structural scenario-schema check)
-python scripts/verify.py                    # defaults to --mode scaffold
-python scripts/secret_scan.py               # secret scan (a minimum gate)
-python scripts/validate_schemas.py          # validate examples/**/scenario.yaml
-pytest                                       # run the test suite
+python scripts/secret_scan.py              # secret scan (a minimum gate)
+python scripts/validate_schemas.py         # validate examples/**/scenario.yaml
+python scripts/validate_sources.py         # source registry
+python scripts/validate_claims.py          # claim→source resolution + source-tier rule
+python scripts/validate_events.py          # event→claim resolution
+python scripts/validate_state.py           # source-or-label state gate (CONSTITUTION §5)
+python scripts/safety_check.py             # safety gate — actionable-harm content (§7)
+pytest                                      # run the test suite
 ```
+
+CI runs these as ordered steps (the resolution gates are dependency-ordered: claims
+after sources, events/state after claims, safety after state). Each gate **fails
+closed** (exit 0 clean / 1 findings / 2 usage-or-fail-closed).
 
 `scaffold` mode checks repo-level integrity (required files/dirs present) and
 **structurally** validates any `examples/**/scenario.yaml` that exist. It does

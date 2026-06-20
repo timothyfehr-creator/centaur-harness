@@ -10,7 +10,9 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   unsourced, unsafe, malformed, unreviewed, or non-reproducible outputs from
   appearing valid.
 - **Primary artifact:** `scripts/verify.py` and the gates it composes — `scaffold`
-  now; schema, source, safety, draft, and release later, in plan order.
+  now (repo integrity + scenario schema). The schema, source, and **safety** gates
+  ship as standalone CI steps today and get composed into `draft` (WP4); `release`
+  later, in plan order.
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.

@@ -125,6 +125,7 @@ def _load_rules(path: Path) -> list[tuple[str, re.Pattern[str]]]:
         raise _FailClosed("patterns file: 'rules' must be a non-empty list")
 
     compiled: list[tuple[str, re.Pattern[str]]] = []
+    seen_ids: set[str] = set()
     for i, rule in enumerate(rules):
         if not isinstance(rule, dict):
             raise _FailClosed(f"patterns file: rules[{i}] is not a mapping")
@@ -136,6 +137,11 @@ def _load_rules(path: Path) -> list[tuple[str, re.Pattern[str]]]:
             raise _FailClosed(
                 f"patterns file: rules[{i}] ({rule['id']}) has unknown tier {rule['tier']!r}"
             )
+        # Reject duplicate ids across ALL rules (any tier) -- a copy-paste error must
+        # fail closed, not silently load two rules under one id.
+        if rule["id"] in seen_ids:
+            raise _FailClosed(f"patterns file: rules[{i}] has duplicate rule id {rule['id']!r}")
+        seen_ids.add(rule["id"])
         if rule["tier"] not in enabled:
             continue
         try:

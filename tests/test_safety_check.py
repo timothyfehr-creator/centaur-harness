@@ -179,18 +179,46 @@ def test_fail_closed_on_unknown_tier(tmp_path: Path) -> None:
     assert result.returncode == 2
 
 
-def test_broader_tier_toggle(tmp_path: Path) -> None:
-    # Under the default conservative tier the targeting fixture is clean; enabling the
-    # broader tier catches it -- proving the tier parameterization toggles cleanly.
-    targeting = UNSAFE / "operational_targeting.yaml"
-    assert _scan(str(targeting)).returncode == 0  # conservative default: not flagged
+def test_fail_closed_on_duplicate_rule_id(tmp_path: Path) -> None:
+    # A copy-paste error (two rules sharing an id) must fail closed, not silently load.
+    bad = tmp_path / "dup.yaml"
+    bad.write_text(
+        'schema_version: "1.0"\n'
+        "enabled_tiers: [conservative]\n"
+        "rules:\n"
+        "  - {id: dup, tier: conservative, category: c, regex: 'x'}\n"
+        "  - {id: dup, tier: conservative, category: c, regex: 'y'}\n"
+    )
+    result = _scan(patterns=bad)
+    assert result.returncode == 2
 
-    broadened = tmp_path / "broader.yaml"
-    broadened.write_text(
+
+def _broadened_patterns(tmp_path: Path) -> Path:
+    p = tmp_path / "broader.yaml"
+    p.write_text(
         PATTERNS.read_text(encoding="utf-8").replace(
             "enabled_tiers: [conservative]", "enabled_tiers: [conservative, broader]"
         )
     )
-    result = _scan(str(targeting), patterns=broadened)
+    return p
+
+
+# Each broader-tier fixture -> its category token. Both broader rules carry a fixture.
+_BROADER = {
+    "operational_targeting": "operational-targeting",
+    "operational_strike_sequencing": "operational-sequencing",
+}
+
+
+@pytest.mark.parametrize("stem,category", sorted(_BROADER.items()))
+def test_broader_tier_toggle(tmp_path: Path, stem: str, category: str) -> None:
+    # Under the default conservative tier each broader fixture is clean; enabling the
+    # broader tier catches it -- proving the tier parameterization toggles cleanly and
+    # that both broader rules have explicit (single-fault) coverage.
+    fixture = UNSAFE / f"{stem}.yaml"
+    assert _scan(str(fixture)).returncode == 0  # conservative default: not flagged
+    result = _scan(str(fixture), patterns=_broadened_patterns(tmp_path))
     assert result.returncode == 1
-    assert "operational-targeting" in result.stderr
+    findings = _findings(result.stderr)
+    assert len(findings) == 1, f"{stem}: expected one finding; got {findings}"
+    assert category in findings[0], f"{stem}: {findings[0]!r}"

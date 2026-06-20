@@ -33,6 +33,9 @@ jobs:
       - name: Event registry validation
         run: python scripts/validate_events.py
 
+      - name: State validation
+        run: python scripts/validate_state.py
+
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold
 

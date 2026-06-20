@@ -1,0 +1,9 @@
+# Defect: state-001 appears twice  ->  duplicate-id
+schema_version: "1.0"
+items:
+  - id: state-001
+    statement: "Synthetic item A."
+    label: ASSUMPTION
+  - id: state-001
+    statement: "Synthetic item B."
+    label: ILLUSTRATIVE

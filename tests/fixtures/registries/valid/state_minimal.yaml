@@ -1,0 +1,14 @@
+# TEST ARTIFACT (not a shipped baseline): exercises both paths. The REAL_WORLD_BASELINE
+# item cites a synthetic fixture claim only to test the resolution branch.
+schema_version: "1.0"
+items:
+  - id: state-001
+    statement: "Synthetic baseline item (test fixture); cites a synthetic claim."
+    label: REAL_WORLD_BASELINE
+    claims: [claim-001]          # resolves to claims_minimal.yaml
+  - id: state-002
+    statement: "Synthetic assumption (test fixture); needs no claim."
+    label: ASSUMPTION
+  - id: state-003
+    statement: "Synthetic illustrative item (test fixture)."
+    label: ILLUSTRATIVE

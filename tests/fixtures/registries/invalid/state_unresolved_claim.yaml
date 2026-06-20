@@ -1,0 +1,7 @@
+# Defect: claim ref does not resolve  ->  unresolved-claim-ref
+schema_version: "1.0"
+items:
+  - id: state-001
+    statement: "Synthetic baseline item citing a non-existent claim."
+    label: REAL_WORLD_BASELINE
+    claims: [claim-999]

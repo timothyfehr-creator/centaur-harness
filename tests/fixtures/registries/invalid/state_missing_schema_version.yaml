@@ -1,0 +1,5 @@
+# Defect: registry has no schema_version  ->  missing-schema-version
+items:
+  - id: state-001
+    statement: "Synthetic assumption item."
+    label: ASSUMPTION

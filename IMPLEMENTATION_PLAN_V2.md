@@ -287,7 +287,10 @@ tests/fixtures/
 
 **Acceptance criteria**
 
-- every `REAL_WORLD_BASELINE`, `CONFIRMED`, or `LIKELY` state item has claim references;
+- every `REAL_WORLD_BASELINE` state item has claim references (WP2.3 decision: state
+  sourcing triggers on the world-vs-game `label`; the original `CONFIRMED`/`LIKELY` clause
+  was claim *confidence*, which is enforced on the claims themselves by `validate_claims`,
+  not duplicated on state items);
 - every claim resolves to source references;
 - every source reference exists;
 - Tier-3/social-only claims cannot be marked `CONFIRMED`;

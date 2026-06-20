@@ -1,0 +1,6 @@
+# Defect: label not in the world-vs-game enum  ->  invalid-enum / label
+schema_version: "1.0"
+items:
+  - id: state-001
+    statement: "Synthetic item with a bogus label."
+    label: BOGUS

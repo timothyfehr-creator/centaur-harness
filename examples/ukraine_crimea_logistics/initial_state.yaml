@@ -1,0 +1,14 @@
+# ILLUSTRATIVE initial-state registry — every item is a SYNTHETIC placeholder, NOT a
+# real-world assertion. No item is labeled REAL_WORLD_BASELINE: the example asserts no
+# external fact (consistent with scenario.yaml, which is ILLUSTRATIVE). The
+# REAL_WORLD_BASELINE -> claim resolution path is exercised by test fixtures, not here.
+# Real sourcing is future work.
+schema_version: "1.0"
+as_of_date: "2026-06-20"
+items:
+  - id: state-001
+    statement: "Illustrative modeled input; not source-backed."
+    label: ASSUMPTION
+  - id: state-002
+    statement: "Illustrative placeholder used only to exercise the source-or-label gate."
+    label: ILLUSTRATIVE

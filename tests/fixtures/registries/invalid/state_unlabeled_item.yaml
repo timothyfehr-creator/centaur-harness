@@ -1,0 +1,5 @@
+# Defect: item has no label  ->  missing-field / label
+schema_version: "1.0"
+items:
+  - id: state-001
+    statement: "Synthetic item missing a world-vs-game label."

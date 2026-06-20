@@ -149,6 +149,15 @@ TURN_SPEC = {
     "enums": {},
 }
 
+# CONSTITUTION §4 world-vs-game labels. Reused by validate_state.py (WP2.3, the
+# source-or-label gate) and the output-label gate (WP3.2). REAL_WORLD_BASELINE is the
+# only label that asserts an external real-world fact (so it must be claim-backed).
+# State is registry-only, so this is a shared constant rather than a SCHEMA_REGISTRY kind.
+WORLD_VS_GAME_LABELS = (
+    "REAL_WORLD_BASELINE", "ASSUMPTION", "MODEL_OUTPUT",
+    "GAMED_FUTURE", "ANALYST_JUDGMENT", "ILLUSTRATIVE",
+)
+
 
 def _validate_skeleton(doc: object, where: str, spec: dict) -> list[tuple[str, str, str]]:
     """Validate a flat skeleton document against a spec. Structural only."""

@@ -1,0 +1,6 @@
+# Defect: a REAL_WORLD_BASELINE item cites no claim  ->  unsupported-baseline
+schema_version: "1.0"
+items:
+  - id: state-001
+    statement: "Synthetic baseline item asserting fact with no supporting claim."
+    label: REAL_WORLD_BASELINE

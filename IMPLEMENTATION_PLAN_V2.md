@@ -364,7 +364,7 @@ tests/fixtures/safety/
 - unsafe fixtures fail;                          <!-- WP3.1 ✓ delivered -->
 - safe strategic/logistics fixtures pass;        <!-- WP3.1 ✓ delivered -->
 - unlabeled draft artifacts fail;                <!-- WP3.2 ✓ delivered (scenario label required-enum) -->
-- draft verification invokes safety checks.      <!-- WP4 (draft-mode wiring), not yet -->
+- draft verification invokes safety checks.      <!-- WP4 ✓ delivered: `verify.py --mode draft` composes safety_check + the evidence gates -->
 
 (WP3.1 amendment: this phase is delivered in two parts. **WP3.1** ships the safety
 *content* gate — `scripts/safety_check.py` + `checks/safety_patterns.yaml` as a
@@ -457,7 +457,17 @@ pytest
 ```
 
 **Exit gate**  
-The repo has an honest structural draft gate.
+The repo has an honest structural draft gate. ✅ delivered (WP4).
+
+(WP4 reconciliation: `verify.py --mode draft` **subprocesses** each evidence/safety gate
+CLI and reuses `verify_scaffold` **in-process** as a **self-contained superset** — so
+"schemas pass" is supplied by the scaffold reuse, not a double-run of `validate_schemas`.
+Any gate failing / fail-closing / failing-to-launch fails draft (exit 1, never a false
+pass); `release` stays unavailable (exit 2). "agents validate structurally" is reported as
+**NOT-YET-ACTIVE** (no real `agents.yaml` until WP5), not silently dropped. CI **adds** a
+Draft step and **keeps** the standalone Scaffold step — draft inherits `safety_check`'s
+`git ls-files` dependency that scaffold lacks, so the git-independent scaffold signal is
+preserved.)
 
 **Explicitly deferred**
 
@@ -901,8 +911,11 @@ After the first tranche:
    Require world-vs-game labels in draft artifacts. (Scenario top-level `label` is now a
    required `WORLD_VS_GAME_LABELS` enum in `validate_schemas.py`, enforced in CI + scaffold.)
 
-5. **WP4.1 — Structural draft verification mode**  
-   Compose schema, source, event, safety, and label checks.
+5. **WP4.1 — Structural draft verification mode** ✅ delivered  
+   Compose schema, source, event, safety, and label checks. (`verify.py --mode draft`
+   composes scaffold + the source/claim/event/state/safety gates, reports active vs
+   not-yet-implemented, STRUCTURAL ONLY; the label check rides in scaffold's scenario
+   schema validation.)
 
 6. **WP5.1 — Minimal agent grounding**  
    Add compact knowledge books and require references.

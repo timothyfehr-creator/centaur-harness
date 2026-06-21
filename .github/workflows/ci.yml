@@ -42,5 +42,8 @@ jobs:
       - name: Scaffold verification
         run: python scripts/verify.py --mode scaffold
 
+      - name: Draft verification
+        run: python scripts/verify.py --mode draft
+
       - name: Tests
         run: pytest

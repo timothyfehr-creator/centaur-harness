@@ -10,9 +10,9 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   unsourced, unsafe, malformed, unreviewed, or non-reproducible outputs from
   appearing valid.
 - **Primary artifact:** `scripts/verify.py` and the gates it composes — `scaffold`
-  now (repo integrity + scenario schema). The schema, source, and **safety** gates
-  ship as standalone CI steps today and get composed into `draft` (WP4); `release`
-  later, in plan order.
+  (repo integrity + scenario schema) and `draft` (WP4: scaffold + the source / claim /
+  event / state / safety gates, reporting active vs not-yet-implemented checks,
+  STRUCTURAL ONLY). `release` is not yet implemented, later in plan order.
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.
@@ -23,13 +23,16 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
 - Implement one work package at a time; verify and review before the next.
 - Keep `scaffold` mode repo-level and lightweight. Do not make it depend on a
   fully sourced scenario.
-- `draft` and `release` modes are not implemented; they must fail clearly rather
-  than falsely pass.
+- `draft` mode (WP4) composes scaffold + the evidence/safety gates and is STRUCTURAL
+  ONLY — it must report which checks are active vs not-yet-implemented and must never
+  imply analytical validity. `release` is not implemented; it must fail clearly
+  (exit 2) rather than falsely pass.
 
 ## Commands
 
 ```bash
 python scripts/verify.py --mode scaffold   # repo-level integrity
+python scripts/verify.py --mode draft      # scaffold + evidence/safety gates (STRUCTURAL ONLY)
 python scripts/verify.py                    # defaults to scaffold
 pytest                                       # test suite
 ```

@@ -10,17 +10,21 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phase 3 underway. Complete: repo-level `scaffold` verification and a secret scan
+Phases 0–4 complete. Shipped: repo-level `scaffold` verification and a secret scan
 (Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
-source / claim / event validators and the source-or-label state gate (WP2.1–2.3); and
-the §7 **safety gate** (WP3.1). Next: output-label validation (WP3.2) and draft mode
-(WP4); release mode arrives later, in the plan's order. See
+source / claim / event validators and the source-or-label state gate (WP2.1–2.3); the
+§7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); and the composed
+**`draft`** verification mode (WP4 — `verify.py --mode draft` runs scaffold plus the
+evidence/safety gates and reports a STRUCTURAL-ONLY verdict). Next: minimum agent
+grounding (WP5); `release` mode arrives later, in the plan's order. See
 [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
 ```bash
+python scripts/verify.py --mode draft      # composed structural gate: scaffold + evidence/safety (STRUCTURAL ONLY)
 python scripts/verify.py --mode scaffold   # repo-level integrity (+ structural scenario-schema check)
+python scripts/verify.py                    # defaults to scaffold
 python scripts/secret_scan.py              # secret scan (a minimum gate)
 python scripts/validate_schemas.py         # validate examples/**/scenario.yaml
 python scripts/validate_sources.py         # source registry
@@ -40,8 +44,12 @@ closed** (exit 0 clean / 1 findings / 2 usage-or-fail-closed).
 **not** require a scenario to exist, nor that its claims are sourced (sourcing is a
 later phase) — only that a *present* scenario is well-formed.
 
-Unknown modes — including the not-yet-implemented `draft` and `release` — exit
-nonzero with a clear error, so the harness never falsely reports validity.
+`draft` mode (WP4) is the first **composed** gate: it runs scaffold plus the source /
+claim / event / state / safety gates, reports each as `[PASS]`/`[FAIL]` alongside a
+`[SKIP]` list of not-yet-implemented checks (agent grounding, refuter review, …), and is
+**STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity. `release`
+mode is not yet implemented and exits nonzero with a clear "unavailable" error; an unknown
+mode (a typo) likewise fails clearly. The harness never falsely reports validity.
 
 ## Requirements
 
@@ -60,3 +68,7 @@ nonzero with a clear error, so the harness never falsely reports validity.
 - `PyYAML` backs the scenario-schema validator, which `scaffold` mode now invokes.
   Without it, scaffold **fails closed** with a clear error rather than skipping
   validation.
+- **Git is required for `draft` mode** (the safety gate scans tracked files via
+  `git ls-files`); run it inside the git repository, not an export/tarball. Without git,
+  draft **fails closed** on the safety check — by design, not a bug. `scaffold` mode does
+  not require git.

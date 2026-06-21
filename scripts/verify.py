@@ -53,6 +53,9 @@ REQUIRED_PATHS = (
 # validate_schemas.py is intentionally NOT here: verify_scaffold() already runs it
 # in-process on examples/**/scenario.yaml, so re-subprocessing it would double-run the
 # schema check; scaffold reuse supplies the plan's "schemas pass" requirement.
+# secret_scan.py is also intentionally NOT here: it is a repo-integrity / hygiene check
+# (WP0.2), not a structural draft check (CONSTITUTION §3) -- it runs as its own CI step.
+# Draft is the structural-validity gate, not the secret boundary.
 # verify.py must NEVER appear here -- draft would then subprocess itself (recursion).
 DRAFT_GATES = (
     ("source registry", "validate_sources.py"),

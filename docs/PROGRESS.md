@@ -346,6 +346,49 @@ verification invokes safety checks".
 - Out of scope (deferred): no new gates, no analytical/agent-grounding (WP5),
   refuter/calibration/replay/signoff, no draft-takes-a-scenario-path arg.
 
+## WP5.1 — Minimal agent grounding ✅ complete (Phase 5 done)
+
+`scripts/validate_agents.py` makes agents grounded, not generic chatbots: each agent must
+cite a resolving **knowledge book** AND a **capability** resolving to a claim/assumption. It
+is the first WP to light up a `[SKIP]` line in draft — `agent grounding` is now a live
+`[PASS]`. Mirrors `validate_state`; introduces the `agents.yaml` registry, a compact knowledge
+catalog, and `factbase/assumptions.yaml`.
+
+| Acceptance criterion | Status |
+|---|---|
+| each agent has knowledge references | ✅ (≥1 resolving book; else `ungrounded-agent`) |
+| capability constraints resolve to claims OR assumptions | ✅ (union; `unresolved-capability-ref`) |
+| behavioral assumptions resolve to assumption ids | ✅ (assumptions only; `unresolved-assumption-ref`) |
+| ungrounded generic agents fail | ✅ (`ungrounded-agent` — knowledge AND ≥1 resolving capability) |
+| draft can't use ungrounded agents; the `[SKIP]` is now `[PASS]` | ✅ (`validate_agents` joined `DRAFT_GATES`) |
+| 139 prior tests green | ✅ |
+| `pytest` exits 0 | ✅ (155 passed) |
+
+- **Decisions (user):** compact **resolution-only** knowledge books
+  (`knowledge/{country,institution}_books/`, `{id,title,summary}`); `factbase/assumptions.yaml`
+  validated **folded** into `validate_agents` (no separate gate); grounding bar = **knowledge
+  AND ≥1 resolving capability** (the anti-"citation-wearing roleplayer" bar).
+- **§4:** `assumptions.yaml` is mono-label by location (the registry embodies `ASSUMPTION`);
+  no per-entry label/confidence/sources. Capability refs resolve to claims∪assumptions;
+  behavioral refs to assumptions only.
+- **Fail-closed (exit 2):** any missing/empty/non-mapping upstream (claims, assumptions,
+  agents) or a bad/idless knowledge book / empty knowledge dir. Single-fault fixtures: each
+  invalid agent is otherwise-grounded with one defect (empty `refs` avoids the bar /
+  unresolved-ref double-fire).
+- **Review:** ACCEPT (zero blockers); folded two doc/test nits (the draft test now asserts
+  the active `[PASS] agent grounding` + a still-`[SKIP]` check; knowledge-book `schema_version`
+  is documented as convention-not-enforced).
+- Feature commit `ef0395a`: `scripts/validate_agents.py`, the example agents.yaml +
+  assumptions.yaml + 2 knowledge books, `tests/test_agent_validation.py` + 13 fixtures, the
+  `verify.py` wiring, the CI step, `schemas/agent.schema.md` rewrite + 2 new schema docs, the
+  plan reconciliation.
+- **GitHub Actions:** ✅ success — run
+  [27889520943](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27889520943)
+  on `ef0395a` (Secret scan, Schema/Source/Claim/Event/State validation, **Agent grounding
+  validation**, Safety check, Scaffold verification, **Draft verification**, Tests all passed).
+- Out of scope (deferred): encyclopedic / sourced-fact books, doctrine libraries, retrieval,
+  fog-of-war (WP6), numeric capability modeling.
+
 ## Deferred (not started)
 
-Minimum agent grounding (WP5), release mode (WP8.2), and engine work.
+Fog-of-war skeleton (Phase 6), release mode (WP8.2), and engine work.

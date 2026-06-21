@@ -1,0 +1,14 @@
+# Defect: a capability ref (claim-999) does not resolve -> unresolved-capability-ref. A
+# resolving capability (claim-001) keeps the grounding bar satisfied, so only the
+# unresolved ref fires (single fault).
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]
+      - statement: "A capability citing a missing claim."
+        refs: [claim-999]

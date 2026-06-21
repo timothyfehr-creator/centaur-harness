@@ -58,13 +58,15 @@ def test_draft_mode_exits_zero_on_clean_repo() -> None:
     result = _run("--mode", "draft")
     assert result.returncode == 0, result.stderr
     out = result.stdout
-    # active checks ran and passed
+    # active checks ran and passed (agent grounding became active in WP5: now a [PASS],
+    # no longer a [SKIP])
     assert "[PASS] scaffold" in out
     assert "source registry" in out
     assert "safety" in out
-    # not-yet-implemented checks are reported, not silently omitted
+    assert "[PASS] agent grounding" in out
+    # still-not-yet-implemented checks are reported, not silently omitted
     assert "not yet implemented" in out.lower()
-    assert "agent grounding" in out.lower()
+    assert "refuter review" in out.lower()
     # structural-only, and it must NOT claim analytical validity
     assert "STRUCTURAL ONLY" in out
     assert "not an analytical-validity claim" in out
@@ -91,7 +93,7 @@ def test_verify_draft_passes_when_all_gates_pass(monkeypatch) -> None:
     exit_code, results = verify.verify_draft(REPO_ROOT)
     assert exit_code == 0
     assert all(r["ok"] for r in results)
-    # scaffold (in-process, real clean repo) + the 5 subprocessed gates = 6 checks
+    # scaffold (in-process, real clean repo) + the subprocessed gates in DRAFT_GATES
     assert len(results) == 1 + len(verify.DRAFT_GATES)
 
 

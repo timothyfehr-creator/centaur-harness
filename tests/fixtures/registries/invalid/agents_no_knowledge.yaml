@@ -1,0 +1,10 @@
+# Defect: no knowledge reference -> ungrounded-agent (knowledge leg). The capability
+# resolves, so only the grounding bar's knowledge leg fails (single fault).
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]

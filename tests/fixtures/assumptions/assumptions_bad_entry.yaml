@@ -1,0 +1,7 @@
+# SYNTHETIC: usable registry shape, but assum-001 is missing its statement -> a finding
+# (missing-field, assumptions[0]) when validate_agents folds in assumptions validation.
+schema_version: "1.0"
+assumptions:
+  - id: assum-001
+  - id: assum-002
+    statement: "Illustrative test assumption."

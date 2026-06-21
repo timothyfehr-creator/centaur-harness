@@ -1,0 +1,12 @@
+# Defect: type WARLORD is present but out of the AGENT_SPEC enum -> invalid-enum. (A
+# present, non-empty bad value gives invalid-enum, not missing-field.) The agent is
+# otherwise grounded, so only the bad enum fires (single fault).
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: WARLORD
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]

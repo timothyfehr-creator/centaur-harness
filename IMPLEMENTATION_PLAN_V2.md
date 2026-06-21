@@ -526,7 +526,14 @@ pytest
 ```
 
 **Exit gate**  
-Draft scenarios cannot use completely ungrounded agents.
+Draft scenarios cannot use completely ungrounded agents. ✅ delivered (WP5).
+
+(WP5 reconciliation: `validate_agents.py` enforces the grounding bar — knowledge **AND** a
+capability resolving to a claim/assumption — joins `DRAFT_GATES` (the draft `[SKIP] agent
+grounding` line is now a live `[PASS]`), and gets a CI step. Decisions: compact
+resolution-only knowledge books; `factbase/assumptions.yaml` validated **folded** into
+`validate_agents` (no separate gate); capability refs resolve to the claims∪assumptions
+union; behavioral assumptions resolve to assumptions only.)
 
 **Explicitly deferred**
 
@@ -917,8 +924,10 @@ After the first tranche:
    not-yet-implemented, STRUCTURAL ONLY; the label check rides in scaffold's scenario
    schema validation.)
 
-6. **WP5.1 — Minimal agent grounding**  
-   Add compact knowledge books and require references.
+6. **WP5.1 — Minimal agent grounding** ✅ delivered  
+   Add compact knowledge books and require references. (`validate_agents.py`: agents must
+   cite a resolving knowledge book + a capability resolving to a claim/assumption;
+   `factbase/assumptions.yaml` + `knowledge/{country,institution}_books/`; joins draft.)
 
 7. **WP6.1 — Public/private state partition**  
    Add state schemas.

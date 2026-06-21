@@ -1,0 +1,12 @@
+# Defect: a knowledge ref (book-999) does not resolve -> unresolved-knowledge-ref. A
+# resolving book (book-ua-test) keeps the grounding bar satisfied, so only the unresolved
+# ref fires (single fault).
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    knowledge: [book-ua-test, book-999]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]

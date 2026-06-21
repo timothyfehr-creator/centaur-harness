@@ -1,0 +1,5 @@
+# SYNTHETIC test knowledge book (second, so the index has >1 entry).
+schema_version: "1.0"
+id: book-two
+title: "Second test knowledge book"
+summary: "Compact illustrative test anchor."

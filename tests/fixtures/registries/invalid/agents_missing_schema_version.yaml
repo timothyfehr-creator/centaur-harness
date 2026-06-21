@@ -1,0 +1,10 @@
+# Defect: registry has no schema_version -> missing-schema-version. The agent is fully
+# grounded, so only the missing registry field fires (single fault).
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]

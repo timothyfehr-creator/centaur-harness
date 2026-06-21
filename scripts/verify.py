@@ -62,13 +62,13 @@ DRAFT_GATES = (
     ("claim registry", "validate_claims.py"),
     ("event registry", "validate_events.py"),
     ("state (source-or-label)", "validate_state.py"),
+    ("agent grounding", "validate_agents.py"),
     ("safety", "safety_check.py"),
 )
 
 # Checks the harness does NOT yet run. Draft reports these explicitly: it must not
 # imply they passed, nor that the scenario is analytically valid (CONSTITUTION §3).
 NOT_YET_IMPLEMENTED = (
-    "agent grounding / structural agent validation (WP5)",
     "refuter review",
     "human signoff",
     "run replay / reproducibility ledger",

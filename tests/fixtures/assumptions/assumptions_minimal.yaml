@@ -1,0 +1,7 @@
+# SYNTHETIC test assumption registry.
+schema_version: "1.0"
+assumptions:
+  - id: assum-001
+    statement: "Illustrative test assumption."
+  - id: assum-002
+    statement: "Illustrative test assumption."

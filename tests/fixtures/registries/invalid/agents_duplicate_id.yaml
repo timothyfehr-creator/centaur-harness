@@ -1,0 +1,18 @@
+# Defect: two agents share id agent-001 -> duplicate-id. Both are fully grounded, so only
+# the duplicate id fires (single fault).
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent A"
+    type: STATE
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]
+  - id: agent-001
+    name: "Test Agent B"
+    type: INSTITUTION
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]

@@ -1,0 +1,5 @@
+# SYNTHETIC test knowledge book.
+schema_version: "1.0"
+id: book-ua-test
+title: "Test knowledge book"
+summary: "Compact illustrative test anchor."

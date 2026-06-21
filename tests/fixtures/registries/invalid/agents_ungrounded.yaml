@@ -1,0 +1,12 @@
+# Defect: knowledge resolves, but the only capability has EMPTY refs -> ungrounded-agent
+# (capability leg). Empty refs (not an unresolved ref) avoids a double-fire with
+# unresolved-capability-ref, so this is single-fault.
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A capability with no evidence backing."
+        refs: []

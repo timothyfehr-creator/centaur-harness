@@ -1,0 +1,13 @@
+# Defect: a behavioral assumption (assum-999) does not resolve -> unresolved-assumption-ref.
+# (assum-999 is a missing ASSUMPTION id, not a claim.) The agent is otherwise grounded, so
+# only the unresolved behavioral ref fires (single fault).
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]
+    behavioral_assumptions: [assum-999]

@@ -1,0 +1,10 @@
+# ILLUSTRATIVE assumption registry — analytical hypotheses, NOT source-backed
+# assertions. Each entry IS, by construction, a CONSTITUTION §4 ASSUMPTION (the registry
+# embodies the label), so there is no per-entry label / confidence / sources field. All
+# entries are SYNTHETIC placeholders. Validated (folded) by scripts/validate_agents.py.
+schema_version: "1.0"
+assumptions:
+  - id: assum-001
+    statement: "Reserve logistics battalions can be mobilized without new NATO ammunition transfers (synthetic)."
+  - id: assum-002
+    statement: "No verifiable, binding ceasefire is reached by end-2026 (synthetic)."

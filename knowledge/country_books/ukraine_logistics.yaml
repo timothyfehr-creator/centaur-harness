@@ -1,0 +1,10 @@
+# ILLUSTRATIVE compact knowledge book (country). A resolution anchor agents cite by id;
+# it carries NO sourced facts (those live in factbase/). SYNTHETIC placeholder content.
+# Encyclopedic books / sourced facts are deferred (WP5 is resolution-only).
+schema_version: "1.0"
+id: book-ukraine-logistics
+title: "Ukraine logistics posture, end-2026 (compact, illustrative)"
+summary: >
+  Compact grounding anchor: ground-logistics capacity, rail/road network operational
+  state, munitions stockpile dynamics, and resupply along the land corridor. Illustrative
+  catalog entry only.

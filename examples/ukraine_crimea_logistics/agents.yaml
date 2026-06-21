@@ -1,0 +1,23 @@
+# ILLUSTRATIVE agent registry — SYNTHETIC. Each agent is grounded (>=1 knowledge book +
+# >=1 capability resolving to a claim/assumption) only to exercise the WP5 grounding gate;
+# none asserts a real-world fact. Resolves against factbase/{claims,assumptions}.yaml and
+# the knowledge/ catalog.
+schema_version: "1.0"
+agents:
+  - id: agent-ua-logistics
+    name: "Ukraine Logistics Command (illustrative)"
+    type: STATE
+    knowledge: [book-ukraine-logistics]
+    capabilities:
+      - statement: "Rail throughput to forward supply points along the land corridor (synthetic)."
+        refs: [claim-001]
+      - statement: "Mobilization of reserve logistics battalions (synthetic)."
+        refs: [assum-001]
+    behavioral_assumptions: [assum-002]
+  - id: agent-nato-jflc
+    name: "NATO Joint Force Logistics Component (illustrative)"
+    type: INSTITUTION
+    knowledge: [book-nato-jflc]
+    capabilities:
+      - statement: "Coordination of allied resupply pledges (synthetic)."
+        refs: [claim-002]

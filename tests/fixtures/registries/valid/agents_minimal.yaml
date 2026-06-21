@@ -1,0 +1,12 @@
+# Valid: one fully-grounded agent (knowledge + a claim-backed capability + a resolving
+# behavioral assumption). Resolves against the fixture knowledge/claims/assumptions.
+schema_version: "1.0"
+agents:
+  - id: agent-001
+    name: "Test Agent"
+    type: STATE
+    knowledge: [book-ua-test]
+    capabilities:
+      - statement: "A grounded capability."
+        refs: [claim-001]
+    behavioral_assumptions: [assum-001]

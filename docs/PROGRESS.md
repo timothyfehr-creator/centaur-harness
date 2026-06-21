@@ -267,7 +267,44 @@ step-by-step mass-casualty how-to) while passing strategic assessment. A near-tw
   `operational_strike_sequencing` broader fixture. **Now 132 tests.** Backlog (unchanged,
   deferred): the `_registry_id_set` extraction and the plural-filename footgun.
 
+## WP3.2 — Output-label validation ✅ complete (Phase 3 done)
+
+The §4 capstone of Phase 3: the scenario top-level `label` is now a **required enum**
+constrained to the shared `WORLD_VS_GAME_LABELS` constant (the same vocab `validate_state`
+enforces on state items). A ~6-line check in `validate_schemas.py`'s `validate_doc` —
+enforced everywhere it runs (the bare CI step **and** `scaffold`). Closes the WP1.1 `label`
+deferral and delivers the Phase 3 acceptance line "unlabeled draft artifacts fail".
+
+| Acceptance criterion | Status |
+|---|---|
+| an unlabeled scenario fails | ✅ (`missing-field`, one finding) |
+| a label outside the vocab fails | ✅ (`invalid-enum`, one finding) |
+| the example + all valid fixtures pass | ✅ (incl. `scenario_labeled` = `GAMED_FUTURE`) |
+| every migrated invalid fixture stays single-fault | ✅ (8 scenario invalids + 2 new) |
+| scaffold + CI enforce it; 132 prior tests green | ✅ |
+| `pytest` exits 0 | ✅ (135 passed) |
+
+- **Decisions (user):** scenario **top-level label only** (not per-branch); enforced
+  **always-on in `validate_schemas.py`** (CI + scaffold), not draft-only — §3 favors this
+  (an unlabeled scenario must not falsely pass scaffold; draft-only would leave that hole
+  until WP4). No new gate.
+- **SSOT:** reuses the existing `WORLD_VS_GAME_LABELS` tuple (no copy); `if/elif` ⇒
+  single-fault, reusing the `missing-field` / `invalid-enum` codes.
+- **Migration (load-bearing):** added `label: ILLUSTRATIVE` to 3 valid + 8 scenario-path
+  invalid fixtures so each keeps its sole intended fault; `malformed_yaml` exempt (dies at
+  parse); the `--kind` skeleton fixtures are unaffected (they use `_validate_skeleton`).
+- **Review:** ACCEPT (zero blockers); adversarial label inputs (empty/whitespace/list/
+  number/null/wrong-case) all behave correctly.
+- Feature commit `df0cc3d`: the `validate_doc` label check, 3 new + 11 migrated fixtures,
+  `tests/test_schema_validation.py`, `schemas/scenario.schema.md`, the plan reconciliation.
+- **GitHub Actions:** ✅ success — run
+  [27887933991](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27887933991)
+  on `df0cc3d` (Secret scan, **Schema validation**, Source/Claim/Event/State validation,
+  Safety check, **Scaffold verification**, Tests all passed).
+- Out of scope (deferred): `as_of_date` (Constitution §6, not §4); per-branch labels;
+  draft-mode wiring (WP4).
+
 ## Deferred (not started)
 
-Output-label validation (WP3.2), structural draft mode (WP4.1), release mode (WP8.2), and
-engine work.
+Structural draft mode (WP4.1 — composes the schema/source/state/safety/label gates into
+`verify.py --mode draft`), release mode (WP8.2), and engine work.

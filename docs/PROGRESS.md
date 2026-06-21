@@ -304,7 +304,48 @@ deferral and delivers the Phase 3 acceptance line "unlabeled draft artifacts fai
 - Out of scope (deferred): `as_of_date` (Constitution §6, not §4); per-branch labels;
   draft-mode wiring (WP4).
 
+## WP4 — Structural draft verification mode ✅ complete (Phase 4 done)
+
+The first **composed** gate: `verify.py --mode draft` reuses `verify_scaffold` in-process
+(repo integrity + scenario schema) then **subprocesses** the source/claim/event/state/
+safety gate CLIs and aggregates exit codes — a self-contained superset that fully answers
+"is this a valid draft?". Per CONSTITUTION §3 it reports active `[PASS]`/`[FAIL]` checks
+**and** a `[SKIP]` list of not-yet-implemented ones, and its success line is **STRUCTURAL
+ONLY** — never an analytical-validity claim. Delivers the open Phase 3 line "draft
+verification invokes safety checks".
+
+| Acceptance criterion | Status |
+|---|---|
+| scaffold stays repo-level + lightweight | ✅ (behavior unchanged) |
+| draft reports active AND not-yet-implemented checks | ✅ (`[PASS]/[FAIL]` + `[SKIP]` block) |
+| draft fails on any schema/evidence/safety/label failure | ✅ (rc 1/2/launch-error/timeout → draft exit 1) |
+| release cannot falsely pass | ✅ (exit 2, distinct "unavailable" message) |
+| 135 prior tests stay green | ✅ |
+| `pytest` exits 0 | ✅ (139 passed) |
+
+- **Decisions (user):** **subprocess** each gate CLI (CI-faithful, decoupled, fail-closed
+  inherited) + a **self-contained superset** (one command answers the whole question).
+- **Never false-passes:** `exit 0` iff every active check passes; `_run_gate` is hardened
+  with `timeout=120` + `try/except (OSError, SubprocessError)` → a gate that can't run is a
+  fail-closed FAIL, not a silent skip. `verify.py` is excluded from `DRAFT_GATES` (no
+  self-recursion; guard-tested).
+- **`agents validate structurally`** is reported **NOT-YET-ACTIVE** (`[SKIP]`; no real
+  `agents.yaml` until WP5), not silently dropped.
+- **CI:** **adds** a "Draft verification" step after Scaffold and **keeps** the standalone
+  scaffold + 6 gate steps — draft inherits `safety_check`'s `git ls-files` dependency that
+  scaffold lacks, so the git-independent scaffold signal is preserved (honest fail-closed on
+  no-git).
+- **Review:** ACCEPT (zero blockers); the failure-path tests are **in-process** monkeypatch
+  (no repo mutation / no git-tmp-copy), honoring the concurrent-session rule.
+- Feature commit `9c7d911`: `scripts/verify.py` (`verify_draft`/`_run_gate`/report),
+  `tests/test_verify_modes.py`, the CI Draft step, `CLAUDE.md`, the plan reconciliation.
+- **GitHub Actions:** ✅ success — run
+  [27888510542](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27888510542)
+  on `9c7d911` (Secret scan, Schema/Source/Claim/Event/State validation, Safety check,
+  Scaffold verification, **Draft verification**, Tests all passed).
+- Out of scope (deferred): no new gates, no analytical/agent-grounding (WP5),
+  refuter/calibration/replay/signoff, no draft-takes-a-scenario-path arg.
+
 ## Deferred (not started)
 
-Structural draft mode (WP4.1 — composes the schema/source/state/safety/label gates into
-`verify.py --mode draft`), release mode (WP8.2), and engine work.
+Minimum agent grounding (WP5), release mode (WP8.2), and engine work.

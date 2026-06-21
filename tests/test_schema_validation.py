@@ -29,7 +29,8 @@ def _validate(*args: str) -> subprocess.CompletedProcess[str]:
 
 @pytest.mark.parametrize(
     "name",
-    ["scenario_minimal", "scenario_update_mechanism", "scenario_sum_at_tolerance"],
+    ["scenario_minimal", "scenario_update_mechanism", "scenario_sum_at_tolerance",
+     "scenario_labeled"],
 )
 def test_valid_fixture_passes(name: str) -> None:
     result = _validate(str(FIXTURES / "valid" / f"{name}.yaml"))
@@ -48,6 +49,8 @@ _INVALID = {
     "missing_falsifier": "missing-falsifier",
     "missing_rationale": "missing-rationale-or-update",
     "malformed_yaml": "yaml-parse-error",
+    "scenario_missing_label": "missing-field",   # WP3.2: world-vs-game label required
+    "scenario_invalid_label": "invalid-enum",    # WP3.2: label not in WORLD_VS_GAME_LABELS
 }
 
 

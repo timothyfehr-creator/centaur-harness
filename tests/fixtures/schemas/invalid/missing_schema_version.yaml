@@ -1,5 +1,6 @@
 # Defect: no schema_version  ->  missing-schema-version
 title: "Missing schema_version"
+label: ILLUSTRATIVE
 branches:
   - id: a
     probability: 0.5

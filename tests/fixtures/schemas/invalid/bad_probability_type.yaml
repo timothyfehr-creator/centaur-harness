@@ -1,5 +1,6 @@
 # Defect: branch a probability is a string  ->  probability-not-numeric
 schema_version: "1.0"
+label: ILLUSTRATIVE
 branches:
   - id: a
     probability: "0.6"

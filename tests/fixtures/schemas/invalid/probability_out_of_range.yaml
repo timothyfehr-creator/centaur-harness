@@ -1,5 +1,6 @@
 # Defect: branch a probability > 1  ->  probability-out-of-range
 schema_version: "1.0"
+label: ILLUSTRATIVE
 branches:
   - id: a
     probability: 1.4

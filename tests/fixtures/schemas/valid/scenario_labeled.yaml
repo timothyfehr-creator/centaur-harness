@@ -1,0 +1,16 @@
+# Valid: exercises a non-ILLUSTRATIVE world-vs-game label (GAMED_FUTURE), so a bug that
+# hard-coded ILLUSTRATIVE instead of checking the full WORLD_VS_GAME_LABELS vocab is caught.
+schema_version: "1.0"
+title: "Valid scenario with a non-ILLUSTRATIVE label"
+label: GAMED_FUTURE
+branches:
+  - id: a
+    probability: 0.5
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: ["F1"]
+    rationale: "r"
+  - id: b
+    probability: 0.5
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

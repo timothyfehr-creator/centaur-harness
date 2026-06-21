@@ -2,6 +2,7 @@
 # floating-point boundary fix (0.55 + 0.50 must pass, not spuriously fail).
 schema_version: "1.0"
 title: "Valid scenario summing to the upper tolerance boundary"
+label: ILLUSTRATIVE
 branches:
   - id: a
     probability: 0.55

@@ -62,6 +62,16 @@ def validate_doc(doc: object, where: str) -> list[tuple[str, str, str]]:
         add("missing-schema-version",
             "schema_version is required and must be a non-empty string")
 
+    # World-vs-game label (CONSTITUTION §4, WP3.2). Required + constrained to the shared
+    # WORLD_VS_GAME_LABELS vocab that validate_state.py enforces on state items. Checked
+    # above the branches early-return so the label fault is independent of branch shape.
+    label = doc.get("label")
+    if not _is_nonempty_str(label):
+        add("missing-field", "label is required and must be a non-empty string")
+    elif label not in WORLD_VS_GAME_LABELS:
+        add("invalid-enum",
+            f"label must be one of {sorted(WORLD_VS_GAME_LABELS)}; got {label!r}")
+
     branches = doc.get("branches")
     if not isinstance(branches, list) or len(branches) < 2:
         add("missing-branches", "branches must be a list of at least 2 items")

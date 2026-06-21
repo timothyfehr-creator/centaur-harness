@@ -1,11 +1,12 @@
-# Defect: branch a has no falsifiers  ->  missing-falsifier
+# Defect: label is not in WORLD_VS_GAME_LABELS  ->  invalid-enum (otherwise fully valid).
 schema_version: "1.0"
-label: ILLUSTRATIVE
+title: "Invalid world-vs-game label"
+label: NOT_A_LABEL
 branches:
   - id: a
     probability: 0.5
     signposts: ["A1", "A2", "A3"]
-    falsifiers: []
+    falsifiers: ["F1"]
     rationale: "r"
   - id: b
     probability: 0.5

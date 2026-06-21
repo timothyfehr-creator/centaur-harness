@@ -1,5 +1,6 @@
 schema_version: "1.0"
 title: "Valid scenario using update_mechanism instead of rationale"
+label: ILLUSTRATIVE
 branches:
   - id: a
     probability: 0.5

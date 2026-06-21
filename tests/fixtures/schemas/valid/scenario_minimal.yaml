@@ -1,5 +1,6 @@
 schema_version: "1.0"
 title: "Minimal valid scenario"
+label: ILLUSTRATIVE
 branches:
   - id: a
     title: "Branch A"

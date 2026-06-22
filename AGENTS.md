@@ -17,10 +17,15 @@ Read **[IMPLEMENTATION_PLAN_V2.md](IMPLEMENTATION_PLAN_V2.md)** before changing 
 
 ## Standard loop
 
+The full, gated work-package cadence — plan → research/design/red-team → decide → implement →
+verify → adversarial review → atomic commit → CI green → ledger → memory → (audit) → next WP —
+is documented in **[docs/RUNBOOK.md](docs/RUNBOOK.md)**, along with the durable invariants and
+environment gotchas. In short:
+
 ```text
 EXPLORE → PLAN → IMPLEMENT ONE WORK PACKAGE → RUN TARGETED TESTS →
-RUN FULL ACCEPTANCE COMMANDS → SELF-REVIEW DIFF → REPORT → STOP →
-INDEPENDENT SCOPE REVIEW → FIX ONLY BLOCKERS → COMMIT → NEXT WORK PACKAGE
+RUN FULL ACCEPTANCE COMMANDS → ADVERSARIAL REVIEW → FIX ONLY BLOCKERS →
+ATOMIC COMMIT → CI GREEN → LEDGER → NEXT WORK PACKAGE
 ```
 
 ## Anti-overbuild

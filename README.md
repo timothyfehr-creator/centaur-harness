@@ -10,13 +10,15 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phases 0–4 complete. Shipped: repo-level `scaffold` verification and a secret scan
+Phases 0–5 complete. Shipped: repo-level `scaffold` verification and a secret scan
 (Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
 source / claim / event validators and the source-or-label state gate (WP2.1–2.3); the
-§7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); and the composed
+§7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); the composed
 **`draft`** verification mode (WP4 — `verify.py --mode draft` runs scaffold plus the
-evidence/safety gates and reports a STRUCTURAL-ONLY verdict). Next: minimum agent
-grounding (WP5); `release` mode arrives later, in the plan's order. See
+evidence/safety gates and reports a STRUCTURAL-ONLY verdict); and the **agent-grounding
+gate** (WP5 — agents must cite a resolving knowledge book *and* a capability resolving to
+a claim/assumption, or fail; `validate_agents` is now part of `draft`). Next: fog-of-war
+(WP6); `release` mode arrives later, in the plan's order. See
 [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
@@ -31,13 +33,14 @@ python scripts/validate_sources.py         # source registry
 python scripts/validate_claims.py          # claim→source resolution + source-tier rule
 python scripts/validate_events.py          # event→claim resolution
 python scripts/validate_state.py           # source-or-label state gate (CONSTITUTION §5)
+python scripts/validate_agents.py          # agent grounding (knowledge + capability resolution, WP5)
 python scripts/safety_check.py             # safety gate — actionable-harm content (§7)
 pytest                                      # run the test suite
 ```
 
 CI runs these as ordered steps (the resolution gates are dependency-ordered: claims
-after sources, events/state after claims, safety after state). Each gate **fails
-closed** (exit 0 clean / 1 findings / 2 usage-or-fail-closed).
+after sources, events/state after claims, agent grounding after state, safety last). Each
+gate **fails closed** (exit 0 clean / 1 findings / 2 usage-or-fail-closed).
 
 `scaffold` mode checks repo-level integrity (required files/dirs present) and
 **structurally** validates any `examples/**/scenario.yaml` that exist. It does
@@ -45,9 +48,9 @@ closed** (exit 0 clean / 1 findings / 2 usage-or-fail-closed).
 later phase) — only that a *present* scenario is well-formed.
 
 `draft` mode (WP4) is the first **composed** gate: it runs scaffold plus the source /
-claim / event / state / safety gates, reports each as `[PASS]`/`[FAIL]` alongside a
-`[SKIP]` list of not-yet-implemented checks (agent grounding, refuter review, …), and is
-**STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity. `release`
+claim / event / state / agent-grounding / safety gates, reports each as `[PASS]`/`[FAIL]`
+alongside a `[SKIP]` list of not-yet-implemented checks (refuter review, calibration, …),
+and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity. `release`
 mode is not yet implemented and exits nonzero with a clear "unavailable" error; an unknown
 mode (a typo) likewise fails clearly. The harness never falsely reports validity.
 

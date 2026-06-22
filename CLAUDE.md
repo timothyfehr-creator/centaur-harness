@@ -11,8 +11,8 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   appearing valid.
 - **Primary artifact:** `scripts/verify.py` and the gates it composes — `scaffold`
   (repo integrity + scenario schema) and `draft` (WP4: scaffold + the source / claim /
-  event / state / safety gates, reporting active vs not-yet-implemented checks,
-  STRUCTURAL ONLY). `release` is not yet implemented, later in plan order.
+  event / state / agent-grounding / safety gates, reporting active vs not-yet-implemented
+  checks, STRUCTURAL ONLY). `release` is not yet implemented, later in plan order.
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.

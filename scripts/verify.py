@@ -7,8 +7,8 @@ verification, WP4) modes.
 - ``scaffold`` -- repo-level integrity + structural validation of any present
   scenario. Lightweight; does not require a sourced scenario.
 - ``draft`` -- the first COMPOSED gate: it runs scaffold plus the source / claim /
-  event / state / safety gates and reports which checks are active versus not yet
-  implemented. It is STRUCTURAL ONLY and never implies analytical validity
+  event / state / agent-grounding / safety gates and reports which checks are active
+  versus not yet implemented. It is STRUCTURAL ONLY and never implies analytical validity
   (CONSTITUTION §3).
 
 ``release`` is deliberately NOT implemented yet: it is a known-unavailable mode and

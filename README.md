@@ -10,15 +10,20 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phases 0–5 complete. Shipped: repo-level `scaffold` verification and a secret scan
+Phases 0–7 complete. Shipped: repo-level `scaffold` verification and a secret scan
 (Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
 source / claim / event validators and the source-or-label state gate (WP2.1–2.3); the
 §7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); the composed
 **`draft`** verification mode (WP4 — `verify.py --mode draft` runs scaffold plus the
-evidence/safety gates and reports a STRUCTURAL-ONLY verdict); and the **agent-grounding
+evidence/safety gates and reports a STRUCTURAL-ONLY verdict); the **agent-grounding
 gate** (WP5 — agents must cite a resolving knowledge book *and* a capability resolving to
-a claim/assumption, or fail; `validate_agents` is now part of `draft`). Next: fog-of-war
-(WP6); `release` mode arrives later, in the plan's order. See
+a claim/assumption, or fail; `validate_agents` is now part of `draft`); the **fog-of-war
+partition + context compiler** (WP6 — `core/context_compiler.py`, a deterministic
+library that compiles each agent's context to public + only its own private state, leak-
+proven by tests); and the **reproducibility run-ledger** (WP7 — `validate_run_ledger.py`,
+a fail-closed lockfile drift gate pinning a content hash of every declared input, plus
+`as_of_date` ISO-8601 validation on scenario + state). Next: review / signoff schemas
+(WP8); `release` mode arrives later, in the plan's order. See
 [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
@@ -35,6 +40,7 @@ python scripts/validate_events.py          # event→claim resolution
 python scripts/validate_state.py           # source-or-label state gate (CONSTITUTION §5)
 python scripts/validate_agents.py          # agent grounding (knowledge + capability resolution, WP5)
 python scripts/safety_check.py             # safety gate — actionable-harm content (§7)
+python scripts/validate_run_ledger.py      # reproducibility run-ledger drift gate (WP7, §6)
 pytest                                      # run the test suite
 ```
 

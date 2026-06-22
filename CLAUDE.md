@@ -12,7 +12,11 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
 - **Primary artifact:** `scripts/verify.py` and the gates it composes — `scaffold`
   (repo integrity + scenario schema) and `draft` (WP4: scaffold + the source / claim /
   event / state / agent-grounding / safety gates, reporting active vs not-yet-implemented
-  checks, STRUCTURAL ONLY). `release` is not yet implemented, later in plan order.
+  checks, STRUCTURAL ONLY). `release` is not yet implemented, later in plan order. Each
+  evidence/safety gate also runs as a standalone CI step; WP7 adds the reproducibility
+  **run-ledger** gate (`scripts/validate_run_ledger.py` — a fail-closed lockfile drift
+  check, a CI step, deliberately **not** in `draft`), and WP6 adds the fog-of-war
+  **context compiler** (`core/context_compiler.py` — a deterministic library, not a gate).
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.

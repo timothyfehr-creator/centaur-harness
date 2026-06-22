@@ -389,6 +389,45 @@ catalog, and `factbase/assumptions.yaml`.
 - Out of scope (deferred): encyclopedic / sourced-fact books, doctrine libraries, retrieval,
   fog-of-war (WP6), numeric capability modeling.
 
+## WP6 — Fog-of-war skeleton ✅ complete (Phase 6 done)
+
+The first per-agent information partition: each agent's compiled context = public state +
+*only* its own private state; the adjudicator sees all; nothing else leaks. Adds the first
+`core/` module (`context_compiler.py`) — a pure deterministic library, **not** a `draft`
+gate — proven by leak tests. Delivered as two commits (WP6.1 partition data, WP6.2 compiler).
+
+| Acceptance criterion | Status |
+|---|---|
+| each agent gets public + its permitted private state | ✅ (`compile_context`) |
+| unauthorized private fields do not appear in any context | ✅ (negative leak tests; cross-agent + adjudicator-only) |
+| adjudicator visibility is explicit | ✅ (enumerated "sees all" branch + a real `adjudicator.yaml`) |
+| no full game engine required | ✅ (a static, deterministic, RNG-free compiler) |
+| 157 prior tests stay green | ✅ |
+| `pytest tests/test_context_compiler.py` + `pytest` | ✅ (177 passed) |
+
+- **Decisions (user):** partition = **file-per-agent** (`examples/<scenario>/state/public.yaml`
+  + `private/<agent-id>.yaml` + `private/adjudicator.yaml`; visibility = file location, same
+  v1 registry schema, no new fields); the compiler is a **library, not a draft gate**
+  (`verify.py`/`DRAFT_GATES`/CI byte-identical; the exit gate is `pytest`); `initial_state.yaml`
+  **untouched** (parallel, additive — no migration).
+- **Fail-closed (`FogError`) at load, every path:** an agent named `adjudicator`; missing/unusable
+  `public.yaml`; an unusable private file; an **orphan** `private/<id>.yaml` (id not a known
+  agent or `adjudicator`); `schema_version` disagreement across files; a non-globally-unique item
+  id; empty `items`. **Pure/deterministic:** no RNG/clock/env, items shallow-copied (inputs never
+  mutated), fixed order, public's `as_of_date` governs.
+- **Review:** ACCEPT (zero blockers) — leakage / fail-closed / determinism / purity empirically
+  verified; edge cases (no private file, missing private dir) robust.
+- Feature commits `645d4ae` (WP6.1: the `state/` partition + the `state.schema.md` fog section)
+  and `30473ea` (WP6.2: `core/context_compiler.py`, `tests/test_context_compiler.py`, 9 fog
+  fixtures). Process: also shipped `docs/RUNBOOK.md` (`23865b4`) codifying the WP-delivery cadence.
+- **GitHub Actions:** ✅ success — run
+  [27963421789](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27963421789)
+  on `30473ea` (all gates + Draft verification + Tests passed; the compiler is library-only so
+  draft is unchanged).
+- Out of scope (deferred): active deception, delayed intelligence, stale BDA, probabilistic
+  sensing — hence no per-item `visible_to`, no turn-gated reveal, no RNG, no engine loop.
+
 ## Deferred (not started)
 
-Fog-of-war skeleton (Phase 6), release mode (WP8.2), and engine work.
+Reproducibility (Phase 7 — WP7.1 run-ledger + WP7.2 replay/hash), release mode (WP8.2),
+calibration (WP9.1), and engine work.

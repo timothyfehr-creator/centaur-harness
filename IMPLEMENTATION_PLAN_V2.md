@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** WP6 — fog-of-war skeleton. (Phases 0–5 are complete through WP5.1; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
+**Immediate next step:** WP7.1 — minimal run-ledger schema. (Phases 0–6 are complete through WP6.2; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
 
 ## 1. Goal
 
@@ -591,7 +591,13 @@ pytest
 ```
 
 **Exit gate**  
-Agent contexts can be generated without hidden-state leakage.
+Agent contexts can be generated without hidden-state leakage. ✅ delivered (WP6).
+
+(WP6 reconciliation: a per-scenario **file-per-agent** partition (`state/public.yaml` +
+`private/<agent-id>.yaml` + `private/adjudicator.yaml`, same v1 registry schema) compiled by
+`core/context_compiler.py` — a **pure deterministic library**, fail-closed at load on every
+ambiguity, **not** a `verify.py`/draft gate (the exit gate is `pytest`). `initial_state.yaml`
+is untouched (parallel/additive). Chosen layout is example-scoped — no repo-root `state/`.)
 
 **Explicitly deferred**
 
@@ -929,11 +935,13 @@ After the first tranche:
    cite a resolving knowledge book + a capability resolving to a claim/assumption;
    `factbase/assumptions.yaml` + `knowledge/{country,institution}_books/`; joins draft.)
 
-7. **WP6.1 — Public/private state partition**  
-   Add state schemas.
+7. **WP6.1 — Public/private state partition** ✅ delivered  
+   Add state schemas. (Per-scenario `state/{public.yaml, private/<agent-id>.yaml,
+   private/adjudicator.yaml}`; same v1 registry schema; visibility = file location.)
 
-8. **WP6.2 — Context compiler and leak tests**  
-   Ensure unauthorized private state does not leak.
+8. **WP6.2 — Context compiler and leak tests** ✅ delivered  
+   Ensure unauthorized private state does not leak. (`core/context_compiler.py` — a pure
+   deterministic library, fail-closed at load; proven by leak tests, not a draft gate.)
 
 9. **WP7.1 — Minimal run-ledger schema**  
    Define run artifact format.

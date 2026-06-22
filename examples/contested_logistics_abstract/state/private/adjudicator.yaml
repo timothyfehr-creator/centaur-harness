@@ -1,0 +1,8 @@
+# ILLUSTRATIVE adjudicator-only state — SYNTHETIC; asserts no real-world fact. Only the adjudicator
+# sees this; it must never appear in any agent's compiled context. The NUMERIC block threshold lives
+# in the typed engine state (a later WP-E0 commit), not in this prose evidence registry.
+schema_version: "1.0"
+items:
+  - id: adj-001
+    statement: "Route r1 carries a hidden block threshold known only to the adjudicator (synthetic)."
+    label: GAMED_FUTURE

@@ -475,8 +475,56 @@ are folded into one gate. Also closes the `as_of_date` backlog (validated if pre
   replay (engine run-record; no engine yet)"), RNG seeding, LLM-step capture, GPG/Merkle signing,
   multi-run / history ledgers, env/OS drift tracking.
 
+## WP8 — Review/signoff attestation + release mode ✅ complete (Phase 8 done)
+
+Closes the CONSTITUTION §3 honest-status loop: `release` becomes a real, fail-closed,
+**attestation-only** gate. A scenario is releasable only if it carries an adversarial **review**
+(refuter verdict) and a human **signoff**, both bound to the reproducible snapshot the run-ledger
+pins, with a **declared calibration status**. Two feature commits (WP8.1 the attestation layer,
+WP8.2 the release mode) + this ledger.
+
+| Acceptance criterion | Status |
+|---|---|
+| lightweight review + signoff artifacts defined + a real example | ✅ (`schemas/{review,signoff}.schema.md`; `examples/.../{review,signoff}.yaml`) |
+| release fails without sourcing / safety / replay / review / signoff / calibration status | ✅ (`verify_release` composes scaffold + draft gates + run-ledger + the attestation; calibration declared on signoff) |
+| release never falsely passes | ✅ (propagates the **worst** gate rc: findings → 1, cannot-run → 2; machine-checked by in-process composition tests) |
+| a REVISE review or REJECTED signoff blocks release | ✅ (`revise-verdict` / `rejected-decision`) |
+| attestation bound to the reproducible snapshot | ✅ (`code_version` pin → `stale-attestation` on ledger drift) |
+| STRUCTURAL + ATTESTATION ONLY, not analytical validity | ✅ (release report disclaimer + the declared calibration in the OK line) |
+| 195 prior tests stay green | ✅ (225 passed) |
+
+- **Decisions (user):** honest **declared-status** release (passable now; calibration is a declared
+  status, scoring is WP9; turn-replay stays a disclosed `[SKIP]`); **two kinds + a resolving chain
+  pinned to the ledger** (`signoff`→`review`→scenario, both pinning the run-ledger `code_version`);
+  **both** — built as one long run **and** `release` is a clean unattended/CI-scriptable gate
+  (deterministic exit 0/1/2 + a stable final line). Red-team-locked: REVISE+REJECTED both block;
+  `calibration_status` on the signoff (single SSOT, no scenario-schema change); single-doc artifacts
+  (not lists), **not** in `SCHEMA_REGISTRY`.
+- **`validate_review_signoff.py`** (the 11th gate): fail-closed exit 2 on a missing/empty attestation
+  or a broken/absent ledger/scenario; structure-first (single-fault) then resolution + binding +
+  honesty. Reuses `load_registry` + `_validate_skeleton`/`_valid_iso_date`/`_display`; mirrors
+  `validate_state.py`. **Attestation lockfile discipline** (extends WP7): a declared-input change
+  regenerates the ledger → attestations go stale → re-review/re-sign (RUNBOOK + CLAUDE + schema docs).
+- **`verify.py`:** `release` moves into `VALID_MODES` (`KNOWN_UNAVAILABLE_MODES` removed); `verify_release`
+  + `_print_release_report`; `NOT_YET_IMPLEMENTED` shrinks (refuter review + human signoff now run in
+  release, like the run-ledger) to turn-replay + calibration scoring. CONSTITUTION §3 release bullet
+  rewritten. CI gains `Review/signoff attestation` + `Release verification` steps.
+- **Review:** ACCEPT (no blockers) — fail-open / false-pass / single-fault / fail-closed /
+  ledger-binding all empirically disproven; the §3 "never falsely passes" invariant stays machine-checked
+  by composition (findings → 1, cannot-run → 2, worst-rc-wins) rather than blanket unavailability.
+- Feature commits `4e310c4` (WP8.1 attestation layer — resolver + schemas + example + 20 fixtures +
+  26 tests + CI step) and `d7ac7ec` (WP8.2 release mode — `verify.py` + the test rewrite + CI step +
+  the §3 edit).
+- **GitHub Actions:** ✅ success — runs
+  [27972909258](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27972909258)
+  (`4e310c4`) and
+  [27973238425](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27973238425)
+  (`d7ac7ec`) — all gates + the new **Review/signoff attestation** + **Release verification** steps + Tests passed.
+- Out of scope (deferred): **calibration scoring / backtest** (WP9), the engine (turn-replay), GPG/
+  signing, multi-round attestations, a `--json` formatter, governance/approval workflow.
+
 ## Deferred (not started)
 
-Release + review (Phase 8 — WP8.1 review/signoff schemas, WP8.2 release verification mode),
-calibration (WP9.1), and engine work (including turn-replay, which the run-ledger's `[SKIP]`
-notes needs an engine).
+Calibration (Phase 9 — WP9.1 calibration/backtest marker: release outputs declare a calibration
+status or carry `UNCALIBRATED ANALYTICAL JUDGMENT`), and engine work (including turn-replay, which
+the run-ledger's `[SKIP]` notes needs an engine).

@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** WP8.1 — review/signoff schemas. (Phases 0–7 are complete through WP7.2; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
+**Immediate next step:** WP9.1 — calibration/backtest marker. (Phases 0–8 are complete through WP8.2; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
 
 ## 1. Goal
 
@@ -90,11 +90,13 @@ During early implementation, draft mode may be structural only. It must clearly 
 
 Release mode must never falsely pass.
 
-Until release gates are implemented, it should either be unavailable or fail clearly with:
-
-```text
-release gate not implemented / not ready
-```
+**Implemented (WP8):** `release` composes draft's checks **plus** the reproducibility
+run-ledger **plus** the review + signoff attestations (a refuter verdict + a human signoff,
+bound to the run-ledger snapshot, with a declared calibration status). It is STRUCTURAL +
+ATTESTATION ONLY — a clean release means complete, reproducible, and attested, **not**
+analytically valid — and it propagates the worst gate exit code (findings → 1, a gate that
+cannot run → 2), so it never falsely passes. Calibration *scoring* (a backtest) remains WP9;
+the status is *declared* (e.g. `UNCALIBRATED` / `ILLUSTRATIVE`) at signoff.
 
 ### Anti-overbuild rule
 
@@ -953,11 +955,17 @@ After the first tranche:
     (`hash-mismatch`/`extra-input`/`missing-input`) with `--write` to regenerate. Turn-replay
     proper needs the engine, deferred.)
 
-11. **WP8.1 — Review/signoff schemas**  
-    Add lightweight refuter and human-signoff artifacts.
+11. **WP8.1 — Review/signoff schemas** ✅ delivered  
+    Add lightweight refuter and human-signoff artifacts. (`scripts/validate_review_signoff.py`:
+    a per-scenario `review.yaml` + `signoff.yaml`, fail-closed, single-fault; signoff→review→
+    scenario resolution + a run-ledger `code_version` binding (stale-attestation) + REVISE/
+    REJECTED block; `calibration_status` declared on the signoff.)
 
-12. **WP8.2 — Release verification mode**  
+12. **WP8.2 — Release verification mode** ✅ delivered  
     Release fails without sourcing, safety, replay, review, signoff, and calibration status.
+    (`verify.py --mode release` composes draft's gates + the run-ledger + the review/signoff
+    attestation, STRUCTURAL + ATTESTATION ONLY, propagating the worst gate exit code so it
+    never falsely passes; calibration is a declared status — scoring is WP9.)
 
 13. **WP9.1 — Calibration/backtest marker**  
     Release outputs declare calibration status or carry `UNCALIBRATED ANALYTICAL JUDGMENT`.
@@ -1087,7 +1095,9 @@ Do not implement during the first tranche:
 ### Release mode appears too early
 
 **Risk:** Governance artifacts are built before draft mode works.  
-**Mitigation:** Keep release unavailable or fail-closed until later.
+**Mitigation:** Keep release unavailable or fail-closed until later. ✅ resolved — `release`
+shipped in WP8, after `draft` (WP4); the lightweight review/signoff attestations are not a
+governance workflow.
 
 ### Dependency ambiguity
 

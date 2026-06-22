@@ -12,11 +12,14 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
 - **Primary artifact:** `scripts/verify.py` and the gates it composes — `scaffold`
   (repo integrity + scenario schema) and `draft` (WP4: scaffold + the source / claim /
   event / state / agent-grounding / safety gates, reporting active vs not-yet-implemented
-  checks, STRUCTURAL ONLY). `release` is not yet implemented, later in plan order. Each
-  evidence/safety gate also runs as a standalone CI step; WP7 adds the reproducibility
-  **run-ledger** gate (`scripts/validate_run_ledger.py` — a fail-closed lockfile drift
-  check, a CI step, deliberately **not** in `draft`), and WP6 adds the fog-of-war
-  **context compiler** (`core/context_compiler.py` — a deterministic library, not a gate).
+  checks, STRUCTURAL ONLY) and `release` (WP8: draft's checks + the run-ledger + the
+  review/signoff attestation; STRUCTURAL + ATTESTATION ONLY; propagates the worst gate exit
+  code, so it never falsely passes). Each evidence/safety gate also runs as a standalone CI
+  step; WP7 adds the reproducibility **run-ledger** gate (`scripts/validate_run_ledger.py` —
+  a fail-closed lockfile drift check, a CI step, deliberately **not** in `draft`), WP8 adds
+  the **review + signoff** attestation gate (`scripts/validate_review_signoff.py`, a CI step,
+  composed into `release`), and WP6 adds the fog-of-war **context compiler**
+  (`core/context_compiler.py` — a deterministic library, not a gate).
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.
@@ -29,8 +32,9 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   fully sourced scenario.
 - `draft` mode (WP4) composes scaffold + the evidence/safety gates and is STRUCTURAL
   ONLY — it must report which checks are active vs not-yet-implemented and must never
-  imply analytical validity. `release` is not implemented; it must fail clearly
-  (exit 2) rather than falsely pass.
+  imply analytical validity. `release` mode (WP8) composes draft + the run-ledger + the
+  review/signoff attestation; it is STRUCTURAL + ATTESTATION ONLY and propagates the worst
+  gate exit code (findings → 1, a gate that cannot run → 2), so it never falsely passes.
 - The reproducibility ledger (`run_ledger.yaml`, WP7) is a **lockfile**: any change to a
   declared input (`factbase/*`, `knowledge/**`, a scenario's `state/private/*` or root files)
   requires re-running `scripts/validate_run_ledger.py --write` and committing the refreshed

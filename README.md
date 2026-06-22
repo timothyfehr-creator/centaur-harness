@@ -10,7 +10,7 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phases 0–7 complete. Shipped: repo-level `scaffold` verification and a secret scan
+Phases 0–8 complete. Shipped: repo-level `scaffold` verification and a secret scan
 (Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
 source / claim / event validators and the source-or-label state gate (WP2.1–2.3); the
 §7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); the composed
@@ -22,9 +22,11 @@ partition + context compiler** (WP6 — `core/context_compiler.py`, a determinis
 library that compiles each agent's context to public + only its own private state, leak-
 proven by tests); and the **reproducibility run-ledger** (WP7 — `validate_run_ledger.py`,
 a fail-closed lockfile drift gate pinning a content hash of every declared input, plus
-`as_of_date` ISO-8601 validation on scenario + state). Next: review / signoff schemas
-(WP8); `release` mode arrives later, in the plan's order. See
-[docs/PROGRESS.md](docs/PROGRESS.md).
+`as_of_date` ISO-8601 validation on scenario + state); and the **review + signoff
+attestations + `release` mode** (WP8 — a scenario is releasable only if reviewed, signed
+off, reproducible, and carrying a declared calibration status; `verify.py --mode release`
+composes draft's gates + the run-ledger + the attestations, STRUCTURAL + ATTESTATION ONLY).
+Next: calibration markers (WP9). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
@@ -41,6 +43,8 @@ python scripts/validate_state.py           # source-or-label state gate (CONSTIT
 python scripts/validate_agents.py          # agent grounding (knowledge + capability resolution, WP5)
 python scripts/safety_check.py             # safety gate — actionable-harm content (§7)
 python scripts/validate_run_ledger.py      # reproducibility run-ledger drift gate (WP7, §6)
+python scripts/validate_review_signoff.py  # review + signoff attestation gate (WP8)
+python scripts/verify.py --mode release    # release: draft + run-ledger + attestation (STRUCTURAL + ATTESTATION ONLY)
 pytest                                      # run the test suite
 ```
 
@@ -55,10 +59,14 @@ later phase) — only that a *present* scenario is well-formed.
 
 `draft` mode (WP4) is the first **composed** gate: it runs scaffold plus the source /
 claim / event / state / agent-grounding / safety gates, reports each as `[PASS]`/`[FAIL]`
-alongside a `[SKIP]` list of not-yet-implemented checks (refuter review, calibration, …),
-and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity. `release`
-mode is not yet implemented and exits nonzero with a clear "unavailable" error; an unknown
-mode (a typo) likewise fails clearly. The harness never falsely reports validity.
+alongside a `[SKIP]` list of not-yet-implemented checks (turn-replay, calibration scoring),
+and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity.
+
+`release` mode (WP8) composes draft's checks **plus** the reproducibility run-ledger and the
+review + signoff attestations, and surfaces the signoff's declared calibration status. It is
+**STRUCTURAL + ATTESTATION ONLY** — a clean release means complete, reproducible, and attested,
+*not* analytically valid — and it propagates the worst gate exit code (findings → 1, a gate
+that cannot run → 2), so it never falsely passes. An unknown mode (a typo) fails clearly.
 
 ## Requirements
 

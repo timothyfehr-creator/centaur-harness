@@ -32,7 +32,7 @@ threshold or the raw draw).
 
 ## Resolution decision table (TOTAL over the command cross-product)
 
-Two routes `r1, r2`. **One** adjudicator-private property: `route_secret:r1.block_threshold`
+Two routes `r1, r2`. **One** adjudicator-private property: `block_threshold` on `route_secret:r1`
 (`int 0–99`, `ASSUMED`). **`r2` is unblockable.** A d100 is consumed **iff** a `BLOCK_ROUTE` targets a
 route that was `DISPATCH`-ed this turn **and** has a `block_threshold` — i.e. only `dispatch r1 + block r1`.
 **Block succeeds iff `d100 < block_threshold`** (d100 ∈ **0–99**).

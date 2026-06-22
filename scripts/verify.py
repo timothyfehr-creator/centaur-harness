@@ -2,7 +2,7 @@
 """Centaur harness verification entry point.
 
 Implements ``scaffold`` (repo-level integrity), ``draft`` (structural draft, WP4), and
-``release`` (structural + attestation, WP8) modes.
+``release`` (structural + attestation, WP8-9) modes.
 
 - ``scaffold`` -- repo-level integrity + structural validation of any present
   scenario. Lightweight; does not require a sourced scenario.
@@ -10,11 +10,12 @@ Implements ``scaffold`` (repo-level integrity), ``draft`` (structural draft, WP4
   event / state / agent-grounding / safety gates and reports which checks are active
   versus not yet implemented. It is STRUCTURAL ONLY and never implies analytical validity
   (CONSTITUTION §3).
-- ``release`` -- the release gate: draft's checks PLUS reproducibility (the run-ledger)
-  PLUS the review + signoff attestations. It is STRUCTURAL + ATTESTATION ONLY -- a clean
-  release means the package is complete, reproducible, and attested (incl. a declared
-  calibration status), NOT that the analysis is valid. It propagates the worst gate exit
-  code (a gate that cannot run -> 2, findings -> 1), so it never falsely passes (§3).
+- ``release`` -- the release gate: draft's checks PLUS reproducibility (the run-ledger),
+  the review + signoff attestations, and the calibration record (the evidence-or-label gate,
+  WP9). It is STRUCTURAL + ATTESTATION ONLY -- a clean release means the package is complete,
+  reproducible, attested, and carrying a (possibly evidence-backed) calibration status, NOT
+  that the analysis is valid. It propagates the worst gate exit code (a gate that cannot run
+  -> 2, findings -> 1), so it never falsely passes (§3).
 
 A genuinely unknown mode (a typo) fails clearly (exit 2).
 """
@@ -84,7 +85,7 @@ NOT_YET_IMPLEMENTED = (
     "it does not compute one -- no engine)",
 )
 
-GATE_TIMEOUT_SECONDS = 120
+GATE_TIMEOUT_SECONDS = 120  # loose-by-design: ample headroom for a slow CI runner, not a tuned value
 
 
 def verify_scaffold(repo_root: Path) -> list[str]:

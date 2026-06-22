@@ -34,9 +34,10 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   fully sourced scenario.
 - `draft` mode (WP4) composes scaffold + the evidence/safety gates and is STRUCTURAL
   ONLY — it must report which checks are active vs not-yet-implemented and must never
-  imply analytical validity. `release` mode (WP8) composes draft + the run-ledger + the
-  review/signoff attestation; it is STRUCTURAL + ATTESTATION ONLY and propagates the worst
-  gate exit code (findings → 1, a gate that cannot run → 2), so it never falsely passes.
+  imply analytical validity. `release` mode (WP8-9) composes draft + the run-ledger + the
+  review/signoff attestation + the calibration record; it is STRUCTURAL + ATTESTATION ONLY and
+  propagates the worst gate exit code (findings → 1, a gate that cannot run → 2), so it never
+  falsely passes.
 - The reproducibility ledger (`run_ledger.yaml`, WP7) is a **lockfile**: any change to a
   declared input (`factbase/*`, `knowledge/**`, a scenario's `state/private/*` or root files)
   requires re-running `scripts/validate_run_ledger.py --write` and committing the refreshed

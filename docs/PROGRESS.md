@@ -523,8 +523,49 @@ WP8.2 the release mode) + this ledger.
 - Out of scope (deferred): **calibration scoring / backtest** (WP9), the engine (turn-replay), GPG/
   signing, multi-round attestations, a `--json` formatter, governance/approval workflow.
 
+## WP9 — Calibration/backtest marker ✅ complete (Phase 9 done; the plumbing phase is complete)
+
+Applies CONSTITUTION **§5 (evidence or label)** to calibration: a scenario whose signoff declares
+`calibration_status: CALIBRATED` must back the claim with a `calibration.yaml` record carrying
+proper-scoring-rule provenance; `UNCALIBRATED` / `ILLUSTRATIVE` (the honest "UNCALIBRATED ANALYTICAL
+JUDGMENT" label) need none. **The harness RECORDS an externally-computed calibration result; it never
+COMPUTES one** (scoring needs the engine + resolved outcomes — a non-goal). One feature commit + this
+ledger. **This is the last numbered WP — Phases 0–9 (enforceable plumbing) are complete.**
+
+| Acceptance criterion | Status |
+|---|---|
+| release outputs declare calibration status or carry the UNCALIBRATED marker | ✅ (3-value `calibration_status`; `CALIBRATED` requires a record, others are honest labels) |
+| a CALIBRATED claim must resolve to evidence | ✅ (`unsupported-calibration`, exit 1, blocks release — like §5 `unsupported-baseline`) |
+| the record is auditable proper-scoring provenance | ✅ (metric ∈ BRIER/LOG_LOSS/HIT_RATE + in-range value, N>0, outcome authority, ISO scoring date, forecaster) |
+| numeric integrity | ✅ (`metric_value`/`baseline_value` reject bool/NaN/Inf + per-metric range; `outcome_count` int N>0) |
+| ledger-bound (reproducible snapshot) | ✅ (`stale-calibration` on `code_version` drift) |
+| the harness records, never computes calibration | ✅ (no scoring engine; `[SKIP]` calibration *scoring* stays, needs the engine) |
+| ukraine lockfile untouched | ✅ (signoff stays ILLUSTRATIVE, no `calibration.yaml`; CALIBRATED path is fixtures-only; guard tests) |
+| 225 prior tests stay green | ✅ (252 passed) |
+
+- **Decisions (user):** evidence-or-label record + gate (not a minimal marker) · 3-value
+  `calibration_status` (only `CALIBRATED` needs a record) · a **separate** `calibration.yaml` + a
+  **new `validate_calibration.py`** (the 12th gate). Red-team-locked: **presence-based** resolution
+  (no `calibration_ref`); `metric` ≠ `calibration_status` (separate enums); **3 metrics only**;
+  the enum bump + gate + `RELEASE_GATES` + CI ship **atomically** (no fail-open window);
+  `ILLUSTRATIVE`+record → `consistency-note`.
+- **`validate_calibration.py`:** fail-closed exit 2 on a missing/unreadable signoff/ledger/scenario
+  or a present-but-unparseable record; structure-first (single-fault) then resolution; `_is_finite_number`
+  rejects bool/NaN/Inf; `METRIC_RANGES` cited (Brier 1950 / GJP). Reuses `_validate_skeleton`/
+  `load_registry`; mirrors `validate_review_signoff.py`. **Lockfile discipline** (extends WP7/WP8): a
+  declared-input change ⇒ re-`--write` the ledger ⇒ re-score / re-record (`calibration.code_version`).
+- **Review:** ACCEPT (no blockers) — false-pass / numeric (bool/NaN/Inf/range) / single-fault /
+  fail-closed / ukraine-untouched / scope all empirically disproven.
+- Feature commit `6bdb18d` (the gate + record schema + the signoff enum bump + `RELEASE_GATES` + the
+  CI step + 20 fixtures + 27 tests + the ukraine guards).
+- **GitHub Actions:** ✅ success — run
+  [27981038238](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27981038238)
+  (`6bdb18d`) — all gates + the new **Calibration record** + **Release verification** + Tests passed.
+- Out of scope (deferred): **calibration scoring / backtest** (needs the engine + outcomes), the
+  engine itself (turn-replay), `CUSTOM` metrics, a scoring suite, dashboards.
+
 ## Deferred (not started)
 
-Calibration (Phase 9 — WP9.1 calibration/backtest marker: release outputs declare a calibration
-status or carry `UNCALIBRATED ANALYTICAL JUDGMENT`), and engine work (including turn-replay, which
-the run-ledger's `[SKIP]` notes needs an engine).
+The enforceable-plumbing phase (Phases 0–9) is complete. Remaining work is the **wargame engine** —
+a separate effort planned outside this repo (turn advancement, combat adjudication, the deterministic
+transition authority; turn-replay then becomes implementable). Not a numbered plumbing WP.

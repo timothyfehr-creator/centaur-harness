@@ -10,7 +10,7 @@ and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principle
 
 ## Status
 
-Phases 0–8 complete. Shipped: repo-level `scaffold` verification and a secret scan
+Phases 0–9 complete. Shipped: repo-level `scaffold` verification and a secret scan
 (Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
 source / claim / event validators and the source-or-label state gate (WP2.1–2.3); the
 §7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); the composed
@@ -25,8 +25,12 @@ a fail-closed lockfile drift gate pinning a content hash of every declared input
 `as_of_date` ISO-8601 validation on scenario + state); and the **review + signoff
 attestations + `release` mode** (WP8 — a scenario is releasable only if reviewed, signed
 off, reproducible, and carrying a declared calibration status; `verify.py --mode release`
-composes draft's gates + the run-ledger + the attestations, STRUCTURAL + ATTESTATION ONLY).
-Next: calibration markers (WP9). See [docs/PROGRESS.md](docs/PROGRESS.md).
+composes draft's gates + the run-ledger + the attestations, STRUCTURAL + ATTESTATION ONLY);
+and the **calibration evidence-or-label gate** (WP9 — `validate_calibration.py`: a `CALIBRATED`
+signoff must resolve to a `calibration.yaml` record with proper-scoring-rule provenance, ledger-
+bound; the harness *records* an external calibration result, never *computes* one; §5). **The
+enforceable-plumbing phase (Phases 0–9) is complete.** Next: the wargame engine — a separate effort
+planned outside this repo. See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
@@ -44,7 +48,8 @@ python scripts/validate_agents.py          # agent grounding (knowledge + capabi
 python scripts/safety_check.py             # safety gate — actionable-harm content (§7)
 python scripts/validate_run_ledger.py      # reproducibility run-ledger drift gate (WP7, §6)
 python scripts/validate_review_signoff.py  # review + signoff attestation gate (WP8)
-python scripts/verify.py --mode release    # release: draft + run-ledger + attestation (STRUCTURAL + ATTESTATION ONLY)
+python scripts/validate_calibration.py     # calibration evidence-or-label gate (WP9, §5)
+python scripts/verify.py --mode release    # release: draft + run-ledger + attestation + calibration (STRUCTURAL + ATTESTATION ONLY)
 pytest                                      # run the test suite
 ```
 
@@ -62,8 +67,9 @@ claim / event / state / agent-grounding / safety gates, reports each as `[PASS]`
 alongside a `[SKIP]` list of not-yet-implemented checks (turn-replay, calibration scoring),
 and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity.
 
-`release` mode (WP8) composes draft's checks **plus** the reproducibility run-ledger and the
-review + signoff attestations, and surfaces the signoff's declared calibration status. It is
+`release` mode (WP8–9) composes draft's checks **plus** the reproducibility run-ledger, the
+review + signoff attestations, and the calibration evidence-or-label gate, and surfaces the
+signoff's declared calibration status (enriched with the metric + N when `CALIBRATED`). It is
 **STRUCTURAL + ATTESTATION ONLY** — a clean release means complete, reproducible, and attested,
 *not* analytically valid — and it propagates the worst gate exit code (findings → 1, a gate
 that cannot run → 2), so it never falsely passes. An unknown mode (a typo) fails clearly.

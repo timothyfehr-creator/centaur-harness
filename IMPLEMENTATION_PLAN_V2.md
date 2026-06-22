@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** WP9.1 — calibration/backtest marker. (Phases 0–8 are complete through WP8.2; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
+**Immediate next step:** the wargame **engine** — a separate effort planned outside this repo; the enforceable-plumbing phase is complete. (Phases 0–9 are complete through WP9.1; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
 
 ## 1. Goal
 
@@ -967,8 +967,17 @@ After the first tranche:
     attestation, STRUCTURAL + ATTESTATION ONLY, propagating the worst gate exit code so it
     never falsely passes; calibration is a declared status — scoring is WP9.)
 
-13. **WP9.1 — Calibration/backtest marker**  
+13. **WP9.1 — Calibration/backtest marker** ✅ delivered  
     Release outputs declare calibration status or carry `UNCALIBRATED ANALYTICAL JUDGMENT`.
+    (`scripts/validate_calibration.py`, the 12th gate: CONSTITUTION §5 evidence-or-label for
+    calibration — a `CALIBRATED` signoff must resolve to a `calibration.yaml` record with
+    proper-scoring-rule provenance (metric in `BRIER_SCORE`/`LOG_LOSS`/`HIT_RATE` + in-range
+    value, N>0, outcome authority, scoring date), ledger-bound (`stale-calibration`);
+    `UNCALIBRATED`/`ILLUSTRATIVE` need none. Composed into `release`. The harness **records**
+    an external proper-scoring result; it never **computes** one — scoring is engine-ward.
+    *Backlog:* the metric set is fixed at the three published rules; new metrics are gated by need.)
+    **The enforceable-plumbing phase (Phases 0–9) is complete. The wargame engine is the next
+    effort — planned separately, outside this repo.**
 
 ## 7. Agent operating model
 

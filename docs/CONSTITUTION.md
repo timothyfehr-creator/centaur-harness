@@ -37,7 +37,9 @@ phase; the commitment holds from the start.
 ## 5. Evidence or label
 
 A claim is either resolved to a source or explicitly labeled an assumption. Nothing
-unsupported is silently treated as fact.
+unsupported is silently treated as fact. This applies to calibration: a `CALIBRATED`
+posture must resolve to a calibration record carrying proper-scoring-rule provenance;
+`UNCALIBRATED` and `ILLUSTRATIVE` are honest labels requiring no record.
 
 ## 6. Reproducibility
 

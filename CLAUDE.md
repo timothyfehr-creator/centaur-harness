@@ -12,14 +12,16 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
 - **Primary artifact:** `scripts/verify.py` and the gates it composes — `scaffold`
   (repo integrity + scenario schema) and `draft` (WP4: scaffold + the source / claim /
   event / state / agent-grounding / safety gates, reporting active vs not-yet-implemented
-  checks, STRUCTURAL ONLY) and `release` (WP8: draft's checks + the run-ledger + the
-  review/signoff attestation; STRUCTURAL + ATTESTATION ONLY; propagates the worst gate exit
-  code, so it never falsely passes). Each evidence/safety gate also runs as a standalone CI
-  step; WP7 adds the reproducibility **run-ledger** gate (`scripts/validate_run_ledger.py` —
-  a fail-closed lockfile drift check, a CI step, deliberately **not** in `draft`), WP8 adds
-  the **review + signoff** attestation gate (`scripts/validate_review_signoff.py`, a CI step,
-  composed into `release`), and WP6 adds the fog-of-war **context compiler**
-  (`core/context_compiler.py` — a deterministic library, not a gate).
+  checks, STRUCTURAL ONLY) and `release` (WP8–9: draft's checks + the run-ledger + the
+  review/signoff attestation + the calibration record; STRUCTURAL + ATTESTATION ONLY; propagates
+  the worst gate exit code, so it never falsely passes). Each evidence/safety gate also runs as a
+  standalone CI step; WP7 adds the reproducibility **run-ledger** gate (`scripts/validate_run_ledger.py`
+  — a fail-closed lockfile drift check, a CI step, deliberately **not** in `draft`), WP8 adds the
+  **review + signoff** attestation gate (`scripts/validate_review_signoff.py`), WP9 adds the
+  **calibration** evidence-or-label gate (`scripts/validate_calibration.py` — a §5 record gate, the
+  12th gate, composed into `release`), and WP6 adds the fog-of-war **context compiler**
+  (`core/context_compiler.py` — a deterministic library, not a gate). The enforceable-plumbing phase
+  (0–9) is complete; the wargame engine is the next, separate effort.
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.
@@ -39,9 +41,9 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   declared input (`factbase/*`, `knowledge/**`, a scenario's `state/private/*` or root files)
   requires re-running `scripts/validate_run_ledger.py --write` and committing the refreshed
   ledger, or CI fails closed on the drift. The WP8 attestations (`review.yaml` + `signoff.yaml`)
-  pin the same `code_version`, so a declared-input change also means re-review / re-sign (update
-  their `code_version`), or the `release` gate fails `stale-attestation`. See
-  [docs/RUNBOOK.md](docs/RUNBOOK.md).
+  and a WP9 `calibration.yaml` record pin the same `code_version`, so a declared-input change also
+  means re-review / re-sign / re-score (update their `code_version`), or the `release` gate fails
+  `stale-attestation` / `stale-calibration`. See [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Commands
 

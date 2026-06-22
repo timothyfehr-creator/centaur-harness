@@ -20,6 +20,8 @@ success.
 from __future__ import annotations
 
 import argparse
+import datetime
+import re
 import sys
 from pathlib import Path
 
@@ -27,10 +29,25 @@ import yaml  # only third-party dependency; safe_load only
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROB_SUM_TOLERANCE = 0.05  # loose on purpose; tightening is backlog
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def _is_nonempty_str(value: object) -> bool:
     return isinstance(value, str) and value.strip() != ""
+
+
+def _valid_iso_date(value: object) -> bool:
+    """True iff value is a strict ISO-8601 calendar date 'YYYY-MM-DD'. The regex
+    pre-check is required because Python 3.11+ date.fromisoformat also accepts
+    'YYYYMMDD' and full timestamps -- we want date-only. Shared by the run-ledger
+    gate and the scenario/state as_of_date checks (WP7, CONSTITUTION §6)."""
+    if not isinstance(value, str) or not _ISO_DATE_RE.fullmatch(value):
+        return False
+    try:
+        datetime.date.fromisoformat(value)
+        return True
+    except ValueError:
+        return False
 
 
 def _nonempty_items(items: object) -> list:

@@ -27,6 +27,10 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   ONLY — it must report which checks are active vs not-yet-implemented and must never
   imply analytical validity. `release` is not implemented; it must fail clearly
   (exit 2) rather than falsely pass.
+- The reproducibility ledger (`run_ledger.yaml`, WP7) is a **lockfile**: any change to a
+  declared input (`factbase/*`, `knowledge/**`, a scenario's `state/private/*` or root files)
+  requires re-running `scripts/validate_run_ledger.py --write` and committing the refreshed
+  ledger, or CI fails closed on the drift. See [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Commands
 

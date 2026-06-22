@@ -1,0 +1,10 @@
+# Defect: an inputs entry has no path -> missing-field (sha256 is present + valid).
+schema_version: "1.0"
+as_of_date: "2026-06-22"
+code_version: "abc123def456"
+tool_version: "1.0"
+generated_by: "validate_run_ledger.py --write"
+inputs:
+  - sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+rng_seeds: null
+llm_steps: null

@@ -58,6 +58,12 @@ operating rules; this file is the *process*.
   invariant).
 - **Concurrent sessions.** The user runs other scripts/sessions in this repo — do **not** run
   file-writing commands during a review, and stage explicit paths (not `git add -A`).
+- **The reproducibility ledger is a lockfile (WP7).** Adding / editing / removing any
+  declared input (`factbase/*.yaml`, `knowledge/**/*.yaml`, a scenario's `state/private/*.yaml`
+  or root files) makes `examples/<name>/run_ledger.yaml` stale and CI fails with
+  `hash-mismatch` / `extra-input` / `missing-input`. The fix (the failure prints it):
+  `.venv/bin/python scripts/validate_run_ledger.py --write`, then commit `run_ledger.yaml`.
+  Treat it like a step in the WP loop whenever a WP touches a declared input.
 - **Two environment traps seen in practice:** a **pending macOS update** can read-only-lock
   *existing* files on the data volume (write → `EPERM`; new files still create) — a reboot
   clears it; and the Bash tool's **cwd can go stale** after a long Workflow — `cd` from an

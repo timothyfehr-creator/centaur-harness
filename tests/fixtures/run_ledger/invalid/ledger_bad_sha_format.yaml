@@ -1,0 +1,11 @@
+# Defect: sha256 is not 64 lowercase hex -> invalid-format (otherwise complete).
+schema_version: "1.0"
+as_of_date: "2026-06-22"
+code_version: "abc123def456"
+tool_version: "1.0"
+generated_by: "validate_run_ledger.py --write"
+inputs:
+  - path: "factbase/claims.yaml"
+    sha256: "NOT-A-VALID-SHA"
+rng_seeds: null
+llm_steps: null

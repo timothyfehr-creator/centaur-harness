@@ -71,7 +71,7 @@ DRAFT_GATES = (
 NOT_YET_IMPLEMENTED = (
     "refuter review",
     "human signoff",
-    "run replay / reproducibility ledger",
+    "turn replay (engine run-record; no engine yet)",
     "calibration",
 )
 

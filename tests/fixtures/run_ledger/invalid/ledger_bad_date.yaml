@@ -1,0 +1,11 @@
+# Defect: as_of_date is not a valid ISO-8601 calendar date -> invalid-format.
+schema_version: "1.0"
+as_of_date: "2026-13-40"
+code_version: "abc123def456"
+tool_version: "1.0"
+generated_by: "validate_run_ledger.py --write"
+inputs:
+  - path: "factbase/claims.yaml"
+    sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+rng_seeds: null
+llm_steps: null

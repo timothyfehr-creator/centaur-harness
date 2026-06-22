@@ -1,0 +1,34 @@
+schema_version: '1.0'
+as_of_date: '2026-06-22'
+code_version: 97082e1c743a3a1dbb6d1924a4d58d85b81fb29d
+tool_version: '1.0'
+generated_by: validate_run_ledger.py --write
+inputs:
+- path: examples/ukraine_crimea_logistics/agents.yaml
+  sha256: 11db5d43d72ac732b37c59c3db345d46891334d3ac51866526598003b3e6cb46
+- path: examples/ukraine_crimea_logistics/initial_state.yaml
+  sha256: 28247ebb09b40dafa19050b57e97f3fe733e4eb52dc2929befad518dc3046672
+- path: examples/ukraine_crimea_logistics/scenario.yaml
+  sha256: 1fbf6545eaf64667f359bf8d68cbd0273512fc9724f14ea70fd9e75108f4ea44
+- path: examples/ukraine_crimea_logistics/state/private/adjudicator.yaml
+  sha256: d2bdb86e2fdb6c575008f1cf75ad92774e61cc304f41b8295312180bdc35f5d3
+- path: examples/ukraine_crimea_logistics/state/private/agent-nato-jflc.yaml
+  sha256: 8f321905fc1f5c0faa0170a0e0d6c1a286be5c59586c0fb7d8da0103361687df
+- path: examples/ukraine_crimea_logistics/state/private/agent-ua-logistics.yaml
+  sha256: 6dfa08188f2a64f4a11720e9338b6e7f059757527a10fd8969e90006ecd9c0fb
+- path: examples/ukraine_crimea_logistics/state/public.yaml
+  sha256: adc7cd0d137f4911e5ccc4d95818ff3258b6f79758bff1cb67e8870d54c788ea
+- path: factbase/assumptions.yaml
+  sha256: 2934091a97bb2586a45cee34b934519d9ff2e93facb757e2908a7e77a7f5fcc4
+- path: factbase/claims.yaml
+  sha256: 26da6f47508567a688fdad915078e61e3db0b10dbadd88f9acdac411861e3cf7
+- path: factbase/events.yaml
+  sha256: 16c295527086f755b78b40044adadf6e85828baee92d24f940dee8e44fb32fb6
+- path: factbase/sources.yaml
+  sha256: bd162b5956ce63ef56a3c5f02a8bd6e1303ad12b632757a05a5a0a70ae0d3caa
+- path: knowledge/country_books/ukraine_logistics.yaml
+  sha256: 9fa4e875dc66ff6e5219d671a47ee0547e19110fa24ff2365db272d8d10b1b93
+- path: knowledge/institution_books/nato_jflc.yaml
+  sha256: 464609f16ebe1468352de480b969cdcb3601cb93de648aaf1bdab16732c7b0c3
+rng_seeds: null
+llm_steps: null

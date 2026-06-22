@@ -64,23 +64,31 @@ def test_draft_mode_exits_zero_on_clean_repo() -> None:
     assert "source registry" in out
     assert "safety" in out
     assert "[PASS] agent grounding" in out
-    # still-not-yet-implemented checks are reported, not silently omitted
+    # still-not-yet-implemented checks are reported, not silently omitted. Post-WP8 the
+    # list shrank: refuter review + human signoff are implemented (they run in `release`,
+    # like the run-ledger), so what remains needs the engine or WP9.
     assert "not yet implemented" in out.lower()
-    assert "refuter review" in out.lower()
+    assert "turn replay" in out.lower()
+    assert "refuter review" not in out.lower()  # no longer "not implemented" -- it runs in release
     # structural-only, and it must NOT claim analytical validity
     assert "STRUCTURAL ONLY" in out
     assert "not an analytical-validity claim" in out
 
 
-def test_release_mode_never_falsely_passes() -> None:
-    # Release stays unavailable until its gates exist -- fail clearly, never pass.
+def test_release_mode_exits_zero_on_attested_repo() -> None:
+    # WP8: release is now available. On the clean, fully-attested example it passes and
+    # carries the declared calibration -- but it must NOT claim analytical validity (§3).
     result = _run("--mode", "release")
-    assert result.returncode == 2
-    assert "release" in result.stderr.lower()
-    # The distinct "unavailable / not yet implemented" wording must stay distinct from
-    # the typo "unknown mode" branch, so a future reword can't blur the two.
-    assert "not yet implemented" in result.stderr.lower()
-    assert "unavailable" in result.stderr.lower()
+    assert result.returncode == 0, result.stderr
+    out = result.stdout
+    assert "release OK" in out
+    assert "[PASS] review + signoff attestation" in out
+    assert "[PASS] run-ledger / reproducibility" in out
+    assert "calibration: ILLUSTRATIVE" in out          # the declared status is surfaced
+    assert "STRUCTURAL + ATTESTATION ONLY" in out
+    assert "not an analytical-validity claim" in out
+    # turn-replay is still disclosed as not-run; the gate never silently omits it
+    assert "[SKIP] turn replay" in out
 
 
 # --- draft composition logic (in-process, non-mutating) ---------------------------
@@ -108,6 +116,55 @@ def test_verify_draft_fails_when_a_gate_fails(monkeypatch) -> None:
     assert exit_code == 1  # one failing active check -> draft fails, never false-passes
     failed = [r for r in results if not r["ok"]]
     assert len(failed) == 1 and "validate_events.py" in failed[0]["name"]
+
+
+# --- release composition logic (in-process; proves §3 "never falsely passes") -----
+
+def test_verify_release_passes_when_all_gates_pass(monkeypatch) -> None:
+    monkeypatch.setattr(
+        verify, "_run_gate",
+        lambda root, script: {"name": script, "ok": True, "rc": 0, "detail": "OK"},
+    )
+    exit_code, results, calibration = verify.verify_release(REPO_ROOT)
+    assert exit_code == 0
+    assert all(r["ok"] for r in results)
+    # scaffold (in-process) + the draft gates + the release gates (run-ledger, attestation)
+    assert len(results) == 1 + len(verify.DRAFT_GATES) + len(verify.RELEASE_GATES)
+    assert calibration == "ILLUSTRATIVE"  # read from the real example signoff (not stubbed)
+
+
+def test_verify_release_propagates_findings_as_one(monkeypatch) -> None:
+    # A composed gate that reports findings (rc 1) must fail release with exit 1.
+    def fake_gate(root: Path, script: str) -> dict:
+        ok = script != "validate_review_signoff.py"
+        return {"name": script, "ok": ok, "rc": 0 if ok else 1, "detail": "OK" if ok else "blocked"}
+
+    monkeypatch.setattr(verify, "_run_gate", fake_gate)
+    exit_code, _results, _cal = verify.verify_release(REPO_ROOT)
+    assert exit_code == 1  # a REVISE/REJECTED/stale attestation blocks release, never passes
+
+
+def test_verify_release_preserves_cannot_run_as_two(monkeypatch) -> None:
+    # A gate that CANNOT RUN (rc 2) must propagate as exit 2, NOT collapse to 1 -- the
+    # fail-closed distinction (harness error vs content finding) must survive composition.
+    def fake_gate(root: Path, script: str) -> dict:
+        rc = 2 if script == "validate_run_ledger.py" else 0
+        return {"name": script, "ok": rc == 0, "rc": rc, "detail": "fail-closed" if rc else "OK"}
+
+    monkeypatch.setattr(verify, "_run_gate", fake_gate)
+    exit_code, _results, _cal = verify.verify_release(REPO_ROOT)
+    assert exit_code == 2
+
+
+def test_verify_release_worst_rc_when_mixed(monkeypatch) -> None:
+    # findings (1) on one gate + cannot-run (2) on another -> the worst (2) wins.
+    def fake_gate(root: Path, script: str) -> dict:
+        rc = {"validate_review_signoff.py": 1, "validate_run_ledger.py": 2}.get(script, 0)
+        return {"name": script, "ok": rc == 0, "rc": rc, "detail": str(rc)}
+
+    monkeypatch.setattr(verify, "_run_gate", fake_gate)
+    exit_code, _results, _cal = verify.verify_release(REPO_ROOT)
+    assert exit_code == 2
 
 
 def test_run_gate_fail_closed_when_subprocess_cannot_launch(monkeypatch) -> None:

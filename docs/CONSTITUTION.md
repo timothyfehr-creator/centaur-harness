@@ -21,7 +21,11 @@ Verification must never falsely pass.
 - `scaffold` — repo-level integrity only.
 - `draft` — structural validity; must report which checks are active versus not
   yet implemented, and must not imply analytical validity.
-- `release` — unavailable or fails clearly until its gates exist.
+- `release` — structural + attestation: draft's checks plus reproducibility (the
+  run-ledger) and the review + signoff attestations, with a declared calibration status.
+  A clean release means the package is complete, reproducible, and attested — **not**
+  analytically valid. It propagates the worst gate exit code, so it fails clearly and
+  never falsely passes.
 
 ## 4. World versus game
 

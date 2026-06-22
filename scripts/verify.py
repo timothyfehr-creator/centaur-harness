@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Centaur harness verification entry point.
 
-Implements ``scaffold`` (repo-level integrity) and ``draft`` (structural draft
-verification, WP4) modes.
+Implements ``scaffold`` (repo-level integrity), ``draft`` (structural draft, WP4), and
+``release`` (structural + attestation, WP8) modes.
 
 - ``scaffold`` -- repo-level integrity + structural validation of any present
   scenario. Lightweight; does not require a sourced scenario.
@@ -10,10 +10,13 @@ verification, WP4) modes.
   event / state / agent-grounding / safety gates and reports which checks are active
   versus not yet implemented. It is STRUCTURAL ONLY and never implies analytical validity
   (CONSTITUTION §3).
+- ``release`` -- the release gate: draft's checks PLUS reproducibility (the run-ledger)
+  PLUS the review + signoff attestations. It is STRUCTURAL + ATTESTATION ONLY -- a clean
+  release means the package is complete, reproducible, and attested (incl. a declared
+  calibration status), NOT that the analysis is valid. It propagates the worst gate exit
+  code (a gate that cannot run -> 2, findings -> 1), so it never falsely passes (§3).
 
-``release`` is deliberately NOT implemented yet: it is a known-unavailable mode and
-fails clearly with a nonzero exit code, so the harness never falsely reports release
-validity. A genuinely unknown mode (a typo) also fails clearly.
+A genuinely unknown mode (a typo) fails clearly (exit 2).
 """
 from __future__ import annotations
 
@@ -26,12 +29,8 @@ from pathlib import Path
 # from __file__ so verification works regardless of the current directory.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-VALID_MODES = ("scaffold", "draft")
+VALID_MODES = ("scaffold", "draft", "release")
 DEFAULT_MODE = "scaffold"
-
-# Modes deliberately not implemented yet. They must fail clearly (exit 2) rather than
-# be mistaken for a typo or -- worse -- falsely pass.
-KNOWN_UNAVAILABLE_MODES = ("release",)
 
 # Files / directories that must exist for the scaffold to be considered intact.
 # Keep this list minimal and repo-level only. Do NOT add scenario, factbase, or
@@ -66,13 +65,21 @@ DRAFT_GATES = (
     ("safety", "safety_check.py"),
 )
 
-# Checks the harness does NOT yet run. Draft reports these explicitly: it must not
-# imply they passed, nor that the scenario is analytically valid (CONSTITUTION §3).
+# Gates release composes ON TOP of draft's checks (in CI order). The run-ledger
+# (reproducibility / "replay") and the review+signoff attestation are release-ward axes,
+# orthogonal to draft's structural-validity scope -- so they live here, not in DRAFT_GATES.
+RELEASE_GATES = (
+    ("run-ledger / reproducibility", "validate_run_ledger.py"),
+    ("review + signoff attestation", "validate_review_signoff.py"),
+)
+
+# Checks the harness genuinely does NOT yet run. Draft AND release report these explicitly:
+# neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff are no
+# longer here -- WP8 implements them (they run in `release`), like the run-ledger before
+# them. What remains needs the engine (turn-replay) or WP9 (calibration scoring).
 NOT_YET_IMPLEMENTED = (
-    "refuter review",
-    "human signoff",
     "turn replay (engine run-record; no engine yet)",
-    "calibration",
+    "calibration scoring (status declared at signoff; backtest is WP9)",
 )
 
 GATE_TIMEOUT_SECONDS = 120
@@ -206,6 +213,64 @@ def _print_draft_report(results: list[dict], exit_code: int) -> None:
         print(f"draft verification FAILED: {'; '.join(failed)}", file=out)
 
 
+def _release_calibration(repo_root: Path) -> str:
+    """The declared calibration_status of the example scenario's signoff, for the release
+    report line. 'unknown' if unreadable -- the attestation gate already FAILS in that
+    case, so this line is informational, never the gate itself."""
+    signoffs = sorted(repo_root.glob("examples/**/signoff.yaml"))
+    if not signoffs:
+        return "unknown"
+    try:
+        import yaml
+        doc = yaml.safe_load(signoffs[0].read_text(encoding="utf-8"))
+        status = doc.get("calibration_status") if isinstance(doc, dict) else None
+        return status if isinstance(status, str) and status.strip() else "unknown"
+    except Exception:
+        return "unknown"
+
+
+def verify_release(repo_root: Path) -> tuple[int, list[dict], str]:
+    """The release gate: draft's checks + reproducibility + the review/signoff attestation.
+    Returns (exit_code, check_results, calibration_status).
+
+    Unlike draft, the exit code PROPAGATES THE WORST gate rc: 0 if all pass, 1 if any
+    reports findings, 2 if any cannot run / times out (a fail-closed gate must not collapse
+    to 1). Release adds no validation logic -- it composes the gates and reports (§3)."""
+    _, results = verify_draft(repo_root)  # scaffold + DRAFT_GATES, reused
+
+    for label, script in RELEASE_GATES:
+        result = _run_gate(repo_root, script)
+        result["name"] = f"{label} ({script})"
+        results.append(result)
+
+    worst = max(r["rc"] for r in results)
+    return worst, results, _release_calibration(repo_root)
+
+
+def _print_release_report(results: list[dict], exit_code: int, calibration: str) -> None:
+    """The honest release report (CONSTITUTION §3): active checks, the still-not-built
+    checks, and a success line that carries the declared calibration status and disclaims
+    analytical validity. A clean release means complete + reproducible + attested, NOT valid."""
+    out = sys.stdout if exit_code == 0 else sys.stderr
+    print("release verification report (STRUCTURAL + ATTESTATION ONLY)", file=out)
+    print("active checks:", file=out)
+    for r in results:
+        status = "PASS" if r["ok"] else "FAIL"
+        print(f"  [{status}] {r['name']} -- {r['detail']}", file=out)
+
+    print("the following checks did NOT run (not yet implemented; no analytical "
+          "validity is implied):", file=out)
+    for name in NOT_YET_IMPLEMENTED:
+        print(f"  [SKIP] {name}", file=out)
+
+    if exit_code == 0:
+        print(f"release OK -- complete and attested; calibration: {calibration}; "
+              "STRUCTURAL + ATTESTATION ONLY, not an analytical-validity claim.", file=out)
+    else:
+        failed = [r["name"] for r in results if not r["ok"]]
+        print(f"release verification FAILED: {'; '.join(failed)}", file=out)
+
+
 def run(mode: str, repo_root: Path) -> int:
     """Run the requested verification mode. Returns a process exit code."""
     if mode == "scaffold":
@@ -223,20 +288,14 @@ def run(mode: str, repo_root: Path) -> int:
         _print_draft_report(results, exit_code)
         return exit_code
 
-    if mode in KNOWN_UNAVAILABLE_MODES:
-        # Known mode, deliberately not implemented yet. Fail clearly (never pass).
-        print(
-            f"error: mode {mode!r} is not yet implemented and is unavailable. It "
-            "requires checks deferred past WP4 (agent grounding, refuter review, run "
-            "replay, calibration); it is unavailable, not failing on content.",
-            file=sys.stderr,
-        )
-        return 2
+    if mode == "release":
+        exit_code, results, calibration = verify_release(repo_root)
+        _print_release_report(results, exit_code, calibration)
+        return exit_code
 
-    # Genuinely unknown mode (e.g. a typo). Distinct from a known-unavailable mode.
+    # Genuinely unknown mode (e.g. a typo). Every valid mode is now implemented.
     print(
-        f"error: unknown mode {mode!r}. valid modes: {', '.join(VALID_MODES)}; "
-        f"unavailable: {', '.join(KNOWN_UNAVAILABLE_MODES)}",
+        f"error: unknown mode {mode!r}. valid modes: {', '.join(VALID_MODES)}.",
         file=sys.stderr,
     )
     return 2

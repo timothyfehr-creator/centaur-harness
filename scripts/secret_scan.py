@@ -207,6 +207,13 @@ def main(argv: list[str] | None = None) -> int:
             for p in missing:
                 print(f"error: path not found: {p}", file=sys.stderr)
             return 2
+        if not files:
+            # An existing-but-empty path is the zero-input fail-open: a scan that matched
+            # nothing must never report clean (CONSTITUTION §3; mirrors the default branch
+            # and validate_schemas.py's empty-dir guard).
+            print("error: the given paths matched 0 files; refusing to report clean.",
+                  file=sys.stderr)
+            return 2
     else:
         tracked = _tracked_files(REPO_ROOT)
         if tracked is None:

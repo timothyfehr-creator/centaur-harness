@@ -159,6 +159,13 @@ def test_fail_closed_on_missing_patterns_file(tmp_path: Path) -> None:
     assert "Refusing to report a clean scan" in result.stderr
 
 
+def test_fail_closed_on_empty_explicit_dir(tmp_path: Path) -> None:
+    # An existing-but-empty explicit path must fail closed (exit 2), never "OK (0 files)":
+    # a check that scanned nothing is the §3 zero-input fail-open (mirrors the default branch).
+    (tmp_path / "sub").mkdir()
+    assert _scan(str(tmp_path)).returncode == 2
+
+
 def test_fail_closed_on_empty_rules(tmp_path: Path) -> None:
     bad = tmp_path / "empty.yaml"
     bad.write_text('schema_version: "1.0"\nenabled_tiers: [conservative]\nrules: []\n')

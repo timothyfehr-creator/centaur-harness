@@ -137,3 +137,10 @@ def test_bare_scan_reports_nonzero_file_count() -> None:
     assert result.returncode == 0, result.stderr
     match = re.search(r"\((\d+) files\)", result.stdout)
     assert match and int(match.group(1)) > 0, result.stdout
+
+
+def test_fail_closed_on_empty_explicit_dir(tmp_path: Path) -> None:
+    # An existing-but-empty explicit path must fail closed (exit 2), never "OK (0 files)":
+    # a scan that matched nothing is the §3 zero-input fail-open (mirrors the default branch).
+    (tmp_path / "sub").mkdir()
+    assert _scan(str(tmp_path)).returncode == 2

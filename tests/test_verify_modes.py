@@ -64,12 +64,12 @@ def test_draft_mode_exits_zero_on_clean_repo() -> None:
     assert "source registry" in out
     assert "safety" in out
     assert "[PASS] agent grounding" in out
-    # still-not-yet-implemented checks are reported, not silently omitted. Post-WP8 the
-    # list shrank: refuter review + human signoff are implemented (they run in `release`,
-    # like the run-ledger), so what remains needs the engine or WP9.
+    # still-not-yet-implemented checks are reported, not silently omitted. Post-WP8/WP-E1 the
+    # list shrank further: refuter review + human signoff + turn replay now run in `release`, so
+    # what remains is only calibration SCORING (a backtest needing outcomes).
     assert "not yet implemented" in out.lower()
-    assert "turn replay" in out.lower()
     assert "refuter review" not in out.lower()  # no longer "not implemented" -- it runs in release
+    assert "turn replay" not in out.lower()     # WP-E1: now a release gate, not a draft [SKIP]
     # structural-only, and it must NOT claim analytical validity
     assert "STRUCTURAL ONLY" in out
     assert "not an analytical-validity claim" in out
@@ -87,8 +87,8 @@ def test_release_mode_exits_zero_on_attested_repo() -> None:
     assert "calibration: ILLUSTRATIVE" in out          # the declared status is surfaced
     assert "STRUCTURAL + ATTESTATION ONLY" in out
     assert "not an analytical-validity claim" in out
-    # turn-replay is still disclosed as not-run; the gate never silently omits it
-    assert "[SKIP] turn replay" in out
+    # turn replay now RUNS in release (WP-E1) -- a [PASS], no longer a [SKIP]
+    assert "[PASS] turn replay" in out
 
 
 # --- draft composition logic (in-process, non-mutating) ---------------------------

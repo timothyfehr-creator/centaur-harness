@@ -7,6 +7,8 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      PYTHONHASHSEED: "0"   # WP-E1: pin the interpreter hash seed for deterministic engine runs
     steps:
       - uses: actions/checkout@v5
 
@@ -56,6 +58,9 @@ jobs:
 
       - name: Calibration record
         run: python scripts/validate_calibration.py
+
+      - name: Turn-replay (engine run-record)
+        run: python scripts/validate_turn_replay.py
 
       - name: Release verification
         run: python scripts/verify.py --mode release

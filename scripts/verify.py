@@ -73,14 +73,14 @@ RELEASE_GATES = (
     ("run-ledger / reproducibility", "validate_run_ledger.py"),
     ("review + signoff attestation", "validate_review_signoff.py"),
     ("calibration record", "validate_calibration.py"),
+    ("turn replay", "validate_turn_replay.py"),
 )
 
 # Checks the harness genuinely does NOT yet run. Draft AND release report these explicitly:
-# neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff (WP8) and the
-# calibration RECORD (WP9, evidence-or-label) are now gated and run in `release`. What remains is
-# COMPUTING calibration (a backtest), which -- like turn-replay -- needs the engine + outcomes.
+# neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff (WP8), the
+# calibration RECORD (WP9), and turn replay (WP-E1: the engine run-record gate) are now gated and run
+# in `release`. What remains is COMPUTING calibration (a backtest), which needs outcomes to score.
 NOT_YET_IMPLEMENTED = (
-    "turn replay (engine run-record; no engine yet)",
     "calibration scoring (the harness records an external proper-scoring result; "
     "it does not compute one -- no engine)",
 )

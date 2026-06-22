@@ -109,3 +109,28 @@ def test_fail_closed_on_empty_agents_list(tmp_path: Path) -> None:
     f = tmp_path / "empty.yaml"
     f.write_text('schema_version: "1.0"\nagents: []\n')
     assert _run(str(f)).returncode == 2
+
+
+def test_fail_closed_on_duplicate_book_id(tmp_path: Path) -> None:
+    # Two knowledge books sharing an id would let an agent resolve against a corrupt
+    # catalog -> the index builder must reject it (fail-closed), not silently collapse.
+    kdir = tmp_path / "knowledge"
+    kdir.mkdir()
+    (kdir / "a.yaml").write_text('id: book-dup\ntitle: "A"\n')
+    (kdir / "b.yaml").write_text('id: book-dup\ntitle: "B"\n')
+    result = _run(str(FIXTURES / "valid" / "agents_minimal.yaml"), knowledge=kdir)
+    assert result.returncode == 2
+    assert "duplicate knowledge-book id" in result.stderr
+
+
+def test_assumptions_missing_schema_version_is_finding(tmp_path: Path) -> None:
+    # The assumptions registry's schema_version is checked (folded), consistent with the
+    # agents registry. A usable registry missing it -> exit 1 finding; the agent stays
+    # grounded (assum-001 still resolves), so it is the only finding.
+    bad = tmp_path / "assumptions.yaml"
+    bad.write_text("assumptions:\n  - id: assum-001\n    statement: x\n")
+    result = _run(str(FIXTURES / "valid" / "agents_minimal.yaml"), assumptions=bad)
+    assert result.returncode == 1, result.stdout
+    findings = _findings(result.stderr)
+    assert len(findings) == 1, findings
+    assert "missing-schema-version" in findings[0]

@@ -74,15 +74,22 @@ def _book_ids(knowledge_dir: Path) -> tuple[set | None, str | None]:
     books = sorted(knowledge_dir.glob("**/*.yaml"))
     if not books:
         return None, f"no knowledge books found under {knowledge_dir}"
-    ids: set = set()
+    # Track id -> path so a DUPLICATE book id is rejected (fail-closed), not silently
+    # collapsed: two books sharing an id would let an agent resolve against a corrupt
+    # catalog. (Every other resolution target self-checks duplicate ids; books are the
+    # only one with no gate of their own, so the index builder must do it.)
+    seen: dict[str, Path] = {}
     for path in books:
         doc, err = load_registry(path)
         if err is not None:
             return None, err
         if not isinstance(doc, dict) or not _is_nonempty_str(doc.get("id")):
             return None, f"knowledge book {path} must be a mapping with a non-empty id"
-        ids.add(doc["id"])
-    return ids, None
+        bid = doc["id"]
+        if bid in seen:
+            return None, f"duplicate knowledge-book id {bid!r} in {path} (already in {seen[bid]})"
+        seen[bid] = path
+    return set(seen), None
 
 
 def validate_assumptions(doc: dict, where: str) -> list[tuple[str, str, str]]:
@@ -90,6 +97,9 @@ def validate_assumptions(doc: dict, where: str) -> list[tuple[str, str, str]]:
     non-empty id + statement, and ids are unique. (Resolution itself is judged against
     the id set; this catches a malformed registry as exit-1 findings.)"""
     problems: list[tuple[str, str, str]] = []
+    if not _is_nonempty_str(doc.get("schema_version")):
+        problems.append(("missing-schema-version", where,
+                         "schema_version is required and must be a non-empty string"))
     seen: dict[str, str] = {}
     for i, entry in enumerate(doc["assumptions"]):
         tag = f"assumptions[{i}]"

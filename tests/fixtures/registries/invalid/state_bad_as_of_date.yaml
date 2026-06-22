@@ -1,0 +1,17 @@
+# Defect: as_of_date is present but not a valid ISO-8601 calendar date (month 13, day 40)
+# -> invalid-format. Otherwise fully valid (mirrors state_minimal.yaml; the REAL_WORLD_BASELINE
+# item resolves claim-001 against claims_minimal.yaml), so the as_of_date fault fires alone
+# (validate-if-present, WP7 / CONSTITUTION §6).
+schema_version: "1.0"
+as_of_date: "2026-13-40"
+items:
+  - id: state-001
+    statement: "Synthetic baseline item (test fixture); cites a synthetic claim."
+    label: REAL_WORLD_BASELINE
+    claims: [claim-001]          # resolves to claims_minimal.yaml
+  - id: state-002
+    statement: "Synthetic assumption (test fixture); needs no claim."
+    label: ASSUMPTION
+  - id: state-003
+    statement: "Synthetic illustrative item (test fixture)."
+    label: ILLUSTRATIVE

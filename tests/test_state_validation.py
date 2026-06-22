@@ -49,6 +49,7 @@ _INVALID = {
     "state_unresolved_claim": ("unresolved-claim-ref", "claim-999"),
     "state_duplicate_id": ("duplicate-id", "state-001"),
     "state_missing_schema_version": ("missing-schema-version", "schema_version"),
+    "state_bad_as_of_date": ("invalid-format", "as_of_date"),  # WP7: validated if present (§6)
 }
 
 

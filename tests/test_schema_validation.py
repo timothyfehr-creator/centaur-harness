@@ -51,6 +51,7 @@ _INVALID = {
     "malformed_yaml": "yaml-parse-error",
     "scenario_missing_label": "missing-field",   # WP3.2: world-vs-game label required
     "scenario_invalid_label": "invalid-enum",    # WP3.2: label not in WORLD_VS_GAME_LABELS
+    "scenario_bad_as_of_date": "invalid-format", # WP7: as_of_date validated if present (§6)
 }
 
 

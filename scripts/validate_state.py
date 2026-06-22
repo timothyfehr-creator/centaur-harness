@@ -33,6 +33,7 @@ from validate_schemas import (
     WORLD_VS_GAME_LABELS,
     _display,
     _is_nonempty_str,
+    _valid_iso_date,
     _validate_skeleton,
 )
 from validate_claims import load_registry, _usable_registry
@@ -72,6 +73,13 @@ def validate_state(doc: object, where: str, claim_ids: set) -> list[tuple[str, s
     if not _is_nonempty_str(doc.get("schema_version")):
         add("missing-schema-version",
             "schema_version is required and must be a non-empty string")
+
+    # as_of_date (CONSTITUTION §6, WP7): optional, but validated if present -- a malformed
+    # as-of date is a provenance defect. Shared strict ISO-8601 helper (date-only).
+    aod = doc.get("as_of_date")
+    if aod is not None and not _valid_iso_date(aod):
+        add("invalid-format",
+            f"as_of_date {aod!r} must be an ISO-8601 date (YYYY-MM-DD) when present")
 
     seen: dict[str, str] = {}
     for i, item in enumerate(doc["items"]):

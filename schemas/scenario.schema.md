@@ -14,7 +14,7 @@ enforcement** is [`scripts/validate_schemas.py`](../scripts/validate_schemas.py)
 | `title` | no | string | — |
 | `description` | no | string | — |
 | `label` | **yes** | string | world-vs-game label (Constitution §4); one of `REAL_WORLD_BASELINE`, `ASSUMPTION`, `MODEL_OUTPUT`, `GAMED_FUTURE`, `ANALYST_JUDGMENT`, `ILLUSTRATIVE` — the shared `WORLD_VS_GAME_LABELS` constant (defined in `validate_schemas.py`, also enforced by `validate_state.py` on state items) (WP3.2) |
-| `as_of_date` | no (this WP) | string | as-of date; **enforced later** (Constitution §6) |
+| `as_of_date` | no | string | as-of date; **optional, but validated if present** — strict ISO-8601 `YYYY-MM-DD`, else `invalid-format` (WP7, Constitution §6) |
 
 ## Per branch
 
@@ -42,8 +42,9 @@ Structural codes — one invalid fixture each:
 `missing-schema-version`, `missing-field` (absent `label`), `invalid-enum` (`label`
 not in `WORLD_VS_GAME_LABELS`), `missing-branches`, `probability-not-numeric`,
 `probability-out-of-range`, `probability-sum-out-of-range`, `too-few-signposts`,
-`missing-falsifier`, `missing-rationale-or-update`. (`missing-field` / `invalid-enum`
-are the shared codes the skeleton-kind validator emits.)
+`missing-falsifier`, `missing-rationale-or-update`, `invalid-format` (a present-but-
+malformed `as_of_date`). (`missing-field` / `invalid-enum` are the shared codes the
+skeleton-kind validator emits.)
 
 `yaml-parse-error` covers the non-structural failure paths — an unreadable file, a
 YAML syntax error, or a top level that isn't a mapping (e.g. empty / a list). A
@@ -55,5 +56,7 @@ malformed fixture exercises the syntax-error branch.
   implicit residual" is enforced *via* that tolerance, not a separate residual rule.
 - Duplicate YAML keys follow PyYAML's last-wins semantics (not rejected).
 - Sourcing is **not** checked here (WP2.3). The world-vs-game **label** is now enforced
-  (WP3.2): required and constrained to `WORLD_VS_GAME_LABELS`. `as_of_date` stays deferred
-  (Constitution §6).
+  (WP3.2): required and constrained to `WORLD_VS_GAME_LABELS`. `as_of_date` is now
+  **validated if present** (WP7): optional, but a present value must be a strict ISO-8601
+  `YYYY-MM-DD` (Constitution §6). The run-ledger pins the reproducibility hashes
+  (`schemas/run_ledger.schema.md`).

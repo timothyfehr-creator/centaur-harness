@@ -1,0 +1,18 @@
+# Defect: as_of_date is present but not a valid ISO-8601 calendar date (month 13, day 40)
+# -> invalid-format. Otherwise fully valid (mirrors scenario_labeled.yaml), so the
+# as_of_date fault fires alone (validate-if-present, WP7 / CONSTITUTION §6).
+schema_version: "1.0"
+title: "Valid scenario but with a malformed as_of_date"
+label: GAMED_FUTURE
+as_of_date: "2026-13-40"
+branches:
+  - id: a
+    probability: 0.5
+    signposts: ["A1", "A2", "A3"]
+    falsifiers: ["F1"]
+    rationale: "r"
+  - id: b
+    probability: 0.5
+    signposts: ["B1", "B2", "B3"]
+    falsifiers: ["F1"]
+    rationale: "r"

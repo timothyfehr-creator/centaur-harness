@@ -10,7 +10,7 @@ standalone `--kind state` document.
 
 ```yaml
 schema_version: "1.0"
-as_of_date: "YYYY-MM-DD"     # optional, accepted-but-unvalidated (a later WP)
+as_of_date: "YYYY-MM-DD"     # optional, but validated if present (WP7): strict ISO-8601 or invalid-format
 items:
   - {id, statement, label, claims: [claim-id, ...]?}
 ```
@@ -40,8 +40,9 @@ external real-world fact.
 - Items not labeled `REAL_WORLD_BASELINE` need no claims.
 
 Error codes: `missing-schema-version`, `missing-field`, `invalid-enum`, `duplicate-id`,
-`unsupported-baseline`, `unresolved-claim-ref`. Fail-closed (exit 2) on a missing / empty /
-non-mapping state or claims registry (an empty `items:` list is a refusal, not a pass).
+`unsupported-baseline`, `unresolved-claim-ref`, `invalid-format` (a present-but-malformed
+`as_of_date`, WP7). Fail-closed (exit 2) on a missing / empty / non-mapping state or claims
+registry (an empty `items:` list is a refusal, not a pass).
 
 ## Fog-of-war partition (WP6)
 

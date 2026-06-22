@@ -89,6 +89,14 @@ def validate_doc(doc: object, where: str) -> list[tuple[str, str, str]]:
         add("invalid-enum",
             f"label must be one of {sorted(WORLD_VS_GAME_LABELS)}; got {label!r}")
 
+    # as_of_date (CONSTITUTION §6, WP7): optional, but validated if present -- a malformed
+    # as-of date is a provenance defect. Shared strict ISO-8601 helper (date-only). Checked
+    # above the branches early-return so it is independent of branch shape.
+    aod = doc.get("as_of_date")
+    if aod is not None and not _valid_iso_date(aod):
+        add("invalid-format",
+            f"as_of_date {aod!r} must be an ISO-8601 date (YYYY-MM-DD) when present")
+
     branches = doc.get("branches")
     if not isinstance(branches, list) or len(branches) < 2:
         add("missing-branches", "branches must be a list of at least 2 items")

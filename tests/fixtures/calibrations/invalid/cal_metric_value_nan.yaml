@@ -1,0 +1,11 @@
+# Defect: metric_value is NaN (not finite) -> wrong-type. Otherwise valid.
+schema_version: "1.0"
+id: cal-001
+target: scn
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+metric: BRIER_SCORE
+metric_value: .nan
+outcome_count: 48
+outcome_authority: "fixture adjudication"
+scoring_date: "2026-06-22"
+forecaster: "fixture-ensemble"

@@ -1,0 +1,11 @@
+# Defect: outcome_count 4.5 is not an integer -> wrong-type. Otherwise valid.
+schema_version: "1.0"
+id: cal-001
+target: scn
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+metric: BRIER_SCORE
+metric_value: 0.218
+outcome_count: 4.5
+outcome_authority: "fixture adjudication"
+scoring_date: "2026-06-22"
+forecaster: "fixture-ensemble"

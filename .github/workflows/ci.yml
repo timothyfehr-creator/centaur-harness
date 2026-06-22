@@ -54,6 +54,9 @@ jobs:
       - name: Review/signoff attestation
         run: python scripts/validate_review_signoff.py
 
+      - name: Calibration record
+        run: python scripts/validate_calibration.py
+
       - name: Release verification
         run: python scripts/verify.py --mode release
 

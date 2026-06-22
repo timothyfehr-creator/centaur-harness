@@ -7,8 +7,8 @@ gate validates the two per-scenario attestation artifacts and the chain between 
 
   - structure: each is a flat mapping with its required fields + enums
     (`review.verdict` in ACCEPT/REVISE; `signoff.decision` in APPROVED/REJECTED;
-    `signoff.calibration_status` in UNCALIBRATED/ILLUSTRATIVE -- a DECLARED honest status,
-    not an executed calibration, which is WP9);
+    `signoff.calibration_status` in UNCALIBRATED/ILLUSTRATIVE/CALIBRATED -- the CALIBRATED
+    posture must resolve to a calibration record (WP9, `validate_calibration.py`));
   - resolution: `review.target` names this scenario; `signoff.review_ref` resolves to the
     review's id;
   - reproducibility binding: BOTH attestations pin the scenario run_ledger's `code_version`
@@ -61,7 +61,9 @@ SIGNOFF_SPEC = {
     "required_int": (),
     "enums": {
         "decision": ("APPROVED", "REJECTED"),
-        "calibration_status": ("UNCALIBRATED", "ILLUSTRATIVE"),
+        # WP9: CALIBRATED requires a resolving calibration.yaml (enforced by
+        # validate_calibration.py); UNCALIBRATED / ILLUSTRATIVE need no record.
+        "calibration_status": ("UNCALIBRATED", "ILLUSTRATIVE", "CALIBRATED"),
     },
 }
 

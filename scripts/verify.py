@@ -71,15 +71,17 @@ DRAFT_GATES = (
 RELEASE_GATES = (
     ("run-ledger / reproducibility", "validate_run_ledger.py"),
     ("review + signoff attestation", "validate_review_signoff.py"),
+    ("calibration record", "validate_calibration.py"),
 )
 
 # Checks the harness genuinely does NOT yet run. Draft AND release report these explicitly:
-# neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff are no
-# longer here -- WP8 implements them (they run in `release`), like the run-ledger before
-# them. What remains needs the engine (turn-replay) or WP9 (calibration scoring).
+# neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff (WP8) and the
+# calibration RECORD (WP9, evidence-or-label) are now gated and run in `release`. What remains is
+# COMPUTING calibration (a backtest), which -- like turn-replay -- needs the engine + outcomes.
 NOT_YET_IMPLEMENTED = (
     "turn replay (engine run-record; no engine yet)",
-    "calibration scoring (status declared at signoff; backtest is WP9)",
+    "calibration scoring (the harness records an external proper-scoring result; "
+    "it does not compute one -- no engine)",
 )
 
 GATE_TIMEOUT_SECONDS = 120
@@ -214,9 +216,9 @@ def _print_draft_report(results: list[dict], exit_code: int) -> None:
 
 
 def _release_calibration(repo_root: Path) -> str:
-    """The declared calibration_status of the example scenario's signoff, for the release
-    report line. 'unknown' if unreadable -- the attestation gate already FAILS in that
-    case, so this line is informational, never the gate itself."""
+    """The declared calibration_status of the example scenario's signoff for the release report
+    line, enriched with the record's metric + N when CALIBRATED. Informational only -- the
+    calibration gate (not this line) enforces; 'unknown' if unreadable."""
     signoffs = sorted(repo_root.glob("examples/**/signoff.yaml"))
     if not signoffs:
         return "unknown"
@@ -224,14 +226,21 @@ def _release_calibration(repo_root: Path) -> str:
         import yaml
         doc = yaml.safe_load(signoffs[0].read_text(encoding="utf-8"))
         status = doc.get("calibration_status") if isinstance(doc, dict) else None
-        return status if isinstance(status, str) and status.strip() else "unknown"
+        if not (isinstance(status, str) and status.strip()):
+            return "unknown"
+        if status == "CALIBRATED":
+            cal_path = signoffs[0].parent / "calibration.yaml"
+            cal = yaml.safe_load(cal_path.read_text(encoding="utf-8")) if cal_path.is_file() else None
+            if isinstance(cal, dict) and cal.get("metric") and cal.get("metric_value") is not None:
+                return f"{status} ({cal['metric']} {cal['metric_value']}, N={cal.get('outcome_count')})"
+        return status
     except Exception:
         return "unknown"
 
 
 def verify_release(repo_root: Path) -> tuple[int, list[dict], str]:
-    """The release gate: draft's checks + reproducibility + the review/signoff attestation.
-    Returns (exit_code, check_results, calibration_status).
+    """The release gate: draft's checks + reproducibility + the review/signoff attestation +
+    the calibration record. Returns (exit_code, check_results, calibration_status).
 
     Unlike draft, the exit code PROPAGATES THE WORST gate rc: 0 if all pass, 1 if any
     reports findings, 2 if any cannot run / times out (a fail-closed gate must not collapse

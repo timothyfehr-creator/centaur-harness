@@ -31,14 +31,15 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE
 | `decision` | yes | enum `APPROVED` \| `REJECTED`; a `REJECTED` **blocks release** (`rejected-decision`) |
 | `signed_by` | yes | non-empty string (who signed) |
 | `date` | yes | ISO-8601 `YYYY-MM-DD` → else `invalid-format` |
-| `calibration_status` | yes | enum `UNCALIBRATED` \| `ILLUSTRATIVE` — a **DECLARED** honest posture, **not** executed calibration (which is WP9) |
+| `calibration_status` | yes | enum `UNCALIBRATED` \| `ILLUSTRATIVE` \| `CALIBRATED` — a **DECLARED** posture; **CALIBRATED requires a resolving `calibration.yaml`** record (WP9, [calibration.schema.md](calibration.schema.md)), the other two need none |
 
 ## Contract
 
 - **The approver declares the calibration posture.** `calibration_status` is the single source of
   truth for the §6 "calibration status" axis of `release`; it is surfaced in the release report
   line so a clean `release` is never mistaken for a calibrated/analytically-valid one
-  (CONSTITUTION §3). Real calibration arrives in WP9 and may upgrade the vocabulary.
+  (CONSTITUTION §3). A `CALIBRATED` posture is evidence-or-label (§5): it must resolve to a
+  `calibration.yaml` record (WP9, `validate_calibration.py`); `UNCALIBRATED`/`ILLUSTRATIVE` need none.
 - **The signoff binds to a reviewed, reproducible snapshot.** `review_ref` ties the approval to a
   specific refuter verdict; `code_version` ties both to the run-ledger snapshot. A `REVISE` review
   or a stale `code_version` means the approval no longer applies. ⚠ **Lockfile discipline**: a

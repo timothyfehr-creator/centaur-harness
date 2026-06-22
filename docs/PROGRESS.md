@@ -427,7 +427,56 @@ gate — proven by leak tests. Delivered as two commits (WP6.1 partition data, W
 - Out of scope (deferred): active deception, delayed intelligence, stale BDA, probabilistic
   sensing — hence no per-item `visible_to`, no turn-gated reveal, no RNG, no engine loop.
 
+## WP7 — Reproducibility run-ledger ✅ complete (Phase 7 done)
+
+CONSTITUTION §6: in this pre-engine harness a "run" is the deterministic computation over the
+declared input artifacts, so reproducibility means pinning a content hash of every declared
+input. Ships a per-scenario `run_ledger.yaml` **lockfile** + a fail-closed **drift gate**
+(`validate_run_ledger.py`) that recomputes the live hashes and confirms the committed ledger
+still reproduces, with `--write` to regenerate. WP7.1 (structure) and WP7.2 (recompute-and-diff)
+are folded into one gate. Also closes the `as_of_date` backlog (validated if present on scenario
++ state). Two feature commits + this ledger.
+
+| Acceptance criterion | Status |
+|---|---|
+| run artifact format defined + a real example pinned | ✅ (`run_ledger.yaml`, 13 inputs; `schemas/run_ledger.schema.md`) |
+| tamper-evident: a changed / added / removed input fails closed | ✅ (`hash-mismatch` / `extra-input` / `missing-input` + a copy-paste regenerate hint) |
+| deterministic regeneration | ✅ (`--write` byte-identical, round-trips; pinned `safe_dump`) |
+| default check needs no engine and no git | ✅ (raw-bytes content hashes; git only for `--write` provenance) |
+| structural faults are single-fault | ✅ (structure-first short-circuit; 5 static fixtures) |
+| `as_of_date` validated on scenario + state | ✅ (validate-if-present; strict ISO-8601) |
+| 177 prior tests stay green | ✅ (195 passed) |
+
+- **Decisions (user):** hash surface = **declared inputs only** (outputs are pure-derived, so
+  the input hash gates them); structure + drift **folded into one** `validate_run_ledger.py`
+  (one CI step, **not** in `DRAFT_GATES` — a §6/release-ward axis, orthogonal to §3 structural
+  draft); the `as_of_date` ISO retrofit lands on **scenario + state too** (validate-if-present,
+  so existing fixtures/dates stay green).
+- **Lockfile discipline:** the declared-input set is live globs, so adding / editing / removing
+  any `factbase/*.yaml`, `knowledge/**/*.yaml`, `state/private/*.yaml`, or scenario root file
+  makes the committed ledger stale → CI drift failure (the intended gate). The failure prints a
+  copy-paste `--write` hint; documented in `schemas/run_ledger.schema.md`, `docs/RUNBOOK.md`,
+  `CLAUDE.md`. `code_version` is recorded-not-re-derived (a `-dirty` suffix when a declared input
+  is uncommitted, scoped to the inputs — not the whole tree). `rng_seeds`/`llm_steps: null` are
+  the entire pre-engine forward-compat surface.
+- **Review:** ACCEPT — hash/emission determinism, git-independence, fail-closed/integrity, and
+  the single-fault short-circuit empirically verified. Folded one blocker: a relative `LEDGER`
+  CLI path crashed in `declared_inputs` (`relative_to` against an absolute repo root) instead of
+  returning a verdict → resolve `scenario_dir`/`ledger_path` up front; regression-tested.
+- Feature commits `92a2f32` (the WP7 gate + `run_ledger.yaml` + schema + 16 tests + the CI step
+  + the `verify.py` `[SKIP]` rename + the staleness docs) and `aceefae` (`as_of_date` validated
+  on scenario + state, 2 single-fault fixtures).
+- **GitHub Actions:** ✅ success — runs
+  [27968820887](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27968820887)
+  (`92a2f32`) and
+  [27969121176](https://github.com/timothyfehr-creator/centaur-harness/actions/runs/27969121176)
+  (`aceefae`) — all gates + Draft + the new **Run-ledger / reproducibility** step + Tests passed.
+- Out of scope (deferred): **turn-replay** (needs the engine — `verify.py` `[SKIP]` reads "turn
+  replay (engine run-record; no engine yet)"), RNG seeding, LLM-step capture, GPG/Merkle signing,
+  multi-run / history ledgers, env/OS drift tracking.
+
 ## Deferred (not started)
 
-Reproducibility (Phase 7 — WP7.1 run-ledger + WP7.2 replay/hash), release mode (WP8.2),
-calibration (WP9.1), and engine work.
+Release + review (Phase 8 — WP8.1 review/signoff schemas, WP8.2 release verification mode),
+calibration (WP9.1), and engine work (including turn-replay, which the run-ledger's `[SKIP]`
+notes needs an engine).

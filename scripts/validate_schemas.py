@@ -180,7 +180,7 @@ EVENT_SPEC = {
 }
 TURN_SPEC = {
     "required_str": ("schema_version", "id"),
-    "required_int": ("number",),  # type only; ordering/replay semantics are WP7
+    "required_int": ("number",),  # type only; turn ordering/replay needs the engine (deferred)
     "enums": {},
 }
 

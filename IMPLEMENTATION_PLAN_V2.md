@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** WP7.1 — minimal run-ledger schema. (Phases 0–6 are complete through WP6.2; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
+**Immediate next step:** WP8.1 — review/signoff schemas. (Phases 0–7 are complete through WP7.2; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
 
 ## 1. Goal
 
@@ -943,11 +943,15 @@ After the first tranche:
    Ensure unauthorized private state does not leak. (`core/context_compiler.py` — a pure
    deterministic library, fail-closed at load; proven by leak tests, not a draft gate.)
 
-9. **WP7.1 — Minimal run-ledger schema**  
-   Define run artifact format.
+9. **WP7.1 — Minimal run-ledger schema** ✅ delivered  
+   Define run artifact format. (Per-scenario `run_ledger.yaml` pins a sha256 of every
+   declared input + git `code_version` + ISO `as_of_date`; `schemas/run_ledger.schema.md`.)
 
-10. **WP7.2 — Replay/hash check**  
-    Add a tamper-evident replay skeleton.
+10. **WP7.2 — Replay/hash check** ✅ delivered  
+    Add a tamper-evident replay skeleton. (Folded into `validate_run_ledger.py`: recompute the
+    live input hashes and diff vs the committed ledger — a fail-closed lockfile drift gate
+    (`hash-mismatch`/`extra-input`/`missing-input`) with `--write` to regenerate. Turn-replay
+    proper needs the engine, deferred.)
 
 11. **WP8.1 — Review/signoff schemas**  
     Add lightweight refuter and human-signoff artifacts.

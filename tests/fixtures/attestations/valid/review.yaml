@@ -1,0 +1,9 @@
+# Valid synthetic review for the scn fixture (target=scn, code_version matches scn/run_ledger).
+schema_version: "1.0"
+id: review-001
+target: scn
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+verdict: ACCEPT
+reviewer: "fixture-refuter"
+findings:
+  - "synthetic finding"

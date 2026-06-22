@@ -1,0 +1,9 @@
+# Defect: target does not name this scenario (scn) -> unresolved-scenario-ref. Otherwise valid.
+schema_version: "1.0"
+id: review-001
+target: some-other-scenario
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+verdict: ACCEPT
+reviewer: "fixture-refuter"
+findings:
+  - "synthetic finding"

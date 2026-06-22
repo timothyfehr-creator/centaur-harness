@@ -1,0 +1,9 @@
+# Defect: verdict REVISE (structurally valid) -> revise-verdict blocks release. Otherwise valid.
+schema_version: "1.0"
+id: review-001
+target: scn
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+verdict: REVISE
+reviewer: "fixture-refuter"
+findings:
+  - "synthetic finding requiring revision"

@@ -34,7 +34,10 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
 - The reproducibility ledger (`run_ledger.yaml`, WP7) is a **lockfile**: any change to a
   declared input (`factbase/*`, `knowledge/**`, a scenario's `state/private/*` or root files)
   requires re-running `scripts/validate_run_ledger.py --write` and committing the refreshed
-  ledger, or CI fails closed on the drift. See [docs/RUNBOOK.md](docs/RUNBOOK.md).
+  ledger, or CI fails closed on the drift. The WP8 attestations (`review.yaml` + `signoff.yaml`)
+  pin the same `code_version`, so a declared-input change also means re-review / re-sign (update
+  their `code_version`), or the `release` gate fails `stale-attestation`. See
+  [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 ## Commands
 

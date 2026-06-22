@@ -1,0 +1,9 @@
+# Defect: review_ref does not resolve to the review id (review-001) -> unresolved-review-ref.
+schema_version: "1.0"
+id: signoff-001
+review_ref: review-999
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+decision: APPROVED
+signed_by: "fixture-signer"
+date: "2026-06-22"
+calibration_status: ILLUSTRATIVE

@@ -64,6 +64,11 @@ operating rules; this file is the *process*.
   `hash-mismatch` / `extra-input` / `missing-input`. The fix (the failure prints it):
   `.venv/bin/python scripts/validate_run_ledger.py --write`, then commit `run_ledger.yaml`.
   Treat it like a step in the WP loop whenever a WP touches a declared input.
+- **Attestations pin the ledger too (WP8).** `examples/<name>/review.yaml` + `signoff.yaml` record
+  the ledger's `code_version`; when a declared-input change regenerates the ledger to a new
+  `code_version`, the attestations go **stale** (`stale-attestation`, CI release fails). The same
+  WP-loop step: after `--write`, update `code_version` in `review.yaml` + `signoff.yaml` to match
+  and re-commit (re-review / re-sign). Approval binds to a reproducible snapshot, by design.
 - **Two environment traps seen in practice:** a **pending macOS update** can read-only-lock
   *existing* files on the data volume (write → `EPERM`; new files still create) — a reboot
   clears it; and the Bash tool's **cwd can go stale** after a long Workflow — `cd` from an

@@ -51,5 +51,8 @@ jobs:
       - name: Run-ledger / reproducibility
         run: python scripts/validate_run_ledger.py
 
+      - name: Review/signoff attestation
+        run: python scripts/validate_review_signoff.py
+
       - name: Tests
         run: pytest

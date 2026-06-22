@@ -1,0 +1,14 @@
+# SYNTHETIC / ILLUSTRATIVE adversarial-review attestation (WP8.1). Not a real refuter verdict;
+# it exercises the release gate end-to-end. `code_version` pins the run_ledger snapshot this
+# review covers -- if a declared input drifts and run_ledger.yaml is regenerated, update this
+# to match (else `stale-attestation`). See schemas/review.schema.md.
+schema_version: "1.0"
+id: review-001
+target: ukraine_crimea_logistics
+code_version: "97082e1c743a3a1dbb6d1924a4d58d85b81fb29d"
+verdict: ACCEPT
+reviewer: "adversarial-review-panel (synthetic / ILLUSTRATIVE)"
+findings:
+  - "ILLUSTRATIVE: scenario structure validated; branches mutually exclusive and probability-summed."
+  - "ILLUSTRATIVE: REAL_WORLD_BASELINE state items resolve to sourced claims; labels honest."
+as_of_date: "2026-06-22"

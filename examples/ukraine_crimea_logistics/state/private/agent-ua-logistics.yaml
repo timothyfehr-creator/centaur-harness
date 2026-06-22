@@ -1,0 +1,7 @@
+# ILLUSTRATIVE private state for agent-ua-logistics ONLY (+ the adjudicator). SYNTHETIC;
+# asserts no real-world fact. Must never appear in another agent's compiled context.
+schema_version: "1.0"
+items:
+  - id: priv-ua-001
+    statement: "Reserve logistics battalion readiness, held privately by UA (synthetic)."
+    label: ASSUMPTION

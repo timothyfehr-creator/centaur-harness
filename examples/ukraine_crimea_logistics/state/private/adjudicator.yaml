@@ -1,0 +1,7 @@
+# ILLUSTRATIVE adjudicator-only state — SYNTHETIC; asserts no real-world fact. Only the
+# adjudicator sees this; it must never appear in any agent's compiled context.
+schema_version: "1.0"
+items:
+  - id: adj-001
+    statement: "Ground-truth corridor interdiction status, adjudicator-only (synthetic)."
+    label: GAMED_FUTURE

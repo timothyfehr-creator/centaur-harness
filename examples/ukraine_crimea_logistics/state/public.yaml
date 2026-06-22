@@ -1,0 +1,11 @@
+# ILLUSTRATIVE public state — SYNTHETIC, visible to ALL agents + the adjudicator. Asserts no
+# real-world fact. Part of the WP6 fog-of-war partition (see schemas/state.schema.md).
+schema_version: "1.0"
+as_of_date: "2026-06-22"
+items:
+  - id: pub-001
+    statement: "Land-corridor rail line is nominally operational (synthetic, public)."
+    label: ILLUSTRATIVE
+  - id: pub-002
+    statement: "Allied resupply pledge announced publicly (synthetic, public)."
+    label: ASSUMPTION

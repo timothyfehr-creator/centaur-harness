@@ -1,0 +1,7 @@
+# ILLUSTRATIVE private state for agent-nato-jflc ONLY (+ the adjudicator). SYNTHETIC; asserts
+# no real-world fact. Must never appear in another agent's compiled context.
+schema_version: "1.0"
+items:
+  - id: priv-nato-001
+    statement: "Internal allied lift-capacity estimate, not shared (synthetic)."
+    label: MODEL_OUTPUT

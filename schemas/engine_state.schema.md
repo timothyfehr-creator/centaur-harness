@@ -1,0 +1,91 @@
+# Engine state schema (v1) — the typed compute authority
+
+Contract for the engine's **typed canonical state** (`state/engine/public.yaml` and
+`state/engine/private/adjudicator.yaml` under a scenario). This is the **compute surface** the
+resolver reads and `reduce()` writes — distinct from, and **in addition to**, the prose
+[state registry](state.schema.md), which stays the *evidence ledger* (free-text `statement` + a
+world-vs-game `label`, no numeric slot). **No validator yet** — WP-E0 freezes this contract; the
+`validate_engine_state.py` gate + golden-vector tests arrive in WP-E1 (Constitution §3: status is
+honest). See [docs/ENGINE_CONTRACT.md](../docs/ENGINE_CONTRACT.md) for the digest, canon, and
+partition rules referenced below.
+
+## Document shape (an envelope)
+
+```yaml
+schema_version: "1.0"
+state:                                  # the hashed payload (see state_digest)
+  as_of_turn: 0                         # integer; the turn this state is the head of
+  entities:
+    - id: blue_supply                   # globally unique within this partition file
+      type: FORCE                       # FORCE | ROUTE | ROUTE_SECRET | SINK
+      fields:
+        origin:     {value: 100, unit: units}
+        in_transit: {value: 0,   unit: units}
+        delivered:  {value: 0,   unit: units}
+        loss_sink:  {value: 0,   unit: units}
+state_digest:                           # computed over the `state` field ONLY (excludes itself)
+  algorithm: sha256
+  domain: canonical                     # engine canon-v1 (normalizing), NOT the ledger content-raw domain
+  value: "<64 hex>"
+```
+
+## Fields
+
+| Field | Required | Type | Rule |
+|---|---|---|---|
+| `schema_version` | yes | string | non-empty |
+| `state` | yes | mapping | the hashed payload; contains `as_of_turn` + `entities` |
+| `state.as_of_turn` | yes | integer | ≥ 0; a bool is rejected |
+| `state.entities` | yes | list | ≥ 1 entity; `id` globally unique across the partition (below) |
+| `state_digest` | yes | mapping | typed digest `{algorithm, domain, value}`; **`value` is computed over the `state` field only** (self-reference excluded) |
+
+### Entity fields
+
+| Field | Required | Type | Rule |
+|---|---|---|---|
+| `id` | yes | string | non-empty; globally unique across `public` ∪ all `private` typed files |
+| `type` | yes | enum | `FORCE` \| `ROUTE` \| `ROUTE_SECRET` \| `SINK` |
+| `fields` | yes | mapping | name → `{value, unit}`; `value` is `number`/`string`/`bool`; `unit` a non-empty string |
+
+## Fog-of-war partition (sibling of the prose compiler)
+
+The typed state is partitioned by **file = visibility**, exactly like the prose registry, and is
+projected by a *sibling* typed-state projector that **reuses
+[`core/context_compiler.py`](../core/context_compiler.py)'s `load_partition` invariants** (owner =
+filename stem, no agent named `adjudicator`, **globally-unique ids**, single `schema_version`). The
+prose compiler is **unchanged** — typed state has a different shape, so it gets its own projector.
+
+```
+state/engine/
+  public.yaml                 # blue_supply, route:r1, route:r2  — visible to all agents + adjudicator
+  private/adjudicator.yaml    # route_secret:r1 (block_threshold) — adjudicator only, never any agent
+```
+
+**C3 hidden-property rule:** a public entity with one hidden property is modelled as **two entities**
+with distinct ids — public `route:r1` (in `public.yaml`) and a separate adjudicator-owned
+`route_secret:r1` (in `private/adjudicator.yaml`) that references the public route by a plain
+`subject_route` field. This preserves global-id-uniqueness with **no cross-file id collision and no
+field-level merge**. The hidden numeric `block_threshold` therefore never appears in any agent's
+projection (the existing no-leak test covers it).
+
+## Slice entities (contested_logistics_abstract)
+
+`blue_supply` (FORCE: `origin`/`in_transit`/`delivered`/`loss_sink`, units), `route:r1` (ROUTE:
+`capacity`, `blockable: true`), `route:r2` (ROUTE: `capacity`, `blockable: false`), `route_secret:r1`
+(ROUTE_SECRET: `subject_route: "r1"`, `block_threshold` int 0–99, adjudicator-only). **Conservation
+invariant:** `origin + in_transit + delivered + loss_sink` is constant (= 100) across every turn.
+
+## Error codes (the WP-E1 validator will emit)
+
+`missing-schema-version`, `missing-field`, `wrong-type`, `invalid-enum` (bad entity `type`),
+`duplicate-id` (across the partition), `digest-scope-violation` (`state_digest` not computed over the
+`state` field only), `non-negative-violation` / `conservation-violation` (checked by `reduce()` on the
+resulting state, not at rest).
+
+## Limitations / deferred
+
+Reference contract only in WP-E0 — no validator runs yet. Per-field epistemic labels (an entity field
+carrying both `ASSUMED` and `MODEL_OUTPUT`) are **deferred**: the slice mixes labels only at the
+*entity/item* grain (handled by the prose registry's `label`), so the bounded subject-keyed-field model
+is not built. Multi-turn `in_transit` carrying across turns, multiple dispatches, and branching are out
+of scope.

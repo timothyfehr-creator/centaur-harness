@@ -27,6 +27,17 @@ ENGINE_SCHEMA_VERSIONS = {
 SERIALIZER_VERSION = "1"
 
 
+def seal_state(state_obj: dict) -> dict:
+    """Return a state ENVELOPE ``{schema_version, state, state_digest}`` with ``state_digest`` computed
+    over the ``state`` field ONLY (self-reference excluded, per ENGINE_CONTRACT.md C7). Idempotent."""
+    inner = state_obj["state"]
+    return {
+        "schema_version": state_obj.get("schema_version", ENGINE_SCHEMA_VERSIONS["engine_state"]),
+        "state": inner,
+        "state_digest": canonical_digest(inner),   # domain:canonical, over the state field only
+    }
+
+
 def rng_request(draws: list, master_seed: int):
     """The RNG request block, or ``None`` when no draw was consumed (no decorative seed)."""
     if not draws:
@@ -86,11 +97,13 @@ def assemble(*, turn: int, start_state: dict, commands: list, master_seed: int,
     accepted, _ = rsv.validate_all(commands, start_state, ruleset)
     sorted_commands = rsv.sort_commands(accepted)
     request = rng_request(result["draws"], master_seed)
+    sealed_start = seal_state(start_state)              # {schema_version, state, state_digest}
+    sealed_result = seal_state(result["resulting_state"])
     record = {
         "schema_version": ENGINE_SCHEMA_VERSIONS["turn_record"],
         "turn": turn,
-        "transition_input_hash": transition_input_hash(start_state, sorted_commands, request),
-        "start_state": start_state,
+        "transition_input_hash": transition_input_hash(sealed_start, sorted_commands, request),
+        "start_state": sealed_start,
         "ruleset_version": rsv.RULESET_VERSION,
         "resolver_id": rsv.RESOLVER_ID,
         "resolver_version": rsv.RESOLVER_VERSION,
@@ -98,12 +111,12 @@ def assemble(*, turn: int, start_state: dict, commands: list, master_seed: int,
         "command_batch": sorted_commands,
         "event_batch": result["events"],
         "draw_records": result["draws"],
-        "resulting_state": result["resulting_state"],
-        "digests": {
-            "start_state": canonical_digest(start_state),
+        "resulting_state": sealed_result,
+        "digests": {                                   # state parts: the state_digest (over the state
+            "start_state": sealed_start["state_digest"],      # field only); batches: over their bytes
             "command_batch": canonical_digest(sorted_commands),
             "event_batch": canonical_digest(result["events"]),
-            "resulting_state": canonical_digest(result["resulting_state"]),
+            "resulting_state": sealed_result["state_digest"],
         },
         "runtime_fingerprint": runtime_fingerprint,
         "successor_slot": successor_slot,

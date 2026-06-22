@@ -83,7 +83,23 @@ def test_reduce_coherence_via_independent_reverify(tmp_path: Path) -> None:
     tr.commit(rec, slot)
     committed = json.loads(Path(slot).read_bytes())
     rederived = rsv.reduce(committed["start_state"], committed["event_batch"])
-    assert canon.canonical_bytes(rederived) == canon.canonical_bytes(committed["resulting_state"])
+    # the resulting STATE field re-derives byte-for-byte; the committed state_digest matches it
+    assert canon.canonical_bytes(rederived["state"]) == canon.canonical_bytes(committed["resulting_state"]["state"])
+    assert canon.canonical_digest(rederived["state"]) == committed["resulting_state"]["state_digest"]
+
+
+def test_state_envelopes_carry_state_digest_over_state_field_only() -> None:
+    # round-3 C7: state is an envelope {schema_version, state, state_digest}; the digest is over the
+    # `state` field ONLY (self-reference excluded), domain canonical.
+    rec = rec_for([disp(30, "r1"), blk("r1")], 0)
+    for key in ("start_state", "resulting_state"):
+        env = rec[key]
+        assert set(env) >= {"schema_version", "state", "state_digest"}
+        assert env["state_digest"] == canon.canonical_digest(env["state"])
+        assert env["state_digest"]["domain"] == "canonical"
+    # the digests block uses the state_digest (state field only), not a digest of the whole envelope
+    assert rec["digests"]["start_state"] == rec["start_state"]["state_digest"]
+    assert rec["digests"]["resulting_state"] == rec["resulting_state"]["state_digest"]
 
 
 # --- PASS#10: single successor per head; idempotent retry ----------------------------

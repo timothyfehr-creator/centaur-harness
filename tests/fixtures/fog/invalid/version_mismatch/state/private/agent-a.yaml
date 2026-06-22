@@ -1,0 +1,6 @@
+# schema_version 2.0 disagrees with public.yaml's 1.0 -> FogError.
+schema_version: "2.0"
+items:
+  - id: priv-a-1
+    statement: "Private item at a different schema_version."
+    label: ASSUMPTION

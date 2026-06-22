@@ -1,0 +1,5 @@
+schema_version: "1.0"
+items:
+  - id: adj-1
+    statement: "Adjudicator-only synthetic item."
+    label: GAMED_FUTURE

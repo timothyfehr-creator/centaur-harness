@@ -1,0 +1,6 @@
+# id dup-1 also appears in public.yaml -> global id collision -> FogError.
+schema_version: "1.0"
+items:
+  - id: dup-1
+    statement: "Private item shadowing a public id."
+    label: ASSUMPTION

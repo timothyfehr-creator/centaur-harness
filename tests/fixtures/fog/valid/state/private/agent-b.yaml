@@ -1,0 +1,5 @@
+schema_version: "1.0"
+items:
+  - id: priv-b-1
+    statement: "Private synthetic item for agent-b."
+    label: MODEL_OUTPUT

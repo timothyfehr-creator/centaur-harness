@@ -1,0 +1,5 @@
+schema_version: "1.0"
+items:
+  - id: pub-1
+    statement: "Public synthetic item."
+    label: ILLUSTRATIVE

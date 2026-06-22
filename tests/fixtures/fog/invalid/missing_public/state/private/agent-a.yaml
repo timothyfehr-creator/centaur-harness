@@ -1,0 +1,6 @@
+# This scenario has no state/public.yaml -> FogError (public baseline is required).
+schema_version: "1.0"
+items:
+  - id: priv-a-1
+    statement: "Private item with no public baseline."
+    label: ASSUMPTION

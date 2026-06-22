@@ -1,0 +1,5 @@
+schema_version: "1.0"
+items:
+  - id: dup-1
+    statement: "Public item whose id collides with a private item."
+    label: ILLUSTRATIVE

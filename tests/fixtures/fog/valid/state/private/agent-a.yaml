@@ -1,0 +1,5 @@
+schema_version: "1.0"
+items:
+  - id: priv-a-1
+    statement: "Private synthetic item for agent-a."
+    label: ASSUMPTION

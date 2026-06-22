@@ -1,0 +1,3 @@
+# Empty items list is a refusal (not a usable registry) -> FogError.
+schema_version: "1.0"
+items: []

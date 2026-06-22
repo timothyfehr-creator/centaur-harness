@@ -1,0 +1,9 @@
+schema_version: "1.0"
+as_of_date: "2026-06-22"
+items:
+  - id: pub-1
+    statement: "Public synthetic item one."
+    label: ILLUSTRATIVE
+  - id: pub-2
+    statement: "Public synthetic item two."
+    label: ASSUMPTION

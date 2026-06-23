@@ -78,6 +78,16 @@ operating rules; this file is the *process*.
   `ILLUSTRATIVE` with no record — the CALIBRATED calibration step only bites a scenario claiming it.)
   A feasibility record's blocked provenance hash (`sha256_status: BLOCKED_FETCH_AUTH_GATED`, `sha256:
   null`) upgrades to `PINNED` + a real 64-hex hash only when the source is actually fetched — never fabricate one.
+- **The attestation is honest-by-construction (WP-E2c.1).** Each `signoff.yaml`/`review.yaml` carries an
+  `attestation_kind`: a `SYNTHETIC_SELF_CHECK` (the loop checking its own work) **cannot** spell
+  `APPROVED`/`ACCEPT` (the enum partition forbids it), and `release` reports `SELF-VERIFIED; NOT INDEPENDENTLY
+  ATTESTED`. `attestation_kind: INDEPENDENT` is honored only if `signed_by`/`reviewer` is in the
+  human-controlled `attestation_reviewers.yaml` (which **starts empty** — until a human lists a real reviewer,
+  nothing is independent; the loop must not add itself). The signoff also DECLARES `calibration_disposition`,
+  and a `NOT_FEASIBLE`/`INSUFFICIENT_DATA` disposition binds the `calibration_feasibility.yaml` by id + sha256
+  — so the "cannot calibrate" record can no longer be silently deleted (`missing-feasibility-record`) or edited
+  without re-signing (`stale-feasibility-binding`). An autonomous loop may build + green-gate this, but the
+  **merge is human-gated** — a self-check must not self-merge an epistemically-sensitive path.
 - **Two environment traps seen in practice:** a **pending macOS update** can read-only-lock
   *existing* files on the data volume (write → `EPERM`; new files still create) — a reboot
   clears it; and the Bash tool's **cwd can go stale** after a long Workflow — `cd` from an

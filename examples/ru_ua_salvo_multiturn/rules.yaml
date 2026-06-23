@@ -7,7 +7,7 @@ ruleset_version: "1"
 params:
   threats:
     value: [drone, cruise, ballistic]
-    source: "ASSUMED — the 3 threat classes (diagonal-first: drone+cruise calibrated, ballistic exogenous)."
+    source: "ASSUMED — the 3 threat classes (diagonal-first: drone+cruise on the candidate/observable axis, ballistic exogenous)."
   interceptors:
     value: [short, long, pac3]
     source: "ASSUMED — internal interceptor types (magazine-accounting axis; NOT calibrated)."

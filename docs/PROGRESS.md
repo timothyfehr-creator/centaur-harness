@@ -642,8 +642,27 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   **Tier-1 hardening:** refreshed stale salvo run-ledger `code_version`s; corrected the stale rng_seeds/llm_steps
   "no engine yet" justification; an engine-state enum-audit test; and the 4 WP-E2b3 adversarial-verify
   properties locked in as **standing property sweeps** (each mutation-verified to have teeth).
-- **Now:** **558 tests green**; `release` = the WP8–9 gates + engine-state + ruleset + turn-replay +
-  **calibration-feasibility** — all PASS; the report surfaces the distinct attested postures
-  (`ILLUSTRATIVE, UNCALIBRATED`). The lethality floors + k are LOCKED (drone 50 / cruise 40 / ballistic 25;
-  k=3). **next = WP-E2d** (stochastic interception) — a FROZEN-CONTRACT change requiring an external review
-  round, NOT an in-place change. Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).
+- **WP-E2c.1 — honesty remediation of an external red-team (Gemini 5.5 Pro) pass** ✅ The verdict stays
+  `NOT_FEASIBLE` and the model stays DETERMINISTIC / UNCALIBRATED / ILLUSTRATIVE; what changed is the
+  packaging honesty around it (8 findings). **C1 (the keystone):** `attestation_kind: INDEPENDENT |
+  SYNTHETIC_SELF_CHECK` now PARTITIONS the legal decision/verdict so a self-check structurally **cannot** spell
+  APPROVED/ACCEPT; `release` reports the worst-kind banner `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED` (the bare
+  word "attested" is gone) and iterates EVERY signoff-bearing scenario. Independence is **allow-listed** in
+  `attestation_reviewers.yaml` (starts empty), not self-declared via a signer regex — a self-check cannot mint
+  its own independence (`unlisted-independent-reviewer`). **C2:** the feasibility gate shifted from a word regex
+  to STRUCTURE — unknown keys rejected at every object level, an `external_context` block pinned by
+  machine-readable honesty enums (`comparison_role: CONTEXT_ONLY`, `calibration_effect: NONE`,
+  `comparability_to_model_p`) with a clause-aware over-claim scan as defense-in-depth; the het record's observable
+  corrected to the per-engagement-attempt `p` (not a launch-share) + the source crosswalk fixed (ISW removed,
+  Defense Express vs ISIS separated, piterfm vs the ChrisO derivative named). **C3:** the disposition is now
+  ENFORCED — the signoff DECLARES `calibration_disposition` and binds the record by id + sha256, so deleting it
+  (`missing-feasibility-record`) or editing it without re-signing (`stale-feasibility-binding`) fails release; the
+  dossier carries an honest `EXTERNAL_NOT_PINNED` hash status. **C4:** the affirmative "CALIBRATED axis" labels in
+  the resolver / rules.yaml / the contract relabeled to "candidate / observable axis" (nothing is calibrated;
+  comments seed future-loop premises). Built on a branch, green-gated, fresh-agent adversarially-verified; the
+  merge is **human-gated** (a synthetic self-check must not self-merge an epistemically-sensitive path).
+- **Now:** **589 tests green**; `release` exit 0 with the honest `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED`
+  banner; the feasibility sweep reports `2 scenario(s) checked, 1 record(s) validated`. The lethality floors + k
+  are LOCKED (drone 50 / cruise 40 / ballistic 25; k=3). **next = WP-E2d** (stochastic interception) — a
+  FROZEN-CONTRACT change requiring an external review round, NOT an in-place change; the red-team returned NO-GO
+  on it as scoped. Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).

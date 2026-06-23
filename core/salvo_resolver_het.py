@@ -3,10 +3,11 @@
 Generalizes the homogeneous WP-E2a salvo to 3 THREAT classes (drone, cruise, ballistic) vs N interceptor
 TYPES, per the locked MODEL CONTRACT (centaur_engine_planning/ADJUDICATION_LEDGER.md):
 
-  - DIAGONAL-FIRST: the CALIBRATED axis is THREAT TYPE — drone + cruise carry calibrated intercept rates.
-    The interceptor axis is an INTERNAL magazine-accounting layer (which stock drains) with NO calibrated
-    per-pairing rate. BALLISTIC leak-through is an EXOGENOUS sourced RANGE, not a calibrated cell — its
-    effective intercept rate derives from that range's central, never a calibratable p.
+  - DIAGONAL-FIRST: the CANDIDATE (observable) axis is THREAT TYPE — drone + cruise carry the candidate
+    intercept rates (ASSUMED/UNCALIBRATED placeholders; E2c verdict: not separably calibratable). The
+    interceptor axis is an INTERNAL magazine-accounting layer (which stock drains) with NO per-pairing rate.
+    BALLISTIC leak-through is an EXOGENOUS sourced RANGE, not a candidate cell — its effective intercept rate
+    derives from that range's central, never a calibratable p.
   - WEAKEST-LINK culmination: lethality-collapse when ANY threat class's effective intercept rate stays
     below ITS per-class floor for k consecutive weeks (per-class STATE-carried streaks; per-class so a
     ballistic collapse is not masked by drone success). Magazine weeks-of-supply is a separate LEADING
@@ -34,7 +35,7 @@ ALLOCATION_RULE = "fixed-priority-best-first-v1"
 _NETWORK = "ukraine_air_defense"  # the aggregate air-defense entity (streak + culmination + indicators)
 
 # Default ruleset — the FLATTENED int-only form (the loader strips the {value, source} provenance tree in
-# rules.yaml; sources stay in YAML). ALL values ASSUMED. ``p_intercept_pct`` holds ONLY the calibrated
+# rules.yaml; sources stay in YAML). ALL values ASSUMED. ``p_intercept_pct`` holds ONLY the candidate-axis
 # cells (drone, cruise); ballistic's effective rate derives from the EXOGENOUS leak range, not a p.
 DEFAULT_RULESET = {
     "threats": ["drone", "cruise", "ballistic"],
@@ -129,9 +130,9 @@ def _validate_ruleset(r: dict) -> list:
             bad("wrong-type", f"p_intercept_pct[{t}] must be an int; got {p!r}")
         elif not (0 <= p <= 100):
             bad("p-out-of-range", f"p_intercept_pct[{t}]={p} not in 0..100")
-    for t in threats:                                    # ballistic is exogenous (no calibrated p)
+    for t in threats:                                    # ballistic is exogenous (no per-threat candidate p)
         if t != "ballistic" and t not in r.get("p_intercept_pct", {}):
-            bad("missing-p", f"calibrated threat {t!r} has no p_intercept_pct")
+            bad("missing-p", f"candidate-axis threat {t!r} has no p_intercept_pct")
 
     for t, row in r.get("per_pairing", {}).items():
         for i, per in row.items():
@@ -213,8 +214,8 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
     magazine = {i: _v(start_state, "ukraine_intc_" + i, "interceptor_inventory") for i in interceptors}
     resupply = {i: _v(start_state, "ukraine_intc_" + i, "weekly_resupply") for i in interceptors}
 
-    # Effective intercept pct per threat: CALIBRATED for drone/cruise; BALLISTIC from the exogenous range
-    # central (100 - mean leak), never a calibrated cell.
+    # Effective intercept pct per threat: the candidate-axis p for drone/cruise; BALLISTIC from the exogenous
+    # range central (100 - mean leak), never a candidate cell.
     ballistic_leak_central = (r["ballistic_leak_floor_pct"] + r["ballistic_leak_high_pct"]) // 2
     p_used = {t: (100 - ballistic_leak_central if t == "ballistic" else r["p_intercept_pct"][t])
               for t in threats}

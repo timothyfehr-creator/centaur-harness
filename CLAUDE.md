@@ -26,8 +26,14 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   gate (`validate_engine_state.py`), WP-E2b the heterogeneous + multi-turn salvo + the **ruleset** gate,
   and WP-E2c the **calibration-feasibility** gate (`scripts/validate_calibration_feasibility.py` — the
   honest "cannot calibrate this channel" record that keeps `calibration_status: UNCALIBRATED`), so
-  `release` now composes all of those engine gates on top of the WP8–9 set. Next: WP-E2d (stochastic
-  interception — a FROZEN-CONTRACT change requiring external review).
+  `release` now composes all of those engine gates on top of the WP8–9 set. **WP-E2c.1** (external
+  red-team remediation) made the attestation honest-by-construction: an `attestation_kind` partition so a
+  `SYNTHETIC_SELF_CHECK` cannot spell `APPROVED`/`ACCEPT` (release banner `SELF-VERIFIED; NOT INDEPENDENTLY
+  ATTESTED`), independence allow-listed in `attestation_reviewers.yaml` (not self-declared), the feasibility
+  gate's boundary shifted from a word regex to structure (unknown-key rejection + machine-readable honesty
+  enums), and the `calibration_disposition` bound to the record by sha256 so it cannot be silently deleted.
+  Next: WP-E2d (stochastic interception — a FROZEN-CONTRACT change requiring external review; the red-team
+  returned NO-GO on it as scoped).
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.

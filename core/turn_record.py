@@ -52,14 +52,16 @@ def rng_request(draws: list, master_seed: int):
     }
 
 
-def transition_input_hash(start_state: dict, sorted_commands: list, request) -> str:
+def transition_input_hash(start_state: dict, sorted_commands: list, request,
+                          resolver=rsv, ruleset: object = None) -> str:
     """canon-v1 digest over the causal inputs (the idempotency key / candidate_id)."""
     preimage = {
         "start_state": start_state,
         "command_batch": sorted_commands,
-        "ruleset_version": rsv.RULESET_VERSION,
-        "resolver_id": rsv.RESOLVER_ID,
-        "resolver_version": rsv.RESOLVER_VERSION,
+        "ruleset_version": resolver.RULESET_VERSION,
+        "resolver_id": resolver.RESOLVER_ID,
+        "resolver_version": resolver.RESOLVER_VERSION,
+        "ruleset": ruleset,                     # None for the logistics resolver; int-only params otherwise
         "rng_request": request,                 # None when no draw -> seed-independent
         "schema_versions": ENGINE_SCHEMA_VERSIONS,
         "canon_version": CANON_VERSION,
@@ -88,25 +90,32 @@ def compute_runtime_fingerprint(repo_dir: str = ".") -> dict:
 
 
 def assemble(*, turn: int, start_state: dict, commands: list, master_seed: int,
-             runtime_fingerprint: dict, successor_slot: str, ruleset: object = None) -> dict:
-    """Resolve the turn and assemble the record. A REJECTED turn yields NO record (status only)."""
-    result = rsv.transition(start_state, commands, master_seed=master_seed, turn=turn, ruleset=ruleset)
+             runtime_fingerprint: dict, successor_slot: str, ruleset: object = None,
+             resolver=rsv) -> dict:
+    """Resolve the turn and assemble the record. A REJECTED turn yields NO record (status only).
+
+    ``resolver`` selects the resolver module (defaults to the contested-logistics one); any module with
+    the interface {RESOLVER_ID, RESOLVER_VERSION, RULESET_VERSION, validate_all, sort_commands,
+    transition, reduce} plugs in. ``ruleset`` (int-only params, or None) is stored in the record so
+    replay/recomputation is self-contained."""
+    result = resolver.transition(start_state, commands, master_seed=master_seed, turn=turn, ruleset=ruleset)
     if result["status"] == "rejected":
         return {"status": "rejected", "rejections": result["rejections"], "turn_record": None}
 
-    accepted, _ = rsv.validate_all(commands, start_state, ruleset)
-    sorted_commands = rsv.sort_commands(accepted)
+    accepted, _ = resolver.validate_all(commands, start_state, ruleset)
+    sorted_commands = resolver.sort_commands(accepted)
     request = rng_request(result["draws"], master_seed)
     sealed_start = seal_state(start_state)              # {schema_version, state, state_digest}
     sealed_result = seal_state(result["resulting_state"])
     record = {
         "schema_version": ENGINE_SCHEMA_VERSIONS["turn_record"],
         "turn": turn,
-        "transition_input_hash": transition_input_hash(sealed_start, sorted_commands, request),
+        "transition_input_hash": transition_input_hash(sealed_start, sorted_commands, request, resolver, ruleset),
         "start_state": sealed_start,
-        "ruleset_version": rsv.RULESET_VERSION,
-        "resolver_id": rsv.RESOLVER_ID,
-        "resolver_version": rsv.RESOLVER_VERSION,
+        "ruleset_version": resolver.RULESET_VERSION,
+        "resolver_id": resolver.RESOLVER_ID,
+        "resolver_version": resolver.RESOLVER_VERSION,
+        "ruleset": ruleset,
         "rng": request,
         "command_batch": sorted_commands,
         "event_batch": result["events"],

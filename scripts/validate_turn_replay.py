@@ -22,13 +22,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core"))
 import canon  # noqa: E402
 import resolver as rsv  # noqa: E402
 import salvo_resolver as salvo  # noqa: E402
+import salvo_resolver_het as salvo_het  # noqa: E402
 import turn_record as tr  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # Resolver registry: replay/recompute is dispatched by the record's resolver_id (a literal lookup). Each
 # resolver declares its STOCHASTIC_TERMINALS (logistics has draws; the deterministic salvos do not), read
 # below for the draw->event coherence check.
-_RESOLVERS = {rsv.RESOLVER_ID: rsv, salvo.RESOLVER_ID: salvo}
+_RESOLVERS = {rsv.RESOLVER_ID: rsv, salvo.RESOLVER_ID: salvo, salvo_het.RESOLVER_ID: salvo_het}
 
 
 def check_record(rec: dict, where: str) -> list:

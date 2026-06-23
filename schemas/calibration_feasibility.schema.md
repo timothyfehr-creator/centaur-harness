@@ -104,9 +104,10 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
   `calibration_effect: NONE`, `comparability_to_model_p` ∈ {NONE, INDIRECT}) pin what a downstream consumer
   reads. The clause-aware over-claim word scan over the whole record is a SECOND, best-effort layer (NFKC-
   normalized + proximity-bounded negation so honest negated disclaimers pass and a far leading negator does
-  not exempt a later affirmation). It is a denylist and therefore NOT complete — a synonym or cross-script
-  homoglyph in free-text prose can still slip the word scan; the structural fields, not the prose, are the
-  binding honesty claim, and the merge is human-gated.
+  not exempt a later affirmation). It is a denylist and therefore NOT complete — a synonym, a cross-script
+  homoglyph, or a non-governing in-window negator ("no doubt … calibrated") in free-text prose can still slip
+  the word scan; the structural fields, not the prose, are the binding honesty claim, and the merge is
+  human-gated.
 - **No fabricated provenance.** A SHA exists only when actually `PINNED`; a blocked/un-attempted fetch
   records `sha256: null` + the status — the gap is flagged, not papered over.
 - **Reproducibility binding (extends WP7/WP8).** `code_version` pins the run-ledger snapshot the

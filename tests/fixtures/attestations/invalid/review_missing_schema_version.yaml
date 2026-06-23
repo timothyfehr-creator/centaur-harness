@@ -1,8 +1,0 @@
-# Defect: schema_version absent -> missing-schema-version. Otherwise valid.
-id: review-001
-target: scn
-code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-verdict: ACCEPT
-reviewer: "fixture-refuter"
-findings:
-  - "synthetic finding"

@@ -1,8 +1,0 @@
-# Defect: findings empty -> empty-findings. Otherwise valid.
-schema_version: "1.0"
-id: review-001
-target: scn
-code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-verdict: ACCEPT
-reviewer: "fixture-refuter"
-findings: []

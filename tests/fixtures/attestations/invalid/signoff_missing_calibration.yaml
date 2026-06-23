@@ -1,8 +1,0 @@
-# Defect: calibration_status absent -> missing-field (calibration_status). Otherwise valid.
-schema_version: "1.0"
-id: signoff-001
-review_ref: review-001
-code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-decision: APPROVED
-signed_by: "fixture-signer"
-date: "2026-06-22"

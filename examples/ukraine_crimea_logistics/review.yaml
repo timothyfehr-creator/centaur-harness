@@ -6,8 +6,9 @@ schema_version: "1.0"
 id: review-001
 target: ukraine_crimea_logistics
 code_version: "97082e1c743a3a1dbb6d1924a4d58d85b81fb29d"
-verdict: ACCEPT
-reviewer: "adversarial-review-panel (synthetic / ILLUSTRATIVE)"
+attestation_kind: SYNTHETIC_SELF_CHECK
+verdict: SELF_CHECK_PASSED
+reviewer: "synthetic self-check panel (NOT an independent refuter pass)"
 findings:
   - "ILLUSTRATIVE: scenario structure validated; branches mutually exclusive and probability-summed."
   - "ILLUSTRATIVE: REAL_WORLD_BASELINE state items resolve to sourced claims; labels honest."

@@ -3,6 +3,7 @@ schema_version: "1.0"
 id: signoff-001
 review_ref: review-001
 code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+attestation_kind: INDEPENDENT
 decision: APPROVED
 signed_by: "fixture-signer"
 date: "2026-06-22"

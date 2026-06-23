@@ -3,6 +3,7 @@ schema_version: "1.0"
 id: review-001
 target: scn
 code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+attestation_kind: INDEPENDENT
 verdict: ACCEPT
 reviewer: "fixture-refuter"
 findings:

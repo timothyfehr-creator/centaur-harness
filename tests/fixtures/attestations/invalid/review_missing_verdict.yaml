@@ -1,8 +1,0 @@
-# Defect: verdict absent -> missing-field (verdict). Otherwise valid.
-schema_version: "1.0"
-id: review-001
-target: scn
-code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-reviewer: "fixture-refuter"
-findings:
-  - "synthetic finding"

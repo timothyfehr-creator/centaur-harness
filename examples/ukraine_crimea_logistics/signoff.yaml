@@ -1,12 +1,13 @@
-# SYNTHETIC / ILLUSTRATIVE human-signoff attestation (WP8.1). Not a real approval; it exercises
-# the release gate. `review_ref` resolves to review.yaml's id; `code_version` pins the same
-# run_ledger snapshot (re-sign on drift, else `stale-attestation`). `calibration_status` is a
-# DECLARED honest posture (ILLUSTRATIVE) -- real calibration is WP9. See schemas/signoff.schema.md.
+# SYNTHETIC self-check signoff (WP8.1; relabeled WP-E2c.1). attestation_kind: SYNTHETIC_SELF_CHECK -- NOT a
+# real human approval; decision EXTERNAL_REVIEW_PENDING (a self-check cannot spell APPROVED). `review_ref`
+# resolves to review.yaml's id; `code_version` pins the run_ledger snapshot (re-sign on drift). calibration_status
+# is the DECLARED honest posture (ILLUSTRATIVE). See schemas/signoff.schema.md.
 schema_version: "1.0"
 id: signoff-001
 review_ref: review-001
 code_version: "97082e1c743a3a1dbb6d1924a4d58d85b81fb29d"
-decision: APPROVED
-signed_by: "T. Fehr (ILLUSTRATIVE)"
+attestation_kind: SYNTHETIC_SELF_CHECK
+decision: EXTERNAL_REVIEW_PENDING
+signed_by: "Centaur harness self-check (synthetic; pending independent review)"
 date: "2026-06-22"
 calibration_status: ILLUSTRATIVE

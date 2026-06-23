@@ -5,12 +5,16 @@ A scenario is releasable only if it carries an adversarial **review** (refuter v
 and a human **signoff**, both bound to the reproducible snapshot the run-ledger pins. This
 gate validates the two per-scenario attestation artifacts and the chain between them:
 
-  - structure: each is a flat mapping with its required fields + enums
-    (`review.verdict` in ACCEPT/REVISE; `signoff.decision` in APPROVED/REJECTED;
-    `signoff.calibration_status` in UNCALIBRATED/ILLUSTRATIVE/CALIBRATED -- the CALIBRATED
-    posture must resolve to a calibration record (WP9, `validate_calibration.py`));
-  - resolution: `review.target` names this scenario; `signoff.review_ref` resolves to the
-    review's id;
+  - structure: each is a flat mapping with its required fields + enums. `attestation_kind` in
+    INDEPENDENT/SYNTHETIC_SELF_CHECK PARTITIONS the legal verdict/decision: an INDEPENDENT attestation may
+    ACCEPT/APPROVE; a SYNTHETIC_SELF_CHECK (the loop checking its own work) may only SELF_CHECK_PASSED /
+    EXTERNAL_REVIEW_PENDING (or *_REVISE / SELF_CHECK_FAILED) -- it CANNOT spell APPROVED/ACCEPT, so a
+    self-approval can never be mistaken for an independent attestation. `signoff.calibration_status` in
+    UNCALIBRATED/ILLUSTRATIVE/CALIBRATED -- the CALIBRATED posture must resolve to a calibration record
+    (WP9, `validate_calibration.py`);
+  - resolution: `review.target` names this scenario; `signoff.review_ref` resolves to the review's id; the
+    two attestations' `attestation_kind` must agree; an INDEPENDENT attestation whose signer/reviewer reads
+    as automated is a `self-attested-independence` lie;
   - reproducibility binding: BOTH attestations pin the scenario run_ledger's `code_version`
     -- when a declared input drifts and the ledger is regenerated to a new code_version, the
     attestation goes STALE (`stale-attestation`) and must be re-reviewed / re-signed. This
@@ -33,6 +37,7 @@ run-ledger or scenario -- attestation over nothing must never report clean).
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -54,18 +59,41 @@ DEFAULT_SCENARIO = REPO_ROOT / "examples" / "ukraine_crimea_logistics"
 REVIEW_SPEC = {
     "required_str": ("schema_version", "id", "target", "code_version", "reviewer"),
     "required_int": (),
-    "enums": {"verdict": ("ACCEPT", "REVISE")},
+    "enums": {
+        "attestation_kind": ("INDEPENDENT", "SYNTHETIC_SELF_CHECK"),
+        "verdict": ("ACCEPT", "REVISE", "SELF_CHECK_PASSED", "SELF_CHECK_REVISE"),
+    },
 }
 SIGNOFF_SPEC = {
     "required_str": ("schema_version", "id", "review_ref", "code_version", "signed_by", "date"),
     "required_int": (),
     "enums": {
-        "decision": ("APPROVED", "REJECTED"),
+        "attestation_kind": ("INDEPENDENT", "SYNTHETIC_SELF_CHECK"),
+        "decision": ("APPROVED", "REJECTED", "EXTERNAL_REVIEW_PENDING", "SELF_CHECK_FAILED"),
         # WP9: CALIBRATED requires a resolving calibration.yaml (enforced by
         # validate_calibration.py); UNCALIBRATED / ILLUSTRATIVE need no record.
         "calibration_status": ("UNCALIBRATED", "ILLUSTRATIVE", "CALIBRATED"),
     },
 }
+
+# attestation_kind PARTITIONS the legal decision/verdict values. An INDEPENDENT attestation (a human or a
+# genuinely independent reviewer) can APPROVE / ACCEPT; a SYNTHETIC_SELF_CHECK (the loop checking its own
+# work) structurally CANNOT spell APPROVED / ACCEPT -- only "self-check passed, pending independent review"
+# or "self-check failed". This is what makes a self-approval impossible to mistake for an independent
+# attestation: the disclaimer is a PARSED ENUM, not a YAML comment that evaporates on load.
+_LEGAL_DECISION = {
+    "INDEPENDENT": ("APPROVED", "REJECTED"),
+    "SYNTHETIC_SELF_CHECK": ("EXTERNAL_REVIEW_PENDING", "SELF_CHECK_FAILED"),
+}
+_LEGAL_VERDICT = {
+    "INDEPENDENT": ("ACCEPT", "REVISE"),
+    "SYNTHETIC_SELF_CHECK": ("SELF_CHECK_PASSED", "SELF_CHECK_REVISE"),
+}
+_BLOCKING_DECISION = ("REJECTED", "SELF_CHECK_FAILED")     # -> exit 1 (release blocked)
+_BLOCKING_VERDICT = ("REVISE", "SELF_CHECK_REVISE")
+# a signer/reviewer string that reads as automated -- used to catch an INDEPENDENT kind that is really a
+# self-check wearing an "independent" label.
+_SYNTHETIC_SIGNER_RE = re.compile(r"synthetic|loop|illustrative|self.?check|autonomous", re.IGNORECASE)
 
 
 def _usable_doc(doc: object) -> bool:
@@ -118,13 +146,35 @@ def _resolution_problems(rdoc: dict, sdoc: dict, ledger_cv: str, scenario_name: 
         add("stale-attestation", signoff_where,
             f"signoff code_version {sdoc['code_version'][:12]}... != run-ledger "
             f"{ledger_cv[:12]}...; re-sign the current snapshot")
-    if rdoc["verdict"] == "REVISE":
-        add("revise-verdict", review_where,
-            "review verdict is REVISE -- the refuter wants changes; release is blocked until "
-            "the scenario is revised and re-reviewed to ACCEPT")
-    if sdoc["decision"] == "REJECTED":
-        add("rejected-decision", signoff_where,
-            "signoff decision is REJECTED -- release is blocked")
+    # attestation_kind must AGREE across the two artifacts, and each kind permits only its own
+    # decision/verdict values -- so a SYNTHETIC_SELF_CHECK can never spell APPROVED/ACCEPT.
+    rkind, skind = rdoc["attestation_kind"], sdoc["attestation_kind"]
+    if rkind != skind:
+        add("kind-mismatch", signoff_where,
+            f"review attestation_kind {rkind!r} != signoff attestation_kind {skind!r}")
+    else:
+        if rdoc["verdict"] not in _LEGAL_VERDICT[rkind]:
+            add("kind-verdict-mismatch", review_where,
+                f"verdict {rdoc['verdict']!r} is not legal for a {rkind} review "
+                f"(legal: {list(_LEGAL_VERDICT[rkind])})")
+        if sdoc["decision"] not in _LEGAL_DECISION[skind]:
+            add("kind-decision-mismatch", signoff_where,
+                f"decision {sdoc['decision']!r} is not legal for a {skind} signoff "
+                f"(legal: {list(_LEGAL_DECISION[skind])})")
+    # an INDEPENDENT attestation whose signer/reviewer reads as automated is a self-attested-independence lie
+    if rkind == "INDEPENDENT" and _SYNTHETIC_SIGNER_RE.search(rdoc["reviewer"]):
+        add("self-attested-independence", review_where,
+            f"attestation_kind is INDEPENDENT but reviewer {rdoc['reviewer']!r} reads as automated/synthetic")
+    if skind == "INDEPENDENT" and _SYNTHETIC_SIGNER_RE.search(sdoc["signed_by"]):
+        add("self-attested-independence", signoff_where,
+            f"attestation_kind is INDEPENDENT but signed_by {sdoc['signed_by']!r} reads as automated/synthetic")
+    # honesty blocks: a refuter wanting changes / a failed self-check / a REJECTED human signoff block release
+    if rdoc["verdict"] in _BLOCKING_VERDICT:
+        add("revise-verdict" if rdoc["verdict"] == "REVISE" else "self-check-revise", review_where,
+            f"review verdict is {rdoc['verdict']} -- changes wanted; release is blocked until re-reviewed")
+    if sdoc["decision"] in _BLOCKING_DECISION:
+        add("rejected-decision" if sdoc["decision"] == "REJECTED" else "self-check-failed", signoff_where,
+            f"signoff decision is {sdoc['decision']} -- release is blocked")
     return problems
 
 
@@ -177,8 +227,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  - {code}  {where}  {msg}", file=sys.stderr)
         return 1
 
-    print(f"review/signoff validation OK (verdict {rdoc['verdict']}, decision "
-          f"{sdoc['decision']}, calibration {sdoc['calibration_status']})")
+    print(f"review/signoff validation OK (kind {sdoc['attestation_kind']}, verdict {rdoc['verdict']}, "
+          f"decision {sdoc['decision']}, calibration {sdoc['calibration_status']})")
     return 0
 
 

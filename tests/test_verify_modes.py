@@ -82,6 +82,9 @@ def test_release_mode_exits_zero_on_attested_repo() -> None:
     assert result.returncode == 0, result.stderr
     out = result.stdout
     assert "release OK" in out
+    # WP-E2c.1: both example attestations are SYNTHETIC_SELF_CHECK -> the banner is honest, not "attested"
+    assert "SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED" in out
+    assert "complete and attested" not in out                # the bare-"attested" over-claim is gone
     assert "[PASS] review + signoff attestation" in out
     assert "[PASS] run-ledger / reproducibility" in out
     assert "calibration: ILLUSTRATIVE, UNCALIBRATED" in out   # both attested postures surfaced (het + ukraine)
@@ -123,48 +126,51 @@ def test_verify_draft_fails_when_a_gate_fails(monkeypatch) -> None:
 def test_verify_release_passes_when_all_gates_pass(monkeypatch) -> None:
     monkeypatch.setattr(
         verify, "_run_gate",
-        lambda root, script: {"name": script, "ok": True, "rc": 0, "detail": "OK"},
+        lambda root, script, extra_args=(): {"name": script, "ok": True, "rc": 0, "detail": "OK"},
     )
-    exit_code, results, calibration = verify.verify_release(REPO_ROOT)
+    exit_code, results, calibration, attestation = verify.verify_release(REPO_ROOT)
     assert exit_code == 0
     assert all(r["ok"] for r in results)
-    # scaffold (in-process) + the draft gates + the release gates (run-ledger, attestation)
-    assert len(results) == 1 + len(verify.DRAFT_GATES) + len(verify.RELEASE_GATES)
+    # scaffold + draft gates + release gates, with the PER_SCENARIO gates run once per attested scenario
+    n = len(verify._attested_scenario_dirs(REPO_ROOT))
+    assert len(results) == (1 + len(verify.DRAFT_GATES) + len(verify.RELEASE_GATES)
+                            + len(verify.PER_SCENARIO_GATES) * (n - 1))
     # distinct declared statuses across the attested scenarios (het UNCALIBRATED + ukraine ILLUSTRATIVE)
     assert calibration == "ILLUSTRATIVE, UNCALIBRATED"
+    assert attestation == "SYNTHETIC_SELF_CHECK"   # both example attestations are self-checks
 
 
 def test_verify_release_propagates_findings_as_one(monkeypatch) -> None:
     # A composed gate that reports findings (rc 1) must fail release with exit 1.
-    def fake_gate(root: Path, script: str) -> dict:
+    def fake_gate(root: Path, script: str, extra_args: tuple = ()) -> dict:
         ok = script != "validate_review_signoff.py"
         return {"name": script, "ok": ok, "rc": 0 if ok else 1, "detail": "OK" if ok else "blocked"}
 
     monkeypatch.setattr(verify, "_run_gate", fake_gate)
-    exit_code, _results, _cal = verify.verify_release(REPO_ROOT)
+    exit_code, _results, _cal, _att = verify.verify_release(REPO_ROOT)
     assert exit_code == 1  # a REVISE/REJECTED/stale attestation blocks release, never passes
 
 
 def test_verify_release_preserves_cannot_run_as_two(monkeypatch) -> None:
     # A gate that CANNOT RUN (rc 2) must propagate as exit 2, NOT collapse to 1 -- the
     # fail-closed distinction (harness error vs content finding) must survive composition.
-    def fake_gate(root: Path, script: str) -> dict:
+    def fake_gate(root: Path, script: str, extra_args: tuple = ()) -> dict:
         rc = 2 if script == "validate_run_ledger.py" else 0
         return {"name": script, "ok": rc == 0, "rc": rc, "detail": "fail-closed" if rc else "OK"}
 
     monkeypatch.setattr(verify, "_run_gate", fake_gate)
-    exit_code, _results, _cal = verify.verify_release(REPO_ROOT)
+    exit_code, _results, _cal, _att = verify.verify_release(REPO_ROOT)
     assert exit_code == 2
 
 
 def test_verify_release_worst_rc_when_mixed(monkeypatch) -> None:
     # findings (1) on one gate + cannot-run (2) on another -> the worst (2) wins.
-    def fake_gate(root: Path, script: str) -> dict:
+    def fake_gate(root: Path, script: str, extra_args: tuple = ()) -> dict:
         rc = {"validate_review_signoff.py": 1, "validate_run_ledger.py": 2}.get(script, 0)
         return {"name": script, "ok": rc == 0, "rc": rc, "detail": str(rc)}
 
     monkeypatch.setattr(verify, "_run_gate", fake_gate)
-    exit_code, _results, _cal = verify.verify_release(REPO_ROOT)
+    exit_code, _results, _cal, _att = verify.verify_release(REPO_ROOT)
     assert exit_code == 2
 
 

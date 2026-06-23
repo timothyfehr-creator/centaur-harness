@@ -14,10 +14,11 @@ schema_version: "1.0"
 id: signoff-001
 review_ref: review-001             # resolves to review.id
 code_version: "<run_ledger code_version>"
-decision: APPROVED                 # APPROVED | REJECTED
+attestation_kind: INDEPENDENT      # INDEPENDENT | SYNTHETIC_SELF_CHECK
+decision: APPROVED                 # INDEPENDENT: APPROVED|REJECTED ; SYNTHETIC_SELF_CHECK: EXTERNAL_REVIEW_PENDING|SELF_CHECK_FAILED
 signed_by: "T. Fehr"
 date: "2026-06-22"
-calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE
+calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
 ```
 
 ## Fields
@@ -28,13 +29,20 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE
 | `id` | yes | non-empty string |
 | `review_ref` | yes | non-empty string; **must equal the `review.id`** → else `unresolved-review-ref` |
 | `code_version` | yes | non-empty string; **must equal the scenario `run_ledger.yaml` `code_version`** → else `stale-attestation` |
-| `decision` | yes | enum `APPROVED` \| `REJECTED`; a `REJECTED` **blocks release** (`rejected-decision`) |
+| `attestation_kind` | yes | enum `INDEPENDENT` \| `SYNTHETIC_SELF_CHECK`. PARTITIONS the legal `decision`: a `SYNTHETIC_SELF_CHECK` (the harness checking its OWN work) cannot spell `APPROVED`. Must equal `review.attestation_kind` → else `kind-mismatch`; an INDEPENDENT kind whose `signed_by` reads as automated → `self-attested-independence` |
+| `decision` | yes | enum `APPROVED` \| `REJECTED` \| `EXTERNAL_REVIEW_PENDING` \| `SELF_CHECK_FAILED`, **legal by kind** (INDEPENDENT ⇒ APPROVED/REJECTED; SYNTHETIC_SELF_CHECK ⇒ EXTERNAL_REVIEW_PENDING/SELF_CHECK_FAILED) → else `kind-decision-mismatch`. A `REJECTED`/`SELF_CHECK_FAILED` **blocks release** (`rejected-decision`/`self-check-failed`) |
 | `signed_by` | yes | non-empty string (who signed) |
 | `date` | yes | ISO-8601 `YYYY-MM-DD` → else `invalid-format` |
 | `calibration_status` | yes | enum `UNCALIBRATED` \| `ILLUSTRATIVE` \| `CALIBRATED` — a **DECLARED** posture; **CALIBRATED requires a resolving `calibration.yaml`** record (WP9, [calibration.schema.md](calibration.schema.md)), the other two need none |
 
 ## Contract
 
+- **A synthetic self-check can never read as an independent attestation (WP-E2c.1).**
+  `attestation_kind: SYNTHETIC_SELF_CHECK` (the loop/harness checking its own work) admits only
+  `EXTERNAL_REVIEW_PENDING` / `SELF_CHECK_FAILED` — `APPROVED` is structurally unreachable — and `release`
+  reports `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED`. Only an `INDEPENDENT` signoff (a human / genuinely
+  independent reviewer signing the artifact) yields `complete and INDEPENDENTLY attested`. The disclaimer is
+  a parsed enum, not a YAML comment (comments evaporate on load).
 - **The approver declares the calibration posture.** `calibration_status` is the single source of
   truth for the §6 "calibration status" axis of `release`; it is surfaced in the release report
   line so a clean `release` is never mistaken for a calibrated/analytically-valid one
@@ -50,6 +58,7 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE
 ## Error codes
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `invalid-format`,
-`unresolved-review-ref`, `stale-attestation`, `rejected-decision`. Structure first (single-fault),
+`unresolved-review-ref`, `stale-attestation`, `rejected-decision`, `kind-mismatch`,
+`kind-decision-mismatch`, `self-check-failed`, `self-attested-independence`. Structure first (single-fault),
 then resolution/binding/honesty. Fail-closed (exit 2) on a missing / unreadable / empty signoff, or
 a broken/absent run-ledger or scenario.

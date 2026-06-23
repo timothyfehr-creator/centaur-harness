@@ -1,8 +1,0 @@
-# Defect: target absent -> missing-field (target). Otherwise valid.
-schema_version: "1.0"
-id: review-001
-code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-verdict: ACCEPT
-reviewer: "fixture-refuter"
-findings:
-  - "synthetic finding"

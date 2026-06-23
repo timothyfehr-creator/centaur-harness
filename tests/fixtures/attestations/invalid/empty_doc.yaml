@@ -1,1 +1,0 @@
-# Fail-closed fixture: an empty attestation (parses to null) -> exit 2, never "clean".

@@ -1,8 +1,0 @@
-# Defect: decision absent -> missing-field (decision). Otherwise valid.
-schema_version: "1.0"
-id: signoff-001
-review_ref: review-001
-code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-signed_by: "fixture-signer"
-date: "2026-06-22"
-calibration_status: ILLUSTRATIVE

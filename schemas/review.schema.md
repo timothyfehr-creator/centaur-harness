@@ -14,7 +14,8 @@ schema_version: "1.0"
 id: review-001
 target: ukraine_crimea_logistics   # the scenario this review covers
 code_version: "<run_ledger code_version>"
-verdict: ACCEPT                    # ACCEPT | REVISE
+attestation_kind: INDEPENDENT      # INDEPENDENT | SYNTHETIC_SELF_CHECK
+verdict: ACCEPT                    # INDEPENDENT: ACCEPT|REVISE ; SYNTHETIC_SELF_CHECK: SELF_CHECK_PASSED|SELF_CHECK_REVISE
 reviewer: "adversarial-review-panel"
 findings: ["...", "..."]           # >= 1 non-empty
 as_of_date: "2026-06-22"           # optional
@@ -28,7 +29,8 @@ as_of_date: "2026-06-22"           # optional
 | `id` | yes | non-empty string; the `signoff.review_ref` resolves to it |
 | `target` | yes | non-empty string; **must equal the scenario directory name** → else `unresolved-scenario-ref` |
 | `code_version` | yes | non-empty string; **must equal the scenario `run_ledger.yaml` `code_version`** → else `stale-attestation` |
-| `verdict` | yes | enum `ACCEPT` \| `REVISE`; a `REVISE` **blocks release** (`revise-verdict`) |
+| `attestation_kind` | yes | enum `INDEPENDENT` \| `SYNTHETIC_SELF_CHECK`. PARTITIONS the legal `verdict`: a `SYNTHETIC_SELF_CHECK` cannot spell `ACCEPT`. Must equal `signoff.attestation_kind` → else `kind-mismatch`; an INDEPENDENT kind whose `reviewer` reads as automated → `self-attested-independence` |
+| `verdict` | yes | enum `ACCEPT` \| `REVISE` \| `SELF_CHECK_PASSED` \| `SELF_CHECK_REVISE`, **legal by kind** (INDEPENDENT ⇒ ACCEPT/REVISE; SYNTHETIC_SELF_CHECK ⇒ SELF_CHECK_PASSED/SELF_CHECK_REVISE) → else `kind-verdict-mismatch`. A `REVISE`/`SELF_CHECK_REVISE` **blocks release** (`revise-verdict`/`self-check-revise`) |
 | `reviewer` | yes | non-empty string (who/what refuted) |
 | `findings` | yes | a list with **≥ 1** non-empty string → else `empty-findings` |
 | `as_of_date` | no | ISO-8601 `YYYY-MM-DD` if present |
@@ -37,6 +39,10 @@ as_of_date: "2026-06-22"           # optional
 
 - **STRUCTURAL + ATTESTATION ONLY.** A review existing with `verdict: ACCEPT` means a refuter
   pass was *recorded*, **not** that the analysis is valid (CONSTITUTION §3).
+- **A synthetic self-check is not an independent refuter pass (WP-E2c.1).** `attestation_kind:
+  SYNTHETIC_SELF_CHECK` admits only `SELF_CHECK_PASSED` / `SELF_CHECK_REVISE` — it cannot spell `ACCEPT`,
+  so the loop's own check can never be mistaken for an independent refuter accept. The kind must agree with
+  the signoff's.
 - **Reproducibility binding (extends WP7).** `code_version` pins the run-ledger snapshot the
   review covers. Because `review.yaml` is **not** a declared input of the run-ledger, committing
   it does not move the ledger SHA — the check is recorded-vs-recorded. When a **declared input**
@@ -48,6 +54,7 @@ as_of_date: "2026-06-22"           # optional
 ## Error codes
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `empty-findings`,
-`unresolved-scenario-ref`, `stale-attestation`, `revise-verdict`. Structure is validated first
+`unresolved-scenario-ref`, `stale-attestation`, `revise-verdict`, `kind-mismatch`,
+`kind-verdict-mismatch`, `self-check-revise`, `self-attested-independence`. Structure is validated first
 (single-fault); resolution/binding/honesty run only on a structurally clean review. Fail-closed
 (exit 2) on a missing / unreadable / empty review. See [signoff.schema.md](signoff.schema.md).

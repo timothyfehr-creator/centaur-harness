@@ -1,9 +1,0 @@
-# Defect: code_version != scn/run_ledger code_version -> stale-attestation. Otherwise valid.
-schema_version: "1.0"
-id: review-001
-target: scn
-code_version: "0000000000000000000000000000000000000000"
-verdict: ACCEPT
-reviewer: "fixture-refuter"
-findings:
-  - "synthetic finding"

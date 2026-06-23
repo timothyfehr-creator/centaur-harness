@@ -79,6 +79,11 @@ RELEASE_GATES = (
     ("turn replay", "validate_turn_replay.py"),
 )
 
+# These gates default to the Ukraine scenario when invoked bare, so `release` must run them ONCE PER
+# attested scenario dir (else a second scenario's attestation is never validated by `release` -- only by
+# CI). The rest are repo-wide already (engine-state / ruleset / turn-replay glob; feasibility globs).
+PER_SCENARIO_GATES = ("validate_review_signoff.py", "validate_calibration.py")
+
 # Checks the harness genuinely does NOT yet run. Draft AND release report these explicitly:
 # neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff (WP8), the
 # calibration RECORD (WP9), and turn replay (WP-E1: the engine run-record gate) are now gated and run
@@ -136,14 +141,14 @@ def _last_line(text: str) -> str:
     return ""
 
 
-def _run_gate(repo_root: Path, script: str) -> dict:
+def _run_gate(repo_root: Path, script: str, extra_args: tuple = ()) -> dict:
     """Subprocess one gate CLI against its repo-default artifacts, captured.
 
     Returns {"name", "ok", "rc", "detail"}. Fail-closed: if the gate cannot launch
     (OSError) or hangs past the timeout, it is reported as a FAILED check (rc 2), never
     silently dropped -- a check that could not run must fail the draft, honestly.
     """
-    cmd = [sys.executable, str(repo_root / "scripts" / script)]
+    cmd = [sys.executable, str(repo_root / "scripts" / script), *extra_args]
     try:
         proc = subprocess.run(
             cmd, cwd=repo_root, capture_output=True, text=True,
@@ -247,25 +252,57 @@ def _release_calibration(repo_root: Path) -> str:
     return ", ".join(sorted(set(statuses))) if statuses else "unknown"
 
 
-def verify_release(repo_root: Path) -> tuple[int, list[dict], str]:
-    """The release gate: draft's checks + reproducibility + the review/signoff attestation +
-    the calibration record. Returns (exit_code, check_results, calibration_status).
+def _attested_scenario_dirs(repo_root: Path) -> list[Path]:
+    """Example scenario dirs carrying a signoff.yaml (the attestation tier). The PER_SCENARIO_GATES run
+    once per such dir so `release` validates EVERY attested scenario, not just the Ukraine default."""
+    return sorted(p.parent for p in repo_root.glob("examples/*/signoff.yaml"))
 
-    Unlike draft, the exit code PROPAGATES THE WORST gate rc: 0 if all pass, 1 if any
-    reports findings, 2 if any cannot run / times out (a fail-closed gate must not collapse
-    to 1). Release adds no validation logic -- it composes the gates and reports (§3)."""
+
+def _release_attestation(repo_root: Path) -> str:
+    """The WORST attestation_kind across the example signoffs, for the release banner. Any
+    SYNTHETIC_SELF_CHECK present => the repo is self-verified, NOT independently attested."""
+    kinds: set[str] = set()
+    try:
+        import yaml
+        for so in sorted(repo_root.glob("examples/**/signoff.yaml")):
+            doc = yaml.safe_load(so.read_text(encoding="utf-8"))
+            kind = doc.get("attestation_kind") if isinstance(doc, dict) else None
+            if isinstance(kind, str) and kind.strip():
+                kinds.add(kind)
+    except Exception:
+        return "unknown"
+    if not kinds:
+        return "unknown"
+    return "SYNTHETIC_SELF_CHECK" if "SYNTHETIC_SELF_CHECK" in kinds else "INDEPENDENT"
+
+
+def verify_release(repo_root: Path) -> tuple[int, list[dict], str, str]:
+    """The release gate: draft's checks + reproducibility + the review/signoff attestation + the
+    calibration record + engine gates. Returns (exit_code, check_results, calibration_status, attestation_kind).
+
+    Unlike draft, the exit code PROPAGATES THE WORST gate rc: 0 if all pass, 1 if any reports findings,
+    2 if any cannot run / times out (a fail-closed gate must not collapse to 1). The PER_SCENARIO_GATES
+    run once per attested scenario dir (Option A) so a second scenario's attestation is not skipped.
+    Release adds no validation logic -- it composes the gates and reports (§3)."""
     _, results = verify_draft(repo_root)  # scaffold + DRAFT_GATES, reused
+    scenario_dirs = _attested_scenario_dirs(repo_root)
 
     for label, script in RELEASE_GATES:
-        result = _run_gate(repo_root, script)
-        result["name"] = f"{label} ({script})"
-        results.append(result)
+        if script in PER_SCENARIO_GATES and scenario_dirs:
+            for d in scenario_dirs:
+                result = _run_gate(repo_root, script, ("--scenario-dir", str(d)))
+                result["name"] = f"{label} ({script}: {d.name})"
+                results.append(result)
+        else:
+            result = _run_gate(repo_root, script)
+            result["name"] = f"{label} ({script})"
+            results.append(result)
 
     worst = max(r["rc"] for r in results)
-    return worst, results, _release_calibration(repo_root)
+    return worst, results, _release_calibration(repo_root), _release_attestation(repo_root)
 
 
-def _print_release_report(results: list[dict], exit_code: int, calibration: str) -> None:
+def _print_release_report(results: list[dict], exit_code: int, calibration: str, attestation: str) -> None:
     """The honest release report (CONSTITUTION §3): active checks, the still-not-built
     checks, and a success line that carries the declared calibration status and disclaims
     analytical validity. A clean release means complete + reproducible + attested, NOT valid."""
@@ -282,8 +319,14 @@ def _print_release_report(results: list[dict], exit_code: int, calibration: str)
         print(f"  [SKIP] {name}", file=out)
 
     if exit_code == 0:
-        print(f"release OK -- complete and attested; calibration: {calibration}; "
-              "STRUCTURAL + ATTESTATION ONLY, not an analytical-validity claim.", file=out)
+        if attestation == "SYNTHETIC_SELF_CHECK":
+            head = "release OK -- SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED"
+        elif attestation == "INDEPENDENT":
+            head = "release OK -- complete and INDEPENDENTLY attested"
+        else:
+            head = "release OK -- complete (attestation status unknown)"
+        print(f"{head}; calibration: {calibration}; STRUCTURAL + ATTESTATION ONLY, "
+              "not an analytical-validity claim.", file=out)
     else:
         failed = [r["name"] for r in results if not r["ok"]]
         print(f"release verification FAILED: {'; '.join(failed)}", file=out)
@@ -307,8 +350,8 @@ def run(mode: str, repo_root: Path) -> int:
         return exit_code
 
     if mode == "release":
-        exit_code, results, calibration = verify_release(repo_root)
-        _print_release_report(results, exit_code, calibration)
+        exit_code, results, calibration, attestation = verify_release(repo_root)
+        _print_release_report(results, exit_code, calibration, attestation)
         return exit_code
 
     # Genuinely unknown mode (e.g. a typo). Every valid mode is now implemented.

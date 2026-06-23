@@ -94,6 +94,9 @@ def project_turn_record(viewer: str, turn_record: dict, agent_ids: set | None = 
         check_fog_invariants(turn_record["resulting_state"], agent_ids)
     view_state = project_state(viewer, turn_record["resulting_state"])
     view_events = project_events(viewer, turn_record["event_batch"])
+    # ECI-1: an agent view is ALLOWLIST-CONSTRUCTED from exactly these keys -- record-level fields are
+    # never copied through, so the salvo `ruleset` (outcome-determining per-pairing p_intercept) and any
+    # future hidden top-level field cannot leak. The fixed key set is pinned by a projection test.
     return {
         "viewer": viewer,
         "turn": turn_record["turn"],

@@ -113,3 +113,27 @@ def test_fog_invariants_reject_adjudicator_agent_and_dupe_ids() -> None:
     dupe["state"]["entities"].append(dupe["state"]["entities"][0])  # duplicate blue_supply id
     with pytest.raises(ep.FogError):
         ep.check_fog_invariants(dupe, {"BLUE", "RED"})
+
+
+# --- ECI-1: the record-level `ruleset` (salvo per-pairing p_intercept) never reaches an agent -------
+
+AGENT_VIEW_KEYS = {"viewer", "turn", "state", "events", "projection_digest"}
+
+
+def test_agent_view_keys_are_a_fixed_allowlist() -> None:
+    # The projector is allowlist-CONSTRUCTED: an agent view is EXACTLY these keys. Pinning the set means
+    # a future top-level turn-record field (e.g. the salvo `ruleset`) cannot silently pass through.
+    view = ep.project_turn_record("BLUE", record([disp(30, "r1"), blk("r1")], 0))
+    assert set(view) == AGENT_VIEW_KEYS
+
+
+def test_record_level_ruleset_is_never_projected_to_an_agent() -> None:
+    # WP-E2a added a top-level `ruleset` to the turn record; per-pairing p_intercept is outcome-
+    # determining HIDDEN info (ECI-1). Two records identical except for `ruleset` must project to
+    # byte-identical BLUE views, and `ruleset` must appear NOWHERE in the projection.
+    base = record([disp(30, "r1"), blk("r1")], 0)
+    a = {**base, "ruleset": {"p_intercept_pct": 80}}
+    b = {**base, "ruleset": {"p_intercept_pct": 60}}
+    assert "ruleset" not in ep.project_turn_record("BLUE", a)
+    assert "p_intercept_pct" not in blue_bytes(a).decode("utf-8")
+    assert blue_bytes(a) == blue_bytes(b) == blue_bytes(base)

@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 from validate_schemas import (
@@ -62,7 +63,10 @@ HONESTY_LABELS = {"SINGLE_SOURCE", "COMPOSITE_BUCKET", "NOT_CORROBORATED", "SELF
 # the STRUCTURAL boundary -- the over-claim word scan is only defense-in-depth on top of them.
 COMPARISON_ROLE_ENUM = ("CONTEXT_ONLY",)            # the sole legal value -- never an input to calibration
 CALIBRATION_EFFECT_ENUM = ("NONE",)                 # the sole legal value -- the block moves no parameter
-COMPARABILITY_ENUM = ("NONE", "INDIRECT", "DIRECT")  # how comparable the observed band is to the model's p
+# how comparable the observed band is to the model's p. NO `DIRECT`: a directly-comparable band IS the model's
+# quantity -- that would be a calibration target, which contradicts a feasibility record + comparison_role:
+# CONTEXT_ONLY. A feasibility record's band is at most INDIRECTLY related.
+COMPARABILITY_ENUM = ("NONE", "INDIRECT")
 COVERAGE_ENUM = ("PARTIAL", "FULL")
 # provenance hash status: a hash exists ONLY when PINNED; otherwise it must be null (no fabrication).
 SHA_STATUS_ENUM = ("PINNED", "BLOCKED_FETCH_AUTH_GATED", "NOT_ATTEMPTED")
@@ -85,14 +89,32 @@ ALLOWED_CONTEXT = {"observed_range_pct", "coverage", "weeks_computed", "weeks_in
 ALLOWED_PROV_ENTRY = {"dataset", "version", "sha256", "sha256_status", "url", "snapshot_date"}
 ALLOWED_LDC = {"status", "values", "note"}
 ALLOWED_LDC_VALUE = {"month", "launched", "source"}
+# The keys at each level that LEGITIMATELY carry a nested object/list. Every OTHER allowed key must hold a
+# scalar -- so a smuggled comparison cannot ride along inside an allowed scalar key (the adversarial-verify
+# escape: `note: {matches_ground_truth: true}`). Unknown-KEY rejection alone is not the boundary; key+shape is.
+CONTAINER_TOP = {"binding_reasons", "external_context", "provenance", "launch_denominator_conflict"}
+CONTAINER_CONTEXT = {"observed_range_pct", "labels"}
+CONTAINER_LDC = {"values"}
+_SCALAR = (str, int, float, bool, type(None))
 
-# Affirmative over-claim words a record must never AFFIRM (it is a plausibility check, not validation).
+# Affirmative over-claim words a record must never AFFIRM. NOTE: this scan is DEFENSE-IN-DEPTH, not the
+# boundary -- a denylist of words can never be complete (synonyms, morphology). The STRUCTURAL boundary is
+# unknown-key + scalar-only + the pinned honesty enums; this just catches an affirmation in plain prose.
 _OVERCLAIM_WORD = re.compile(r"\b(calibrated|validated|corroborated|confirmed|verified)\b", re.IGNORECASE)
-# a negator EARLIER IN THE SAME CLAUSE exempts the word (the honest "not corroborated" / "never validated").
-_NEGATOR = re.compile(r"\b(not|never|no|none|cannot|without)\b|n't", re.IGNORECASE)
+_NEG_WORDS = {"not", "never", "no", "none", "cannot", "without"}
 # clause boundaries: sentence/clause punctuation + contrastive conjunctions, so "not calibrated BUT validated"
 # still fails on the second clause (clause-aware, not a single global lookbehind).
 _CLAUSE_SPLIT = re.compile(r"[.;,:]|\b(?:but|however|though|although|yet|while|whereas)\b", re.IGNORECASE)
+
+
+def _reject_nonscalar(obj: dict, container_keys: set[str], where: str, prefix: str, add) -> None:
+    """Append a `non-scalar-value` finding for any allowed key OUTSIDE `container_keys` whose value is a
+    dict/list. Closes the smuggle vector where an allowed SCALAR key (`note`, `source`, `version`, ...)
+    carries a nested object the unknown-key check never recurses into."""
+    for k, v in obj.items():
+        if k not in container_keys and not isinstance(v, _SCALAR):
+            add("non-scalar-value", f"{prefix}{k!r} must be a scalar (got {type(v).__name__}) -- an allowed "
+                                    f"scalar key cannot carry a nested object/list smuggling an un-vetted field")
 
 FEASIBILITY_SPEC = {
     "required_str": ("schema_version", "id", "target", "code_version", "attempted_observable",
@@ -103,14 +125,20 @@ FEASIBILITY_SPEC = {
 
 
 def _overclaim_hit(text: str) -> str | None:
-    """The first AFFIRMATIVE over-claim word in `text`, or None. Clause-aware: a negator earlier in the same
-    clause exempts the word -- so "not independently corroborated" / "never validated" PASS while "is
-    calibrated" / "fully validated" FAIL. Splitting on clause boundaries (incl. contrastive conjunctions)
-    means "not calibrated but validated" still FAILS on the second clause."""
-    for clause in _CLAUSE_SPLIT.split(text):
+    """The first AFFIRMATIVE over-claim word in `text`, or None. NFKC-normalized (folds full-width /
+    compatibility spellings; cross-script homoglyphs remain a known residual -- this scan is defense-in-depth,
+    not the boundary). A negator within the FEW WORDS IMMEDIATELY preceding the flagged word exempts it -- so "not independently
+    corroborated" / "never validated" PASS, while "no question that the model was validated" FAILS (the
+    leading negator is too far to govern the affirmation -- the earlier-fix fail-open). Clause splitting
+    (incl. contrastive conjunctions) keeps "not calibrated but validated" failing on the second clause."""
+    for clause in _CLAUSE_SPLIT.split(unicodedata.normalize("NFKC", text)):
         m = _OVERCLAIM_WORD.search(clause)
-        if m and not _NEGATOR.search(clause[:m.start()]):
-            return m.group(0)
+        if not m:
+            continue
+        preceding = re.findall(r"[a-z']+", clause[: m.start()].lower())[-4:]  # the 4 words before the hit
+        if any(w in _NEG_WORDS or w.endswith("n't") for w in preceding):
+            continue
+        return m.group(0)
     return None
 
 
@@ -148,6 +176,7 @@ def _context_problems(ctx: dict, where: str, add) -> None:
     validated forecast. When present it must carry the honesty enums (each pinned to its sole honest value),
     ranged numerics, and >= 1 honesty label -- so the block structurally cannot be a calibration input."""
     _reject_unknown(ctx, ALLOWED_CONTEXT, where, "external_context.", add)
+    _reject_nonscalar(ctx, CONTAINER_CONTEXT, where, "external_context.", add)
     # the machine-readable honesty enums -- the STRUCTURAL boundary (comparison_role/calibration_effect each
     # have one sole legal value, so the block can never affirm it is a calibration input or moves a param).
     for field, enum in (("comparison_role", COMPARISON_ROLE_ENUM),
@@ -163,9 +192,12 @@ def _context_problems(ctx: dict, where: str, add) -> None:
     if not _is_nonempty_str(ctx.get("caveat")):
         add("missing-field", "external_context.caveat is required (a non-empty disclaimer string)")
     labels = ctx.get("labels")
-    if not isinstance(labels, list) or not labels or not (set(labels) & HONESTY_LABELS):
+    # a non-empty list whose items are ALL strings (the all-str guard both rejects a dict/list item smuggling
+    # along AND keeps the set() below crash-safe -- an unhashable item would otherwise raise) with >= 1 marker.
+    if (not isinstance(labels, list) or not labels or not all(isinstance(x, str) for x in labels)
+            or not (set(labels) & HONESTY_LABELS)):
         add("unlabeled-band",
-            f"external_context.labels must be a non-empty list including >= 1 honesty marker "
+            f"external_context.labels must be a non-empty list of strings including >= 1 honesty marker "
             f"{sorted(HONESTY_LABELS)} -- an unlabeled context block reads as a validated forecast")
     rng = ctx.get("observed_range_pct")
     if not (isinstance(rng, list) and len(rng) == 2
@@ -190,9 +222,10 @@ def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
     def add(code: str, msg: str) -> None:
         problems.append((code, where, msg))
 
-    # unknown-key at the top level -- the structural boundary (a smuggled comparison/ground-truth field
-    # cannot ride along in a record the gate "doesn't look at").
+    # unknown-key + scalar-only at the top level -- the structural boundary (a smuggled comparison/ground-truth
+    # field cannot ride along, neither as an extra key NOR inside an allowed scalar key's value).
     _reject_unknown(fdoc, ALLOWED_TOP, where, "", add)
+    _reject_nonscalar(fdoc, CONTAINER_TOP, where, "", add)
 
     # feasibility_date: required_str catches absent; this catches a present-but-malformed value.
     fd = fdoc.get("feasibility_date")
@@ -226,6 +259,7 @@ def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
                     add("wrong-type", f"provenance[{i}] must be a mapping")
                     continue
                 _reject_unknown(entry, ALLOWED_PROV_ENTRY, where, f"provenance[{i}].", add)
+                _reject_nonscalar(entry, set(), where, f"provenance[{i}].", add)  # every prov field is scalar
                 st, sha = entry.get("sha256_status"), entry.get("sha256")
                 if st not in SHA_STATUS_ENUM:
                     add("invalid-enum", f"provenance[{i}].sha256_status must be one of {sorted(SHA_STATUS_ENUM)}; got {st!r}")
@@ -260,9 +294,11 @@ def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
                               "and a non-empty values list")
         else:
             _reject_unknown(ldc, ALLOWED_LDC, where, "launch_denominator_conflict.", add)
+            _reject_nonscalar(ldc, CONTAINER_LDC, where, "launch_denominator_conflict.", add)  # note/status scalar
             for i, v in enumerate(ldc["values"]):
                 if isinstance(v, dict):
                     _reject_unknown(v, ALLOWED_LDC_VALUE, where, f"launch_denominator_conflict.values[{i}].", add)
+                    _reject_nonscalar(v, set(), where, f"launch_denominator_conflict.values[{i}].", add)
 
     # Over-claim scan (defense-in-depth ON TOP of the structural honesty enums): NO affirmative
     # calibrated/validated/corroborated/confirmed/verified anywhere in the record (clause-aware -- honest

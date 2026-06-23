@@ -76,10 +76,10 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 | `authority` | yes | non-empty string (who/what produced the feasibility assessment) |
 | `assessor` | yes | non-empty string |
 | `feasibility_date` | yes | ISO-8601 `YYYY-MM-DD` → `invalid-format` |
-| `external_context` | no | if present: a mapping (replaces the retired `descriptive_band`). Carries machine-readable honesty fields, each REQUIRED: `comparison_role` (sole legal value `CONTEXT_ONLY`), `calibration_effect` (sole legal value `NONE`), `comparability_to_model_p` ∈ {`NONE`,`INDIRECT`,`DIRECT`}, `coverage` ∈ {`PARTIAL`,`FULL`}, `source_class` (enum), `caveat` (non-empty), `labels` (≥1 honesty marker → `unlabeled-band`), `observed_range_pct` (a `[low,high]` pair in 0..100, ordered → `out-of-range`), `weeks_computed`/`weeks_in_window` (ints, `weeks_computed ≤ weeks_in_window` → `out-of-range`). Unknown keys (e.g. a re-added `model_value_pct`) → `unknown-key`. No affirmative over-claim language anywhere → `over-claim-language` |
+| `external_context` | no | if present: a mapping (replaces the retired `descriptive_band`). Carries machine-readable honesty fields, each REQUIRED: `comparison_role` (sole legal value `CONTEXT_ONLY`), `calibration_effect` (sole legal value `NONE`), `comparability_to_model_p` ∈ {`NONE`,`INDIRECT`} (**no `DIRECT`** — a directly-comparable band IS a calibration target, contradicting a feasibility record), `coverage` ∈ {`PARTIAL`,`FULL`}, `source_class` (enum), `caveat` (non-empty), `labels` (a non-empty list of **strings** with ≥1 honesty marker → `unlabeled-band`), `observed_range_pct` (a `[low,high]` pair in 0..100, ordered → `out-of-range`), `weeks_computed`/`weeks_in_window` (ints, `weeks_computed ≤ weeks_in_window` → `out-of-range`). Unknown keys (e.g. a re-added `model_value_pct`) → `unknown-key`. No affirmative over-claim language anywhere → `over-claim-language` |
 | `provenance` | no | if present: a list; each entry's keys ⊆ {`dataset`,`version`,`sha256`,`sha256_status`,`url`,`snapshot_date`} (else `unknown-key`); `sha256_status` ∈ {`PINNED`,`BLOCKED_FETCH_AUTH_GATED`,`NOT_ATTEMPTED`}; `PINNED` ⇒ `sha256` is 64-hex (`invalid-format`); otherwise `sha256` MUST be `null` → `provenance-contradiction` (no fabricated hashes) |
 | `launch_denominator_conflict` | no | if present: `status` ∈ {`UNRESOLVED`,`RESOLVED`} + a non-empty `values` list; keys ⊆ {`status`,`values`,`note`} and each value's keys ⊆ {`month`,`launched`,`source`} (else `unknown-key`) |
-| *(any level)* | — | **Unknown keys are rejected at every object level** (`unknown-key`) — the structural boundary that kills `matches_ground_truth`/smuggled-comparison bypasses a word scan can't enumerate |
+| *(any level)* | — | **Unknown keys are rejected at every object level** (`unknown-key`), AND every allowed key that is not a known container (`binding_reasons`/`external_context`/`provenance`/`launch_denominator_conflict`; within those: `observed_range_pct`/`labels`/`values`) must hold a **scalar** — a dict/list under an allowed scalar key (e.g. `note: {matches_ground_truth: true}`) → `non-scalar-value`. Key + value-shape together are the structural boundary that kills smuggled-comparison bypasses a word scan can't enumerate |
 
 ## Contract — say-so-on-the-record (CONSTITUTION §5)
 
@@ -98,11 +98,15 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
   cannot be an input to calibration or move a parameter) and may never affirm validation language; the only
   path to a positive calibration claim is `calibration.yaml` under `CALIBRATED`, whose proof-obligation in
   `validate_calibration.py` is left untouched.
-- **Structure is the boundary, the word scan is defense-in-depth.** Unknown keys are rejected at every
-  object level (`unknown-key`), so a smuggled `matches_ground_truth`/comparison field cannot ride along in a
-  record the gate "doesn't look at"; the clause-aware over-claim word scan over the whole record is a
-  second layer (honest negated disclaimers — "not corroborated", "never validated" — pass; an affirmative
-  in any allowed free-text field fails).
+- **Structure is the boundary, the word scan is defense-in-depth.** The enforceable honesty is STRUCTURAL:
+  unknown keys are rejected at every object level (`unknown-key`), allowed scalar keys may not carry a nested
+  object (`non-scalar-value`), and the machine-readable enums (`comparison_role: CONTEXT_ONLY`,
+  `calibration_effect: NONE`, `comparability_to_model_p` ∈ {NONE, INDIRECT}) pin what a downstream consumer
+  reads. The clause-aware over-claim word scan over the whole record is a SECOND, best-effort layer (NFKC-
+  normalized + proximity-bounded negation so honest negated disclaimers pass and a far leading negator does
+  not exempt a later affirmation). It is a denylist and therefore NOT complete — a synonym or cross-script
+  homoglyph in free-text prose can still slip the word scan; the structural fields, not the prose, are the
+  binding honesty claim, and the merge is human-gated.
 - **No fabricated provenance.** A SHA exists only when actually `PINNED`; a blocked/un-attempted fetch
   records `sha256: null` + the status — the gap is flagged, not papered over.
 - **Reproducibility binding (extends WP7/WP8).** `code_version` pins the run-ledger snapshot the
@@ -113,9 +117,9 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 ## Error codes
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `invalid-format`, `empty-reasons`,
-`unknown-key`, `out-of-range`, `unlabeled-band`, `over-claim-language`, `provenance-contradiction`,
-`dossier-contradiction`, `missing-feasibility-record`, `disposition-mismatch`, `unresolved-feasibility-ref`,
-`stale-feasibility-binding`,
+`unknown-key`, `non-scalar-value`, `out-of-range`, `unlabeled-band`, `over-claim-language`,
+`provenance-contradiction`, `dossier-contradiction`, `missing-feasibility-record`, `disposition-mismatch`,
+`unresolved-feasibility-ref`, `stale-feasibility-binding`,
 `wrong-type`, `unresolved-scenario-ref`, `stale-feasibility`, `contradictory-status`. Structure first (single-fault),
 then resolution, then signoff consistency. Fail-closed (exit 2) on a missing/unreadable
 scenario/ledger/signoff, or a present-but-unparseable feasibility record.

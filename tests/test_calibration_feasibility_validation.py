@@ -106,6 +106,13 @@ _MUTATIONS = [
     # WP-E2c.1 #7-min: the dossier is external, so a hash exists iff PINNED (never fabricated).
     ("dossier_pinned_but_null", lambda d: d.__setitem__("dossier_sha256_status", "PINNED"), "invalid-format", "dossier_sha256"),
     ("dossier_hash_under_external", lambda d: d.__setitem__("dossier_sha256", "a" * 64), "dossier-contradiction", "dossier_sha256"),
+    # WP-E2c.1 C2.1 (adversarial-verify fix): an allowed SCALAR key cannot carry a nested object smuggling a
+    # comparison (the unknown-key check alone only inspects keys, not value shape).
+    ("smuggle_in_ldc_note", lambda d: d["launch_denominator_conflict"].__setitem__("note", {"matches_ground_truth": True}), "non-scalar-value", "note"),
+    ("smuggle_in_prov_version", lambda d: d["provenance"][0].__setitem__("version", {"matches_ground_truth": True}), "non-scalar-value", "version"),
+    ("smuggle_in_ldc_value_source", lambda d: d["launch_denominator_conflict"]["values"][0].__setitem__("source", {"model_p": 62}), "non-scalar-value", "source"),
+    # DIRECT comparability is gone: a directly-comparable band IS a calibration target, contradicting CONTEXT_ONLY.
+    ("direct_comparability", lambda d: d["external_context"].__setitem__("comparability_to_model_p", "DIRECT"), "invalid-enum", "comparability_to_model_p"),
     ("unresolved_target", lambda d: d.__setitem__("target", "some-other-scenario"), "unresolved-scenario-ref", "some-other-scenario"),
     ("stale_code_version", lambda d: d.__setitem__("code_version", "f" * 40), "stale-feasibility", "feasibility code_version"),
 ]
@@ -150,6 +157,36 @@ def test_overclaim_after_negation_in_later_clause_fails(tmp_path: Path) -> None:
     result = _run("--scenario-dir", str(SCN), "--feasibility", str(rec))
     assert result.returncode == 1
     assert "over-claim-language" in result.stderr and "validated" in result.stderr
+
+
+@pytest.mark.parametrize("caveat,word", [
+    # C2.1 fail-OPEN fix: a far/unrelated leading negator must NOT exempt a later affirmation.
+    ("there is no question that the model was validated against ground truth", "validated"),
+    ("background context; aside from no caveats, the band is fully calibrated", "calibrated"),
+    # C2.1 NFKC: a full-width-Unicode spelling of a flagged word is normalized then caught.
+    ("the model is fully ｖａｌｉｄａｔｅｄ to the data", "validated"),
+])
+def test_overclaim_evasions_now_caught(caveat: str, word: str, tmp_path: Path) -> None:
+    doc = copy.deepcopy(BASE)
+    doc["external_context"]["caveat"] = caveat
+    rec = tmp_path / "calibration_feasibility.yaml"
+    rec.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
+    result = _run("--scenario-dir", str(SCN), "--feasibility", str(rec))
+    assert result.returncode == 1, f"evasion not caught: {result.stdout}"
+    assert "over-claim-language" in result.stderr
+
+
+def test_dict_in_labels_fails_gracefully_no_crash(tmp_path: Path) -> None:
+    # C2.1 robustness: a dict item in labels (would crash set(labels)) is a graceful finding, not a traceback,
+    # and does not ride along even when a valid marker is also present.
+    doc = copy.deepcopy(BASE)
+    doc["external_context"]["labels"] = ["SINGLE_SOURCE", {"matches_ground_truth": True}]
+    rec = tmp_path / "calibration_feasibility.yaml"
+    rec.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
+    result = _run("--scenario-dir", str(SCN), "--feasibility", str(rec))
+    assert result.returncode == 1, result.stdout                 # a finding, NOT a crash (which would be rc 1 w/ traceback or rc !=1)
+    assert "unlabeled-band" in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 # --- the committed het record passes the hardened gate ------------------------------------

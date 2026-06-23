@@ -265,13 +265,18 @@ def _attested_scenario_dirs(repo_root: Path) -> list[Path]:
 
 
 def _release_attestation(repo_root: Path) -> str:
-    """The WORST attestation_kind across the example signoffs, for the release banner. Any
-    SYNTHETIC_SELF_CHECK present => the repo is self-verified, NOT independently attested."""
+    """The WORST attestation_kind across the example attestations, for the release banner. Any
+    SYNTHETIC_SELF_CHECK present => the repo is self-verified, NOT independently attested. Globs BOTH
+    review.yaml and signoff.yaml (matching _attested_scenario_dirs) so a review-only INDEPENDENT scenario
+    cannot make the computed string drift toward 'INDEPENDENT' -- the banner string and the coverage set
+    are over the same artifacts. (Defense-in-depth: the banner only ever prints on a clean exit 0 anyway.)"""
     kinds: set[str] = set()
     try:
         import yaml
-        for so in sorted(repo_root.glob("examples/**/signoff.yaml")):
-            doc = yaml.safe_load(so.read_text(encoding="utf-8"))
+        attestations = sorted(repo_root.glob("examples/**/signoff.yaml")) + \
+            sorted(repo_root.glob("examples/**/review.yaml"))
+        for path in attestations:
+            doc = yaml.safe_load(path.read_text(encoding="utf-8"))
             kind = doc.get("attestation_kind") if isinstance(doc, dict) else None
             if isinstance(kind, str) and kind.strip():
                 kinds.add(kind)

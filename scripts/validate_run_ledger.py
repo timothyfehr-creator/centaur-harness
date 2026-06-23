@@ -114,7 +114,9 @@ def validate_structure(doc: dict, where: str) -> list[tuple[str, str, str]]:
     for placeholder in ("rng_seeds", "llm_steps"):
         if placeholder in doc and doc[placeholder] is not None:
             add("invalid-format",
-                f"{placeholder} must be null (no engine yet); got {doc[placeholder]!r}")
+                f"{placeholder} must be null: the engine is DETERMINISTIC (no RNG draws) and has no "
+                f"LLM-assisted step; populating these awaits a future REVIEWED WP (stochastic resolver / "
+                f"LLM tier), not an in-place change. got {doc[placeholder]!r}")
     for i, entry in enumerate(doc["inputs"]):
         tag = f"inputs[{i}]"
         if not isinstance(entry, dict):

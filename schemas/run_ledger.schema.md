@@ -18,8 +18,8 @@ tool_version: "1.0"
 generated_by: "validate_run_ledger.py --write"
 inputs:                           # one {path, sha256} per declared input, sorted by path
   - {path: "<repo-root POSIX path>", sha256: "<64 lowercase hex>"}
-rng_seeds: null                   # PLACEHOLDER — null until an engine exists
-llm_steps: null                   # PLACEHOLDER — null until an LLM step exists
+rng_seeds: null                   # null: the engine is DETERMINISTIC (no RNG draws) — see Fields
+llm_steps: null                   # null: no LLM-assisted step in the pipeline — see Fields
 ```
 
 ## Fields
@@ -33,8 +33,8 @@ llm_steps: null                   # PLACEHOLDER — null until an LLM step exist
 | `generated_by` | yes | — | non-empty provenance breadcrumb |
 | `inputs[].path` | yes | — | non-empty repo-root POSIX path |
 | `inputs[].sha256` | yes | as-of/content | `^[0-9a-f]{64}$` (raw-bytes sha256) |
-| `rng_seeds` | — | RNG seeds | must be `null` (no engine yet) |
-| `llm_steps` | — | model/version/prompt/temperature | must be `null` (no LLM step yet) |
+| `rng_seeds` | — | RNG seeds | must be `null` — the engine is DETERMINISTIC (no RNG draws); a stochastic resolver is a future REVIEWED WP, not an in-place change |
+| `llm_steps` | — | model/version/prompt/temperature | must be `null` — no LLM-assisted step in the pipeline; an LLM tier is a future REVIEWED WP |
 
 ## Declared inputs (the reproducibility surface)
 

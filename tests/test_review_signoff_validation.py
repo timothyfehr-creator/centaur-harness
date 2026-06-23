@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 VALIDATOR = REPO_ROOT / "scripts" / "validate_review_signoff.py"
 FIX = REPO_ROOT / "tests" / "fixtures" / "attestations"
 SCN, VALID, INVALID = FIX / "scn", FIX / "valid", FIX / "invalid"
+REVIEWERS = FIX / "reviewers.yaml"   # allow-lists the valid INDEPENDENT fixtures' reviewer/signer
 EXAMPLE = REPO_ROOT / "examples" / "ukraine_crimea_logistics"
 REVIEW_BASE = yaml.safe_load((VALID / "review.yaml").read_text())     # valid INDEPENDENT + ACCEPT
 SIGNOFF_BASE = yaml.safe_load((VALID / "signoff.yaml").read_text())   # valid INDEPENDENT + APPROVED
@@ -35,7 +36,8 @@ def _run_pair(tmp_path: Path, review: dict, signoff: dict) -> subprocess.Complet
     r, s = tmp_path / "review.yaml", tmp_path / "signoff.yaml"
     r.write_text(yaml.safe_dump(review, sort_keys=False, allow_unicode=True))
     s.write_text(yaml.safe_dump(signoff, sort_keys=False, allow_unicode=True))
-    return _run("--scenario-dir", str(SCN), "--review", str(r), "--signoff", str(s))
+    return _run("--scenario-dir", str(SCN), "--review", str(r), "--signoff", str(s),
+                "--reviewers", str(REVIEWERS))
 
 
 def _findings(stderr: str) -> list[str]:
@@ -107,7 +109,9 @@ _MUTATIONS = [
     ("synthetic_signoff_approved", lambda r, s: (r.update(attestation_kind="SYNTHETIC_SELF_CHECK", verdict="SELF_CHECK_PASSED"), s.update(attestation_kind="SYNTHETIC_SELF_CHECK"))[0], "kind-decision-mismatch", "APPROVED"),
     ("synthetic_review_accept", lambda r, s: (r.update(attestation_kind="SYNTHETIC_SELF_CHECK"), s.update(attestation_kind="SYNTHETIC_SELF_CHECK", decision="EXTERNAL_REVIEW_PENDING"))[0], "kind-verdict-mismatch", "ACCEPT"),
     ("self_check_failed", lambda r, s: (r.update(attestation_kind="SYNTHETIC_SELF_CHECK", verdict="SELF_CHECK_PASSED"), s.update(attestation_kind="SYNTHETIC_SELF_CHECK", decision="SELF_CHECK_FAILED"))[0], "self-check-failed", "SELF_CHECK_FAILED"),
-    ("self_attested_independence", _s(lambda d: d.__setitem__("signed_by", "autonomous loop self-check")), "self-attested-independence", "signed_by"),
+    # an INDEPENDENT signer not in the allow-list cannot mint its own independence (HOLE-1 fix: allow-list, not regex)
+    ("unlisted_independent_signer", _s(lambda d: d.__setitem__("signed_by", "some unlisted signer")), "unlisted-independent-reviewer", "signed_by"),
+    ("unlisted_independent_reviewer", _r(lambda d: d.__setitem__("reviewer", "some unlisted reviewer")), "unlisted-independent-reviewer", "reviewer"),
 ]
 
 
@@ -120,6 +124,23 @@ def test_invalid_single_fault(name, mutate, code, token, tmp_path: Path) -> None
     findings = _findings(result.stderr)
     assert len(findings) == 1, f"{name}: expected one finding; got {findings}"
     assert code in findings[0] and token in findings[0], f"{name}: {findings[0]!r}"
+
+
+# --- HOLE-1: independence is allow-listed, not self-declared --------------------------
+
+def test_default_empty_allowlist_rejects_self_declared_independent(tmp_path: Path) -> None:
+    # With the REAL repo allow-list (attestation_reviewers.yaml, empty), a self-declared INDEPENDENT pair
+    # cannot pass -- nothing is independent until a human lists a reviewer. Proves the regex was not the
+    # only guard: even an allow-list-free synthetic signer that dodges every flagged word is rejected.
+    r, s = copy.deepcopy(REVIEW_BASE), copy.deepcopy(SIGNOFF_BASE)
+    r.update(reviewer="Centaur Harness Agent v3")     # dodges any synthetic-word regex; still unlisted
+    s.update(signed_by="automated pipeline")
+    rp, sp = tmp_path / "review.yaml", tmp_path / "signoff.yaml"
+    rp.write_text(yaml.safe_dump(r, sort_keys=False))
+    sp.write_text(yaml.safe_dump(s, sort_keys=False))
+    result = _run("--scenario-dir", str(SCN), "--review", str(rp), "--signoff", str(sp))  # default allow-list
+    assert result.returncode == 1, result.stdout
+    assert "unlisted-independent-reviewer" in result.stderr
 
 
 # --- fail-closed (exit 2): never report clean on nothing ------------------------------

@@ -29,7 +29,7 @@ as_of_date: "2026-06-22"           # optional
 | `id` | yes | non-empty string; the `signoff.review_ref` resolves to it |
 | `target` | yes | non-empty string; **must equal the scenario directory name** → else `unresolved-scenario-ref` |
 | `code_version` | yes | non-empty string; **must equal the scenario `run_ledger.yaml` `code_version`** → else `stale-attestation` |
-| `attestation_kind` | yes | enum `INDEPENDENT` \| `SYNTHETIC_SELF_CHECK`. PARTITIONS the legal `verdict`: a `SYNTHETIC_SELF_CHECK` cannot spell `ACCEPT`. Must equal `signoff.attestation_kind` → else `kind-mismatch`; an INDEPENDENT kind whose `reviewer` reads as automated → `self-attested-independence` |
+| `attestation_kind` | yes | enum `INDEPENDENT` \| `SYNTHETIC_SELF_CHECK`. PARTITIONS the legal `verdict`: a `SYNTHETIC_SELF_CHECK` cannot spell `ACCEPT`. Must equal `signoff.attestation_kind` → else `kind-mismatch`; an INDEPENDENT kind whose `reviewer` is not in the human-controlled independent-reviewer allow-list (`attestation_reviewers.yaml`) → `unlisted-independent-reviewer` |
 | `verdict` | yes | enum `ACCEPT` \| `REVISE` \| `SELF_CHECK_PASSED` \| `SELF_CHECK_REVISE`, **legal by kind** (INDEPENDENT ⇒ ACCEPT/REVISE; SYNTHETIC_SELF_CHECK ⇒ SELF_CHECK_PASSED/SELF_CHECK_REVISE) → else `kind-verdict-mismatch`. A `REVISE`/`SELF_CHECK_REVISE` **blocks release** (`revise-verdict`/`self-check-revise`) |
 | `reviewer` | yes | non-empty string (who/what refuted) |
 | `findings` | yes | a list with **≥ 1** non-empty string → else `empty-findings` |
@@ -43,6 +43,12 @@ as_of_date: "2026-06-22"           # optional
   SYNTHETIC_SELF_CHECK` admits only `SELF_CHECK_PASSED` / `SELF_CHECK_REVISE` — it cannot spell `ACCEPT`,
   so the loop's own check can never be mistaken for an independent refuter accept. The kind must agree with
   the signoff's.
+- **Independence is allow-listed, not self-declared.** `attestation_kind: INDEPENDENT` is honored only when
+  `reviewer` appears verbatim in the repo's human-controlled `attestation_reviewers.yaml`
+  (`independent_reviewers`). The list starts **empty**, so until a human adds a genuinely-independent reviewer
+  nothing is INDEPENDENT — a self-declared `INDEPENDENT` label cannot mint its own independence
+  (`unlisted-independent-reviewer`). A regex on the signer name is a heuristic, not a boundary; the allow-list
+  is the boundary.
 - **Reproducibility binding (extends WP7).** `code_version` pins the run-ledger snapshot the
   review covers. Because `review.yaml` is **not** a declared input of the run-ledger, committing
   it does not move the ledger SHA — the check is recorded-vs-recorded. When a **declared input**
@@ -55,6 +61,6 @@ as_of_date: "2026-06-22"           # optional
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `empty-findings`,
 `unresolved-scenario-ref`, `stale-attestation`, `revise-verdict`, `kind-mismatch`,
-`kind-verdict-mismatch`, `self-check-revise`, `self-attested-independence`. Structure is validated first
+`kind-verdict-mismatch`, `self-check-revise`, `unlisted-independent-reviewer`. Structure is validated first
 (single-fault); resolution/binding/honesty run only on a structurally clean review. Fail-closed
 (exit 2) on a missing / unreadable / empty review. See [signoff.schema.md](signoff.schema.md).

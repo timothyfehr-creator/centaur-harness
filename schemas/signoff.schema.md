@@ -29,7 +29,7 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
 | `id` | yes | non-empty string |
 | `review_ref` | yes | non-empty string; **must equal the `review.id`** → else `unresolved-review-ref` |
 | `code_version` | yes | non-empty string; **must equal the scenario `run_ledger.yaml` `code_version`** → else `stale-attestation` |
-| `attestation_kind` | yes | enum `INDEPENDENT` \| `SYNTHETIC_SELF_CHECK`. PARTITIONS the legal `decision`: a `SYNTHETIC_SELF_CHECK` (the harness checking its OWN work) cannot spell `APPROVED`. Must equal `review.attestation_kind` → else `kind-mismatch`; an INDEPENDENT kind whose `signed_by` reads as automated → `self-attested-independence` |
+| `attestation_kind` | yes | enum `INDEPENDENT` \| `SYNTHETIC_SELF_CHECK`. PARTITIONS the legal `decision`: a `SYNTHETIC_SELF_CHECK` (the harness checking its OWN work) cannot spell `APPROVED`. Must equal `review.attestation_kind` → else `kind-mismatch`; an INDEPENDENT kind whose `signed_by` is not in the human-controlled independent-reviewer allow-list (`attestation_reviewers.yaml`) → `unlisted-independent-reviewer` |
 | `decision` | yes | enum `APPROVED` \| `REJECTED` \| `EXTERNAL_REVIEW_PENDING` \| `SELF_CHECK_FAILED`, **legal by kind** (INDEPENDENT ⇒ APPROVED/REJECTED; SYNTHETIC_SELF_CHECK ⇒ EXTERNAL_REVIEW_PENDING/SELF_CHECK_FAILED) → else `kind-decision-mismatch`. A `REJECTED`/`SELF_CHECK_FAILED` **blocks release** (`rejected-decision`/`self-check-failed`) |
 | `signed_by` | yes | non-empty string (who signed) |
 | `date` | yes | ISO-8601 `YYYY-MM-DD` → else `invalid-format` |
@@ -43,6 +43,11 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
   reports `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED`. Only an `INDEPENDENT` signoff (a human / genuinely
   independent reviewer signing the artifact) yields `complete and INDEPENDENTLY attested`. The disclaimer is
   a parsed enum, not a YAML comment (comments evaporate on load).
+- **Independence is allow-listed, not self-declared.** `attestation_kind: INDEPENDENT` is honored only when
+  `signed_by` appears verbatim in the repo's human-controlled `attestation_reviewers.yaml`
+  (`independent_reviewers`). The list starts **empty**, so a self-declared `INDEPENDENT` label on a synthetic
+  signer cannot mint its own independence (`unlisted-independent-reviewer`); a human adding a reviewer there
+  is a conspicuous, merge-reviewable act. A regex on the signer name is a heuristic, not the boundary.
 - **The approver declares the calibration posture.** `calibration_status` is the single source of
   truth for the §6 "calibration status" axis of `release`; it is surfaced in the release report
   line so a clean `release` is never mistaken for a calibrated/analytically-valid one
@@ -59,6 +64,6 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `invalid-format`,
 `unresolved-review-ref`, `stale-attestation`, `rejected-decision`, `kind-mismatch`,
-`kind-decision-mismatch`, `self-check-failed`, `self-attested-independence`. Structure first (single-fault),
+`kind-decision-mismatch`, `self-check-failed`, `unlisted-independent-reviewer`. Structure first (single-fault),
 then resolution/binding/honesty. Fail-closed (exit 2) on a missing / unreadable / empty signoff, or
 a broken/absent run-ledger or scenario.

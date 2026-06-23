@@ -253,9 +253,15 @@ def _release_calibration(repo_root: Path) -> str:
 
 
 def _attested_scenario_dirs(repo_root: Path) -> list[Path]:
-    """Example scenario dirs carrying a signoff.yaml (the attestation tier). The PER_SCENARIO_GATES run
-    once per such dir so `release` validates EVERY attested scenario, not just the Ukraine default."""
-    return sorted(p.parent for p in repo_root.glob("examples/*/signoff.yaml"))
+    """Example scenario dirs carrying EITHER a review.yaml OR a signoff.yaml, at ANY depth (the attestation
+    tier). The PER_SCENARIO_GATES run once per such dir so `release` validates EVERY attested scenario, not
+    just the Ukraine default. Globbing review-OR-signoff at `**` (not `signoff.yaml` at `*`) closes two
+    coverage holes: a nested attestation, and a half-pair (review without signoff, or vice versa) -- which
+    then FAILS CLOSED in validate_review_signoff.py rather than being silently skipped. The set must be a
+    superset of _release_attestation's `**`-globbed signoffs, so the banner can never out-claim coverage."""
+    dirs = {p.parent for p in repo_root.glob("examples/**/signoff.yaml")}
+    dirs |= {p.parent for p in repo_root.glob("examples/**/review.yaml")}
+    return sorted(dirs)
 
 
 def _release_attestation(repo_root: Path) -> str:

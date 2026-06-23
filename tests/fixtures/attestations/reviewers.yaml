@@ -1,0 +1,6 @@
+# Test-only independent-reviewer allow-list: the valid INDEPENDENT fixtures' reviewer/signer.
+# The real repo attestation_reviewers.yaml is EMPTY (no independent reviewer yet); tests that
+# exercise the INDEPENDENT-valid path point --reviewers here so the allow-list check passes.
+independent_reviewers:
+  - "fixture-refuter"
+  - "fixture-signer"

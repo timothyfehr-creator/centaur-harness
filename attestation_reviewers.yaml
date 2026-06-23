@@ -1,0 +1,16 @@
+# Independent-reviewer allow-list (WP-E2c.1).
+#
+# An attestation whose `attestation_kind: INDEPENDENT` is HONORED by
+# scripts/validate_review_signoff.py only if its `reviewer` (review) / `signed_by` (signoff) string
+# appears verbatim below. A regex heuristic on the signer name is NOT a security boundary -- a synthetic
+# signer that dodges a few flagged words evades it; a positive allow-list is the boundary.
+#
+# This list is HUMAN-CONTROLLED. It starts EMPTY: until a human adds a genuinely-independent reviewer,
+# NOTHING can be INDEPENDENT, so every attestation in the repo must be a SYNTHETIC_SELF_CHECK and the
+# release banner reads "SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED". An autonomous loop must NOT add
+# itself here -- a change to this file is conspicuous and is reviewed at the human-gated merge.
+#
+# Add an entry ONLY when that reviewer has genuinely, independently reviewed the scenario package, e.g.:
+#   independent_reviewers:
+#     - "Jane Doe <jane@example.org>"     # external red-team, 2026-06-23
+independent_reviewers: []

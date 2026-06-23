@@ -37,7 +37,6 @@ run-ledger or scenario -- attestation over nothing must never report clean).
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 
@@ -91,9 +90,22 @@ _LEGAL_VERDICT = {
 }
 _BLOCKING_DECISION = ("REJECTED", "SELF_CHECK_FAILED")     # -> exit 1 (release blocked)
 _BLOCKING_VERDICT = ("REVISE", "SELF_CHECK_REVISE")
-# a signer/reviewer string that reads as automated -- used to catch an INDEPENDENT kind that is really a
-# self-check wearing an "independent" label.
-_SYNTHETIC_SIGNER_RE = re.compile(r"synthetic|loop|illustrative|self.?check|autonomous", re.IGNORECASE)
+# An attestation_kind: INDEPENDENT signoff/review is honored ONLY if its signer/reviewer is in the
+# HUMAN-CONTROLLED independent-reviewer allow-list. A regex heuristic is NOT a security boundary (a synthetic
+# signer that dodges a few words evades it); a positive allow-list is. The list starts EMPTY: until a human
+# adds a genuinely-independent reviewer, nothing can be INDEPENDENT, so every attestation must be a
+# SYNTHETIC_SELF_CHECK. (The loop adding itself to the list is a conspicuous, merge-reviewable change.)
+INDEPENDENT_REVIEWERS_DEFAULT = REPO_ROOT / "attestation_reviewers.yaml"
+
+
+def _load_independent_reviewers(path: Path) -> set[str]:
+    """The allow-listed independent-reviewer identities. Absent / unreadable / malformed -> the EMPTY set
+    (strict: no INDEPENDENT attestation is honored), never a fail-open."""
+    doc, err = load_registry(path)
+    if err is not None or not isinstance(doc, dict):
+        return set()
+    listed = doc.get("independent_reviewers")
+    return {x for x in listed if _is_nonempty_str(x)} if isinstance(listed, list) else set()
 
 
 def _usable_doc(doc: object) -> bool:
@@ -124,7 +136,8 @@ def _structural_problems(rdoc: dict, sdoc: dict, review_where: str,
 
 
 def _resolution_problems(rdoc: dict, sdoc: dict, ledger_cv: str, scenario_name: str,
-                         review_where: str, signoff_where: str) -> list[tuple[str, str, str]]:
+                         review_where: str, signoff_where: str,
+                         reviewers: set[str]) -> list[tuple[str, str, str]]:
     """Cross-refs + ledger-binding + honesty. Assumes structure already passed, so every
     fixture trips exactly one of these (the others stay valid)."""
     problems: list[tuple[str, str, str]] = []
@@ -161,13 +174,16 @@ def _resolution_problems(rdoc: dict, sdoc: dict, ledger_cv: str, scenario_name: 
             add("kind-decision-mismatch", signoff_where,
                 f"decision {sdoc['decision']!r} is not legal for a {skind} signoff "
                 f"(legal: {list(_LEGAL_DECISION[skind])})")
-    # an INDEPENDENT attestation whose signer/reviewer reads as automated is a self-attested-independence lie
-    if rkind == "INDEPENDENT" and _SYNTHETIC_SIGNER_RE.search(rdoc["reviewer"]):
-        add("self-attested-independence", review_where,
-            f"attestation_kind is INDEPENDENT but reviewer {rdoc['reviewer']!r} reads as automated/synthetic")
-    if skind == "INDEPENDENT" and _SYNTHETIC_SIGNER_RE.search(sdoc["signed_by"]):
-        add("self-attested-independence", signoff_where,
-            f"attestation_kind is INDEPENDENT but signed_by {sdoc['signed_by']!r} reads as automated/synthetic")
+    # an INDEPENDENT attestation is honored ONLY if its reviewer/signer is in the human-controlled allow-list
+    # -- a self-check cannot mint its own independence by self-declaring the kind.
+    if rkind == "INDEPENDENT" and rdoc["reviewer"] not in reviewers:
+        add("unlisted-independent-reviewer", review_where,
+            f"attestation_kind is INDEPENDENT but reviewer {rdoc['reviewer']!r} is not in the "
+            f"independent-reviewer allow-list")
+    if skind == "INDEPENDENT" and sdoc["signed_by"] not in reviewers:
+        add("unlisted-independent-reviewer", signoff_where,
+            f"attestation_kind is INDEPENDENT but signed_by {sdoc['signed_by']!r} is not in the "
+            f"independent-reviewer allow-list")
     # honesty blocks: a refuter wanting changes / a failed self-check / a REJECTED human signoff block release
     if rdoc["verdict"] in _BLOCKING_VERDICT:
         add("revise-verdict" if rdoc["verdict"] == "REVISE" else "self-check-revise", review_where,
@@ -192,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="scenario dir holding review/signoff/run_ledger/scenario (default: Ukraine example)")
     parser.add_argument("--review", default=None, help="review.yaml path (default: <scenario-dir>/review.yaml)")
     parser.add_argument("--signoff", default=None, help="signoff.yaml path (default: <scenario-dir>/signoff.yaml)")
+    parser.add_argument("--reviewers", default=str(INDEPENDENT_REVIEWERS_DEFAULT),
+                        help="independent-reviewer allow-list (default: repo attestation_reviewers.yaml)")
     args = parser.parse_args(argv)
 
     scenario_dir = Path(args.scenario_dir).resolve()
@@ -213,13 +231,14 @@ def main(argv: list[str] | None = None) -> int:
         return _fail_closed(serr or f"{signoff_path} is not a usable signoff (need a non-empty mapping)")
 
     review_where, signoff_where = _display(review_path), _display(signoff_path)
+    reviewers = _load_independent_reviewers(Path(args.reviewers).resolve())
 
     # Structure first; on a structural fault STOP (so structural fixtures stay single-fault
     # and resolution never runs against a malformed attestation).
     problems = _structural_problems(rdoc, sdoc, review_where, signoff_where)
     if not problems:
         problems = _resolution_problems(rdoc, sdoc, ldoc["code_version"], scenario_dir.name,
-                                        review_where, signoff_where)
+                                        review_where, signoff_where, reviewers)
 
     if problems:
         print(f"review/signoff validation FAILED: {len(problems)} problem(s):", file=sys.stderr)

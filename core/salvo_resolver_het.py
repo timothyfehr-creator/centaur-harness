@@ -198,11 +198,17 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
             continue
         prio = r["allocation_priority"][t]
         supply_ceiling = sum(magazine_remaining[i] // r["per_pairing"][t][i] for i in prio)
-        base_cap = min(launched[t], supply_ceiling, r["weekly_engagement_capacity"][t])
-        if launched[t] > r["saturation_threshold"][t]:
-            attempted_cap = (base_cap * r["saturation_retained_pct"][t]) // 100
+        # Saturation degrades the volume the defense can ENGAGE (a tracking/launch limit, not a supply
+        # limit). MONOTONE + continuous at the threshold T: at/below T it engages all; above T each extra
+        # launch adds only retained% of an engagement, so attempts never DROP as launches rise (the old
+        # ``base_cap * retained`` step was discontinuous/non-monotonic: 1050->1050 but 1051->735). Then
+        # bound by the magazine (supply) and the hard weekly engagement capacity.
+        sat_t = r["saturation_threshold"][t]
+        if launched[t] > sat_t:
+            engageable = sat_t + (r["saturation_retained_pct"][t] * (launched[t] - sat_t)) // 100
         else:
-            attempted_cap = base_cap
+            engageable = launched[t]
+        attempted_cap = min(engageable, supply_ceiling, r["weekly_engagement_capacity"][t])
         remaining = attempted_cap
         for i in prio:
             per = r["per_pairing"][t][i]
@@ -214,10 +220,12 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
             if remaining == 0:
                 break
 
-    # Per-threat-SUBPOOL capped intercept: floor ONCE per (t,i) cell, then floor the sub-pool vs launched_t.
-    intercepted = {t: min(launched[t],
-                          sum((fired[t].get(i, 0) * p_used[t]) // 100 for i in r["allocation_priority"][t]))
-                   for t in threats}
+    # Per-threat-SUBPOOL capped intercept: sum the attempts across interceptor types, apply the THREAT
+    # rate, and floor ONCE (NOT per (t,i) cell -- per-cell flooring discards fractional kills when a threat
+    # is split across types, e.g. 2 launched via two 80% types -> floor(0.8)+floor(0.8)=0 vs round-once 1).
+    # The remaining sub-1 per-WEEK flooring residual is a documented, deferred minor bias (systematic-down,
+    # negligible at realistic salvo volumes of hundreds/wk; only material at <~5 engagements/threat/week).
+    intercepted = {t: min(launched[t], (sum(fired[t].values()) * p_used[t]) // 100) for t in threats}
     leaked = {t: launched[t] - intercepted[t] for t in threats}          # >= 0 by the cap; NO max(0,..)
     # Consumed tracked SEPARATELY and NOT capped by launched -> over-firing still burns the magazine.
     consumed = {i: sum(used[t].get(i, 0) for t in threats) for i in interceptors}

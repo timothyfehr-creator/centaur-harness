@@ -1,8 +1,9 @@
 """Unit tests for core/salvo_resolver_het.py (WP-E2b1 heterogeneous salvo).
 
 Covers the red-team-mandated math fixes: per-threat-subpool capped intercept, consumed-decoupled-from-
-launched, no max(0,..) clamp, saturation, ruleset-range rejection (the crash-class fix), grain (round-once-
-per-cell), hybrid culmination (sustained-k streak), reduce-sole-constructor, and homogeneous-equivalence.
+launched, no max(0,..) clamp, MONOTONE saturation (F3), round-ONCE-per-threat-subpool grain (F4),
+ruleset-range rejection (the crash-class fix), hybrid culmination (sustained-k streak),
+reduce-sole-constructor, and homogeneous-equivalence.
 """
 from __future__ import annotations
 
@@ -123,6 +124,31 @@ def test_saturation_degrades_intercepts_above_threshold() -> None:
     leaked_sat = evmap(sh.resolve(base, sat)[0])["STRIKES_LEAKED"]["drone"]
     leaked_unsat = evmap(sh.resolve(base, unsat)[0])["STRIKES_LEAKED"]["drone"]
     assert leaked_sat > leaked_unsat
+
+
+def test_saturation_is_monotone_across_the_threshold() -> None:
+    # F3 regression (external red-team): above the threshold, attempts (hence intercepts, with abundant
+    # supply) must be MONOTONE NON-DECREASING in launches. The old discontinuous ``base_cap * retained``
+    # form fell off a cliff at threshold+1 (launch 1000 -> 800 intercepts, launch 1001 -> 400).
+    sat = {"saturation_threshold": {"drone": 1000, "cruise": 1000, "ballistic": 1000},
+           "saturation_retained_pct": {"drone": 50, "cruise": 70, "ballistic": 70}}
+    prev = -1
+    for launch in (500, 999, 1000, 1001, 1200, 1500, 2000, 5000, 50000):
+        state = make_state(drone=(launch, 1_000_000, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0),
+                           short=(10_000_000, 0), longi=(0, 0), pac3=(0, 0))
+        got = evmap(sh.resolve(state, _full_ruleset(**sat))[0])["STRIKES_INTERCEPTED"]["drone"]
+        assert got >= prev, f"intercepts dropped at launch={launch}: {got} < {prev} (non-monotone saturation)"
+        prev = got
+
+
+def test_multi_cell_grain_invariance_rounds_once_per_threat() -> None:
+    # F4 regression (external red-team): a threat split across two interceptor types at 80% with 2 launched
+    # must intercept 1 (round-once: floor(2*0.8)=1), NOT 0 (per-cell: floor(0.8)+floor(0.8)=0). The split is
+    # forced by a short magazine of exactly 1, spilling the 2nd attempt to ``long`` (both at per=1).
+    state = make_state(drone=(2, 100, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0),
+                       short=(1, 0), longi=(100, 0), pac3=(0, 0))
+    ev = evmap(sh.resolve(state)[0])
+    assert ev["STRIKES_INTERCEPTED"]["drone"] == 1     # round-once-per-threat; per-cell flooring gives 0
 
 
 # --- ruleset-range rejection (the crash-class fix) ----------------------------------------------------

@@ -151,6 +151,21 @@ def test_multi_cell_grain_invariance_rounds_once_per_threat() -> None:
     assert ev["STRIKES_INTERCEPTED"]["drone"] == 1     # round-once-per-threat; per-cell flooring gives 0
 
 
+def test_ballistic_band_brackets_central_and_propagates() -> None:
+    # F5 regression (external red-team): the reported ballistic leak band must BRACKET the deterministic
+    # central count even for SMALL salvos (the old form floored both edges -> leak_high could fall BELOW
+    # the central count, an inverted/decorative band). The band holds the magazine-constrained attempts
+    # fixed and varies the exogenous leak rate, so it is non-decorative and its effective-rate edges order.
+    for lb in (1, 2, 3, 5, 7, 11, 37, 80, 150):
+        state = make_state(ballistic=(lb, 100000, 0), drone=(0, 0, 0), cruise=(0, 0, 0),
+                           short=(0, 0), longi=(0, 0), pac3=(1_000_000, 0))
+        ev = sh.resolve(state)[0]
+        band = status(ev, "BALLISTIC_LEAK_BAND")
+        central = evmap(ev)["STRIKES_LEAKED"]["ballistic"]
+        assert band["leak_low"] <= central <= band["leak_high"], (lb, band, central)
+        assert band["eff_pct_low"] <= band["eff_pct_high"]          # worst-case intercept <= best-case
+
+
 # --- ruleset-range rejection (the crash-class fix) ----------------------------------------------------
 
 def _full_ruleset(**over) -> dict:

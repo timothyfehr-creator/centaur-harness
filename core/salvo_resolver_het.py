@@ -52,8 +52,8 @@ DEFAULT_RULESET = {
     "weekly_engagement_capacity": {"drone": 100000, "cruise": 100000, "ballistic": 100000},
     "saturation_threshold": {"drone": 1050, "cruise": 1050, "ballistic": 1050},
     "saturation_retained_pct": {"drone": 70, "cruise": 70, "ballistic": 70},
-    "ballistic_leak_floor_pct": 20,                        # EXOGENOUS sourced RANGE (not calibrated)
-    "ballistic_leak_high_pct": 35,
+    "ballistic_leak_floor_pct": 60,    # EXOGENOUS ASSUMED RANGE (dossier-illustrative; ballistic is HARD)
+    "ballistic_leak_high_pct": 80,     # 60-80% leak = 20-40% intercept (was backwards: 65-80% intercept)
     "lethality_floor_pct": 50,                             # LOCKED (doctrinal: sustained sub-50% = culmination)
     "culmination_k_weeks": 3,                              # LOCKED (3 consecutive weeks below the floor)
     "culmination_threshold": 120,                          # ASSUMED — the inventory limb
@@ -251,10 +251,27 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
     inventory_below = sum(magazine_after.values()) < r["culmination_threshold"]
     culminated = inventory_below or lethality_collapsed
 
-    # Ballistic exogenous leak BAND (reporting metadata; does NOT change the deterministic counts).
+    # Ballistic exogenous-rate SENSITIVITY band. NOT decorative: it holds the magazine-constrained attempts
+    # FIXED and varies the leak rate across [floor, central, high], so the leaked band BRACKETS the
+    # deterministic central count by construction (more intercept -> less leak, same flooring direction) and
+    # it propagates into a reported effective-rate band + a culmination-verdict indeterminacy flag. It does
+    # NOT alter the committed deterministic counts (those use the central rate). Float-free: the intercept
+    # path uses //, so no ceil/float is needed to keep low <= central <= high.
     lb = launched.get("ballistic", 0)
-    leak_low = (lb * r["ballistic_leak_floor_pct"]) // 100
-    leak_high = (lb * r["ballistic_leak_high_pct"]) // 100
+    ball_attempts = sum(fired.get("ballistic", {}).values())
+
+    def _ball_intercept(intercept_pct: int) -> int:
+        return min(lb, (ball_attempts * intercept_pct) // 100)
+
+    intc_ball_best = _ball_intercept(100 - r["ballistic_leak_floor_pct"])    # low leak  -> most intercepts
+    intc_ball_worst = _ball_intercept(100 - r["ballistic_leak_high_pct"])    # high leak -> fewest intercepts
+    leak_low, leak_high = lb - intc_ball_best, lb - intc_ball_worst          # low <= central <= high
+    eff_ball_high = (intc_ball_best * 100) // lb if lb > 0 else 0            # best-case effective rate
+    eff_ball_low = (intc_ball_worst * 100) // lb if lb > 0 else 0           # worst-case effective rate
+    # Does the band straddle the ballistic floor? (output-only -- never feeds the deterministic streak,
+    # which uses the central count alone.) ball_floor is the scalar floor here; F6 makes it per-class.
+    ball_floor = r["lethality_floor_pct"]
+    ballistic_verdict_indeterminate = (lb > 0 and eff_ball_low < ball_floor <= eff_ball_high)
 
     events: list = []
     seq = [0]
@@ -275,7 +292,9 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
         emit(event_type="RESUPPLY_STRIKE", threat=t, count=production[t])
     for i in interceptors:
         emit(event_type="RESUPPLY_INTERCEPTOR", interceptor_type=i, count=resupply[i])
-    emit(event_type="BALLISTIC_LEAK_BAND", leak_low=leak_low, leak_high=leak_high)
+    emit(event_type="BALLISTIC_LEAK_BAND", leak_low=leak_low, leak_high=leak_high,
+         eff_pct_low=eff_ball_low, eff_pct_high=eff_ball_high,
+         verdict_indeterminate=ballistic_verdict_indeterminate)
     emit(event_type="LETHALITY_STATUS", effective_intercept_pct=effective_intercept_pct,
          below_floor=below_floor, streak=new_streak, lethality_collapsed=lethality_collapsed)
     emit(event_type="MAGAZINE_STATUS", magazine_non_depleting=magazine_non_depleting,

@@ -43,11 +43,11 @@ params:
     cruise:    {value: 70, source: "EXPLORATORY."}
     ballistic: {value: 70, source: "EXPLORATORY."}
   ballistic_leak_floor_pct:
-    value: 20
-    source: "SOURCED-RANGE (exogenous) — ballistic intercept is hard; range low. NOT a calibrated cell."
+    value: 60
+    source: "ASSUMED — dossier-illustrative (WP-E2c_DATA_DOSSIER: RUSI/FT ballistic intercept ~6-37%, i.e. leak ~63-94%). 60% leak = best-case ~40% intercept (competent, well-supplied IADS). The band is set to the OPERATIONAL portion above the ballistic culmination floor so the floor detects COLLAPSE/degradation (driven endogenously by magazine starvation), not ballistics' inherent marginality; worse dossier outcomes (6-20% intercept) are reproduced via depletion, not nominal p. Corrects the prior backwards 20-35% leak (= 65-80% intercept). NOT a calibrated cell."
   ballistic_leak_high_pct:
-    value: 35
-    source: "SOURCED-RANGE (exogenous) — range high."
+    value: 80
+    source: "ASSUMED — dossier-illustrative; 80% leak = worst-case ~20% intercept. The band low<=central<=high propagates (holding magazine-constrained attempts fixed) into the reported effective-rate band + a culmination-verdict indeterminacy flag — no longer decorative."
   lethality_floor_pct:
     value: 50
     source: "ASSUMED, LOCKED by the user 2026-06-23 on doctrinal grounds (sustained sub-50% effective interception = the defense can no longer sustain protection; Clausewitz culmination). NOT backtest-calibratable (the Sept-Nov 2024 window has no culmination event); locked BEFORE E2c (no post-hoc tuning). Regime-dependent: inert in a magazine-cliff, load-bearing under gradual degradation."

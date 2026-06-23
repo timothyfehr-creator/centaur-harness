@@ -84,7 +84,7 @@ def test_release_mode_exits_zero_on_attested_repo() -> None:
     assert "release OK" in out
     assert "[PASS] review + signoff attestation" in out
     assert "[PASS] run-ledger / reproducibility" in out
-    assert "calibration: ILLUSTRATIVE" in out          # the declared status is surfaced
+    assert "calibration: ILLUSTRATIVE, UNCALIBRATED" in out   # both attested postures surfaced (het + ukraine)
     assert "STRUCTURAL + ATTESTATION ONLY" in out
     assert "not an analytical-validity claim" in out
     # turn replay now RUNS in release (WP-E1) -- a [PASS], no longer a [SKIP]
@@ -130,7 +130,8 @@ def test_verify_release_passes_when_all_gates_pass(monkeypatch) -> None:
     assert all(r["ok"] for r in results)
     # scaffold (in-process) + the draft gates + the release gates (run-ledger, attestation)
     assert len(results) == 1 + len(verify.DRAFT_GATES) + len(verify.RELEASE_GATES)
-    assert calibration == "ILLUSTRATIVE"  # read from the real example signoff (not stubbed)
+    # distinct declared statuses across the attested scenarios (het UNCALIBRATED + ukraine ILLUSTRATIVE)
+    assert calibration == "ILLUSTRATIVE, UNCALIBRATED"
 
 
 def test_verify_release_propagates_findings_as_one(monkeypatch) -> None:

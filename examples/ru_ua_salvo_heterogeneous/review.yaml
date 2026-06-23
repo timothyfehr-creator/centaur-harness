@@ -1,0 +1,15 @@
+# WP-E2c adversarial-review attestation for the heterogeneous salvo (SYNTHETIC / ILLUSTRATIVE, like the
+# Ukraine example -- it exercises the release attestation gate end-to-end). It does NOT stand in for the
+# substantive EXTERNAL red-team round that NO-GO'd WP-E2b and was remediated in WP-E2b3 (recorded in
+# centaur_engine_planning/). code_version pins the run_ledger snapshot; re-review on drift (else
+# stale-attestation). See schemas/review.schema.md.
+schema_version: "1.0"
+id: review-ru-ua-salvo-het-001
+target: ru_ua_salvo_heterogeneous
+code_version: "735ed3d65ddaab82973ef0dcb8993855c25fcb80"
+verdict: ACCEPT
+reviewer: "adversarial-review (synthetic / ILLUSTRATIVE); the substantive external red-team round is recorded in centaur_engine_planning/"
+findings:
+  - "ILLUSTRATIVE: the heterogeneous salvo resolver is structurally sound after the WP-E2b3 fixes (monotone saturation, round-once-per-threat intercept, per-class weakest-link culmination, demand-based magazine indicator); all release gates green, properties guarded by standing tests."
+  - "UNCALIBRATED: the kinetic drone-intercept channel is NOT calibratable against the available data -- see calibration_feasibility.yaml (verdict NOT_FEASIBLE). The model asserts nothing about the real world; ACCEPT means 'a structurally-sound UNCALIBRATED illustrative model', not analytical validity."
+as_of_date: "2026-06-23"

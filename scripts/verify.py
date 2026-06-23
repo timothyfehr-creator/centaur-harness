@@ -219,26 +219,31 @@ def _print_draft_report(results: list[dict], exit_code: int) -> None:
 
 
 def _release_calibration(repo_root: Path) -> str:
-    """The declared calibration_status of the example scenario's signoff for the release report
-    line, enriched with the record's metric + N when CALIBRATED. Informational only -- the
-    calibration gate (not this line) enforces; 'unknown' if unreadable."""
+    """The declared calibration_status across the example scenarios' signoffs for the release report
+    line -- the DISTINCT statuses, sorted (a CALIBRATED status is enriched with its record's metric + N).
+    With more than one attested scenario the line shows every posture present (e.g. an UNCALIBRATED
+    engine scenario alongside an ILLUSTRATIVE one), never an arbitrary first. Informational only -- the
+    calibration gate (not this line) enforces; 'unknown' if none readable."""
     signoffs = sorted(repo_root.glob("examples/**/signoff.yaml"))
     if not signoffs:
         return "unknown"
+    statuses: list[str] = []
     try:
         import yaml
-        doc = yaml.safe_load(signoffs[0].read_text(encoding="utf-8"))
-        status = doc.get("calibration_status") if isinstance(doc, dict) else None
-        if not (isinstance(status, str) and status.strip()):
-            return "unknown"
-        if status == "CALIBRATED":
-            cal_path = signoffs[0].parent / "calibration.yaml"
-            cal = yaml.safe_load(cal_path.read_text(encoding="utf-8")) if cal_path.is_file() else None
-            if isinstance(cal, dict) and cal.get("metric") and cal.get("metric_value") is not None:
-                return f"{status} ({cal['metric']} {cal['metric_value']}, N={cal.get('outcome_count')})"
-        return status
+        for so in signoffs:
+            doc = yaml.safe_load(so.read_text(encoding="utf-8"))
+            status = doc.get("calibration_status") if isinstance(doc, dict) else None
+            if not (isinstance(status, str) and status.strip()):
+                continue
+            if status == "CALIBRATED":
+                cal_path = so.parent / "calibration.yaml"
+                cal = yaml.safe_load(cal_path.read_text(encoding="utf-8")) if cal_path.is_file() else None
+                if isinstance(cal, dict) and cal.get("metric") and cal.get("metric_value") is not None:
+                    status = f"{status} ({cal['metric']} {cal['metric_value']}, N={cal.get('outcome_count')})"
+            statuses.append(status)
     except Exception:
         return "unknown"
+    return ", ".join(sorted(set(statuses))) if statuses else "unknown"
 
 
 def verify_release(repo_root: Path) -> tuple[int, list[dict], str]:

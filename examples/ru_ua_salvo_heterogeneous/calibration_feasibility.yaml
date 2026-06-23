@@ -1,0 +1,38 @@
+# WP-E2c calibration-FEASIBILITY record for the heterogeneous salvo. The HONEST artifact the data
+# dossier's verdict demands: the KINETIC drone-intercept channel CANNOT be calibrated against the
+# available Sept-Nov 2024 data. calibration_status stays UNCALIBRATED -- this is NOT a calibration claim.
+# Every number below is transcribed from the dossier (provenance pinned, or flagged BLOCKED); none is fit.
+# See schemas/calibration_feasibility.schema.md + the dossier referenced under dossier_ref.
+schema_version: "1.0"
+id: calfeas-ru-ua-drone-001
+target: ru_ua_salvo_heterogeneous
+code_version: "735ed3d65ddaab82973ef0dcb8993855c25fcb80"
+verdict: NOT_FEASIBLE
+attempted_observable: "weekly KINETIC drone intercept-% = shot_down / (launched - decoys - EW_lost), Sept-Nov 2024 -- the quantity p_intercept_pct[drone] would calibrate to"
+binding_reasons:
+  - "Kinetic-vs-jammed split NOT separable: the UA Air Force reports a two-bucket split (shot-down vs 'locationally lost'), but the 'lost' bucket is a 5-reason composite (EW, decoys, fuel exhaustion, radar-loss, structural defects) per the piterfm data dictionary; Defense Express (quoting the General Staff) and ISIS confirm 'shot down/suppressed' lumps kinetic + EW. The model's intercepted is KINETIC (consumes an interceptor), so the observable cannot be isolated from the reported data -- mapping lost~jammed is an ASSUMPTION, not a reported field."
+  - "No method-independent corroboration: every quantitative source (CSIS, ISW, ISIS, the piterfm / ChrisO tracker, KAS) re-transcribes the single UA Air Force (kpszsu) daily self-report; ABC News states it 'cannot independently verify' the figures. The only genuinely independent signals are qualitative (Belarus Hajun incursion counts), not the rate."
+dossier_ref: "centaur_engine_planning/WP-E2c_DATA_DOSSIER.md (gathered 2026-06-23; multi-source live web sweep + a main-loop CSIS spot-check; verdict STAYS_UNCALIBRATED)"
+upgrade_gap: "a genuinely method-independent (impact-site / visual-OSINT / satellite-derived) weekly kinetic interception estimate for the Sept-Nov 2024 window -- none was found in the sweep. Absent that, the channel stays UNCALIBRATED; this record upgrades only via a calibration.yaml under CALIBRATED, never by flipping a verdict here."
+authority: "WP-E2c data dossier (multi-source live web sweep, 2026-06-23); primary source class SELF_REPORTED_BELLIGERENT (UA Air Force)"
+assessor: "Centaur WP-E2c data-gathering pass (multi-agent web sweep + main-loop CSIS spot-check)"
+feasibility_date: "2026-06-23"
+descriptive_band:
+  model_value_pct: 80                   # the ASSUMED p_intercept_pct[drone] in rules.yaml -- a placeholder, NOT a fit
+  observed_range_pct: [46, 77]          # UA-AF weekly KINETIC shot-down share; fell 76.6% (W36) -> 46.3% (W48) across the window
+  source_class: SELF_REPORTED_BELLIGERENT
+  labels: [SINGLE_SOURCE, COMPOSITE_BUCKET, NOT_CORROBORATED, ILLUSTRATIVE]
+  caveat: "descriptive plausibility check ONLY; the model's 80% is an ASSUMED placeholder, not fit to this range; the observed range is single-source UA-AF self-report over a composite bucket, not corroborated"
+provenance:
+  - dataset: "piterfm 'Unmanned Systems Tracker' (UA Air Force daily reports, via Kaggle)"
+    version: "v196"
+    sha256: null
+    sha256_status: BLOCKED_FETCH_AUTH_GATED   # Kaggle/Facebook auth-gated; the CSV SHA256 is not pinnable in an autonomous run -- flagged, never fabricated
+launch_denominator_conflict:
+  status: UNRESOLVED
+  values:
+    - {month: "2024-09", launched: 1410, source: "ArmyInform / General Staff, 2024-11-05"}
+    - {month: "2024-09", launched: 1331, source: "FM Sybiha via Ukrainska Pravda"}
+    - {month: "2024-10", launched: 2072, source: "ArmyInform / General Staff, 2024-11-05"}
+    - {month: "2024-10", launched: 1908, source: "FM Sybiha via Ukrainska Pravda"}
+  note: "different populations (with/without decoys); unreconciled -- the denominator itself is ambiguous, which itself contributes to NOT_FEASIBLE"

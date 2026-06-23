@@ -1,0 +1,13 @@
+# WP-E2c human-signoff attestation for the heterogeneous salvo (SYNTHETIC / ILLUSTRATIVE, like the Ukraine
+# example -- it exercises the release gate; NOT a real human approval). review_ref resolves to review.yaml's
+# id; code_version pins the same run_ledger snapshot (re-sign on drift, else stale-attestation).
+# calibration_status is the DECLARED honest posture: UNCALIBRATED -- calibration_feasibility.yaml records WHY
+# the kinetic drone channel cannot be calibrated. See schemas/signoff.schema.md.
+schema_version: "1.0"
+id: signoff-ru-ua-salvo-het-001
+review_ref: review-ru-ua-salvo-het-001
+code_version: "735ed3d65ddaab82973ef0dcb8993855c25fcb80"
+decision: APPROVED
+signed_by: "Centaur WP-E2c loop (synthetic / ILLUSTRATIVE)"
+date: "2026-06-23"
+calibration_status: UNCALIBRATED

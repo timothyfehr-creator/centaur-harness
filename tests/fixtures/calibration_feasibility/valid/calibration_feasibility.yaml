@@ -1,0 +1,33 @@
+# Valid synthetic calibration-feasibility record for the scn fixture (target=scn, code_version matches
+# the scn run_ledger). ILLUSTRATIVE values -- not a real assessment. The single-fault invalid variants are
+# derived from THIS file by the test (one targeted mutation each).
+schema_version: "1.0"
+id: calfeas-001
+target: scn
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+verdict: NOT_FEASIBLE
+attempted_observable: "kinetic drone intercept-% (weekly, fixture window)"
+binding_reasons:
+  - "kinetic-vs-jammed split not separable (composite bucket)"
+  - "no method-independent corroboration (single self-report feed)"
+dossier_ref: "fixtures/dossier@fixed"
+upgrade_gap: "a method-independent intercept estimate -- none available"
+authority: "fixture feasibility assessment"
+assessor: "fixture-assessor"
+feasibility_date: "2026-06-23"
+descriptive_band:
+  model_value_pct: 80
+  observed_range_pct: [46, 77]
+  source_class: SELF_REPORTED_BELLIGERENT
+  labels: [SINGLE_SOURCE, COMPOSITE_BUCKET, NOT_CORROBORATED]
+  caveat: "descriptive plausibility check only; not calibrated, not validated, not corroborated"
+provenance:
+  - dataset: "fixture dataset"
+    version: "v1"
+    sha256: null
+    sha256_status: BLOCKED_FETCH_AUTH_GATED
+launch_denominator_conflict:
+  status: UNRESOLVED
+  values:
+    - {month: "2024-09", launched: 1410, source: "src A"}
+    - {month: "2024-09", launched: 1331, source: "src B"}

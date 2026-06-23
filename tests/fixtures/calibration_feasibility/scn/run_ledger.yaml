@@ -1,0 +1,4 @@
+# Synthetic run-ledger for the feasibility fixtures. The gate reads only `code_version`; this FIXED
+# literal lets the valid record pin it and the stale fixture mismatch it, independent of the live SHA.
+schema_version: "1.0"
+code_version: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"

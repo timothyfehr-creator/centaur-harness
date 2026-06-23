@@ -296,9 +296,19 @@ def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
             _reject_unknown(ldc, ALLOWED_LDC, where, "launch_denominator_conflict.", add)
             _reject_nonscalar(ldc, CONTAINER_LDC, where, "launch_denominator_conflict.", add)  # note/status scalar
             for i, v in enumerate(ldc["values"]):
-                if isinstance(v, dict):
-                    _reject_unknown(v, ALLOWED_LDC_VALUE, where, f"launch_denominator_conflict.values[{i}].", add)
-                    _reject_nonscalar(v, set(), where, f"launch_denominator_conflict.values[{i}].", add)
+                if not isinstance(v, dict):
+                    add("wrong-type", f"launch_denominator_conflict.values[{i}] must be a mapping")
+                    continue
+                _reject_unknown(v, ALLOWED_LDC_VALUE, where, f"launch_denominator_conflict.values[{i}].", add)
+                # each entry must carry usable denominator evidence as SCALARS of the right type -- an empty {}
+                # cannot claim a conflict without the numbers, and a non-scalar required field is caught here
+                # too (this subsumes scalar-only for the value entry, whose every field is required + typed).
+                ln = v.get("launched")
+                if not (_is_nonempty_str(v.get("month")) and _is_nonempty_str(v.get("source"))
+                        and isinstance(ln, int) and not isinstance(ln, bool) and ln >= 0):
+                    add("incomplete-denominator-value",
+                        f"launch_denominator_conflict.values[{i}] must carry month (non-empty str), "
+                        f"launched (non-negative int), source (non-empty str)")
 
     # Over-claim scan (defense-in-depth ON TOP of the structural honesty enums): NO affirmative
     # calibrated/validated/corroborated/confirmed/verified anywhere in the record (clause-aware -- honest
@@ -385,6 +395,14 @@ def _binding_problems(disp: object, record_exists: bool, feasibility_path: Path,
     return problems
 
 
+def _sweep_dirs(examples_root: Path) -> list[Path]:
+    """The scenario dirs the release sweep judges: any carrying a signoff.yaml OR a calibration_feasibility.yaml,
+    at ANY depth. Globs `**/` so the set is a SUPERSET of verify.py's `examples/**/` attestation coverage --
+    a nested scenario can never be attestation-covered there but feasibility-skipped here."""
+    return sorted({p.parent for p in examples_root.glob("**/signoff.yaml")}
+                  | {p.parent for p in examples_root.glob("**/calibration_feasibility.yaml")})
+
+
 def _judge_one(scenario_dir: Path, feasibility_path: Path, signoff_path: Path, *, bind: bool):
     """Judge ONE scenario. Returns (rc, payload): rc 0/1/2; payload is an ok-message (0), a problems list
     (1), or a fail-closed reason (2). When `bind`, the signoff's calibration_disposition drives a
@@ -460,10 +478,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Sweep mode (CI / release): every example scenario, driven by its signoff disposition (so a NOT_FEASIBLE
-    # signoff with a deleted record FAILS, not vacuously passes). dir set = signoff-bearing OR record-bearing.
-    examples = REPO_ROOT / "examples"
-    dirs = sorted({p.parent for p in examples.glob("*/signoff.yaml")}
-                  | {p.parent for p in examples.glob("*/calibration_feasibility.yaml")})
+    # signoff with a deleted record FAILS, not vacuously passes). dir set = signoff-bearing OR record-bearing,
+    # globbed RECURSIVELY to match verify.py's `examples/**/` coverage set -- else a NESTED scenario could be
+    # attestation-covered by verify.py but skipped here (a fail-open an independent review caught).
+    dirs = _sweep_dirs(REPO_ROOT / "examples")
     if not dirs:
         print("calibration-feasibility OK (no attested scenarios present)")
         return 0

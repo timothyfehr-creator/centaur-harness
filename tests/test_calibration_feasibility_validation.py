@@ -25,6 +25,9 @@ SCN, VALID = FIX / "scn", FIX / "valid" / "calibration_feasibility.yaml"
 CALIBRATED_SIGNOFF = SCN / "signoff_calibrated.yaml"
 BASE = yaml.safe_load(VALID.read_text())
 
+sys.path.insert(0, str(REPO_ROOT / "scripts"))   # in-process import for the sweep-recursion unit test
+import validate_calibration_feasibility as vcf  # noqa: E402
+
 
 def _run(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run([sys.executable, str(GATE), *args], cwd=REPO_ROOT, capture_output=True, text=True)
@@ -110,9 +113,11 @@ _MUTATIONS = [
     # comparison (the unknown-key check alone only inspects keys, not value shape).
     ("smuggle_in_ldc_note", lambda d: d["launch_denominator_conflict"].__setitem__("note", {"matches_ground_truth": True}), "non-scalar-value", "note"),
     ("smuggle_in_prov_version", lambda d: d["provenance"][0].__setitem__("version", {"matches_ground_truth": True}), "non-scalar-value", "version"),
-    ("smuggle_in_ldc_value_source", lambda d: d["launch_denominator_conflict"]["values"][0].__setitem__("source", {"model_p": 62}), "non-scalar-value", "source"),
+    ("smuggle_in_ldc_value_source", lambda d: d["launch_denominator_conflict"]["values"][0].__setitem__("source", {"model_p": 62}), "incomplete-denominator-value", "source"),
     # DIRECT comparability is gone: a directly-comparable band IS a calibration target, contradicting CONTEXT_ONLY.
     ("direct_comparability", lambda d: d["external_context"].__setitem__("comparability_to_model_p", "DIRECT"), "invalid-enum", "comparability_to_model_p"),
+    # independent-review fix: a denominator-conflict value must carry usable evidence (an empty {} can't).
+    ("incomplete_denominator_value", lambda d: d["launch_denominator_conflict"].__setitem__("values", [{}]), "incomplete-denominator-value", "values[0]"),
     ("unresolved_target", lambda d: d.__setitem__("target", "some-other-scenario"), "unresolved-scenario-ref", "some-other-scenario"),
     ("stale_code_version", lambda d: d.__setitem__("code_version", "f" * 40), "stale-feasibility", "feasibility code_version"),
 ]
@@ -187,6 +192,25 @@ def test_dict_in_labels_fails_gracefully_no_crash(tmp_path: Path) -> None:
     assert result.returncode == 1, result.stdout                 # a finding, NOT a crash (which would be rc 1 w/ traceback or rc !=1)
     assert "unlabeled-band" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+# --- independent-review fix: the release sweep is RECURSIVE (a nested scenario can't be skipped) -----
+
+def test_sweep_dirs_finds_nested_scenario(tmp_path: Path) -> None:
+    # the bug an independent review caught: verify.py covers examples/**/ but the feasibility sweep used
+    # examples/*/, so a nested NOT_FEASIBLE scenario with a missing record was attestation-covered yet
+    # feasibility-skipped. _sweep_dirs must glob recursively so its dir-set is a superset of the coverage set.
+    ex = tmp_path / "examples"
+    (ex / "flat").mkdir(parents=True)
+    (ex / "flat" / "signoff.yaml").write_text("schema_version: '1.0'\n")
+    (ex / "nested" / "scn").mkdir(parents=True)
+    (ex / "nested" / "scn" / "signoff.yaml").write_text("schema_version: '1.0'\n")
+    (ex / "deep" / "a" / "b").mkdir(parents=True)
+    (ex / "deep" / "a" / "b" / "calibration_feasibility.yaml").write_text("schema_version: '1.0'\n")
+    found = vcf._sweep_dirs(ex)
+    assert ex / "flat" in found
+    assert ex / "nested" / "scn" in found            # the previously-skipped nested case
+    assert ex / "deep" / "a" / "b" in found           # record-bearing at depth, also covered
 
 
 # --- the committed het record passes the hardened gate ------------------------------------

@@ -12,5 +12,5 @@ verdict: SELF_CHECK_PASSED
 reviewer: "synthetic self-check (NOT an independent refuter pass); the substantive external red-team round is recorded in centaur_engine_planning/"
 findings:
   - "ILLUSTRATIVE: the heterogeneous salvo resolver is structurally sound after the WP-E2b3 fixes (monotone saturation, round-once-per-threat intercept, per-class weakest-link culmination, demand-based magazine indicator); all release gates green, properties guarded by standing tests."
-  - "UNCALIBRATED: the kinetic drone-intercept channel is NOT calibratable against the available data -- see calibration_feasibility.yaml (verdict NOT_FEASIBLE). The model asserts nothing about the real world; ACCEPT means 'a structurally-sound UNCALIBRATED illustrative model', not analytical validity."
+  - "UNCALIBRATED: the kinetic drone-intercept channel is NOT calibratable against the available data -- see calibration_feasibility.yaml (verdict NOT_FEASIBLE). The model asserts nothing about the real world; SELF_CHECK_PASSED means 'the self-check found a structurally-sound UNCALIBRATED illustrative model', NOT an independent refuter pass and NOT analytical validity."
 as_of_date: "2026-06-23"

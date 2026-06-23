@@ -83,14 +83,26 @@ _MUTATIONS = [
     ("invalid_verdict", lambda d: d.__setitem__("verdict", "FEASIBLE"), "invalid-enum", "verdict"),
     ("empty_reasons", lambda d: d.__setitem__("binding_reasons", []), "empty-reasons", "binding_reasons"),
     ("bad_feasibility_date", lambda d: d.__setitem__("feasibility_date", "2026/06/23"), "invalid-format", "feasibility_date"),
-    ("unlabeled_band", lambda d: d["descriptive_band"].__setitem__("labels", []), "unlabeled-band", "labels"),
-    ("overclaim_band", lambda d: d["descriptive_band"].__setitem__("caveat", "this channel is calibrated against the data"), "over-claim-language", "calibrated"),
-    # adversarial-verify regression: an over-claim hidden in a band LIST or NESTED DICT must still be caught.
-    ("overclaim_band_in_list", lambda d: d["descriptive_band"].__setitem__("caveats", ["ok", "fully calibrated and independently verified"]), "over-claim-language", "calibrated"),
-    ("overclaim_band_nested_dict", lambda d: d["descriptive_band"].__setitem__("meta", {"note": "validated against ground truth"}), "over-claim-language", "validated"),
-    ("bad_source_class", lambda d: d["descriptive_band"].__setitem__("source_class", "BOGUS"), "invalid-enum", "source_class"),
+    # WP-E2c.1 #6: unknown-key rejection is the structural boundary -- a smuggled comparison/ground-truth
+    # field cannot ride along, and the retired descriptive_band shape (model_value_pct) is now an unknown key.
+    ("unknown_top_key", lambda d: d.__setitem__("matches_ground_truth", True), "unknown-key", "matches_ground_truth"),
+    ("readd_model_value_pct", lambda d: d["external_context"].__setitem__("model_value_pct", 80), "unknown-key", "model_value_pct"),
+    # machine-readable honesty enums: each pinned to its sole honest value (the teeth), + presence required.
+    ("missing_comparison_role", lambda d: d["external_context"].pop("comparison_role"), "missing-field", "comparison_role"),
+    ("bad_comparison_role", lambda d: d["external_context"].__setitem__("comparison_role", "VALIDATION"), "invalid-enum", "comparison_role"),
+    ("bad_calibration_effect", lambda d: d["external_context"].__setitem__("calibration_effect", "MOVES_P"), "invalid-enum", "calibration_effect"),
+    # type + range on the numeric fields.
+    ("range_unordered", lambda d: d["external_context"].__setitem__("observed_range_pct", [77, 46]), "out-of-range", "observed_range_pct"),
+    ("weeks_out_of_range", lambda d: d["external_context"].__setitem__("weeks_computed", 99), "out-of-range", "weeks_computed"),
+    ("unlabeled_band", lambda d: d["external_context"].__setitem__("labels", []), "unlabeled-band", "labels"),
+    ("bad_source_class", lambda d: d["external_context"].__setitem__("source_class", "BOGUS"), "invalid-enum", "source_class"),
+    # clause-aware over-claim scan over the WHOLE doc: an affirmation in any allowed free-text string is caught.
+    ("overclaim_caveat", lambda d: d["external_context"].__setitem__("caveat", "this channel is calibrated against the data"), "over-claim-language", "calibrated"),
+    ("overclaim_in_binding_reason", lambda d: d["binding_reasons"].append("fully calibrated and independently verified"), "over-claim-language", "calibrated"),
+    ("overclaim_in_ldc_note", lambda d: d["launch_denominator_conflict"].__setitem__("note", "validated against ground truth"), "over-claim-language", "validated"),
     ("sha_pinned_but_null", lambda d: d["provenance"][0].__setitem__("sha256_status", "PINNED"), "invalid-format", "sha256"),
     ("sha_blocked_but_hash", lambda d: d["provenance"][0].__setitem__("sha256", "a" * 64), "provenance-contradiction", "sha256"),
+    ("unknown_provenance_key", lambda d: d["provenance"][0].__setitem__("matches", "ground-truth"), "unknown-key", "matches"),
     ("unresolved_target", lambda d: d.__setitem__("target", "some-other-scenario"), "unresolved-scenario-ref", "some-other-scenario"),
     ("stale_code_version", lambda d: d.__setitem__("code_version", "f" * 40), "stale-feasibility", "feasibility code_version"),
 ]
@@ -107,6 +119,43 @@ def test_single_fault_invalid(name, mutate, code, token, tmp_path: Path) -> None
     findings = _findings(result.stderr)
     assert len(findings) == 1, f"{name}: expected exactly one finding; got {findings}"
     assert code in findings[0] and token in findings[0], f"{name}: {findings[0]!r}"
+
+
+# --- the over-claim scan is CLAUSE-AWARE: honest negated disclaimers pass -----------------
+
+@pytest.mark.parametrize("caveat", [
+    "background context only; this is not calibrated and was never validated or corroborated",
+    "single-source self-report; no independent estimate corroborated it",
+    "a plausibility check, not a fit and not validated against any ground truth",
+])
+def test_negated_disclaimer_passes(caveat: str, tmp_path: Path) -> None:
+    # A negator earlier in the same clause exempts the flagged word -- the honest disclaimer must NOT trip.
+    doc = copy.deepcopy(BASE)
+    doc["external_context"]["caveat"] = caveat
+    rec = tmp_path / "calibration_feasibility.yaml"
+    rec.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
+    result = _run("--scenario-dir", str(SCN), "--feasibility", str(rec))
+    assert result.returncode == 0, f"honest disclaimer wrongly blocked: {result.stderr}"
+
+
+def test_overclaim_after_negation_in_later_clause_fails(tmp_path: Path) -> None:
+    # clause-aware, not a global lookbehind: "not calibrated BUT validated" must FAIL on the second clause.
+    doc = copy.deepcopy(BASE)
+    doc["external_context"]["caveat"] = "not calibrated, but fully validated against the data"
+    rec = tmp_path / "calibration_feasibility.yaml"
+    rec.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
+    result = _run("--scenario-dir", str(SCN), "--feasibility", str(rec))
+    assert result.returncode == 1
+    assert "over-claim-language" in result.stderr and "validated" in result.stderr
+
+
+# --- the committed het record passes the hardened gate ------------------------------------
+
+def test_committed_het_record_passes_hardened_gate() -> None:
+    het = REPO_ROOT / "examples" / "ru_ua_salvo_heterogeneous"
+    result = _run("--scenario-dir", str(het))
+    assert result.returncode == 0, result.stderr
+    assert "NOT_FEASIBLE" in result.stdout
 
 
 # --- fail-closed (exit 2) ---------------------------------------------------------------

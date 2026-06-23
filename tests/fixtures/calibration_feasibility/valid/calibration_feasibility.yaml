@@ -15,12 +15,17 @@ upgrade_gap: "a method-independent intercept estimate -- none available"
 authority: "fixture feasibility assessment"
 assessor: "fixture-assessor"
 feasibility_date: "2026-06-23"
-descriptive_band:
-  model_value_pct: 80
+external_context:
   observed_range_pct: [46, 77]
+  coverage: PARTIAL
+  weeks_computed: 4
+  weeks_in_window: 14
+  comparability_to_model_p: NONE
+  comparison_role: CONTEXT_ONLY
+  calibration_effect: NONE
   source_class: SELF_REPORTED_BELLIGERENT
   labels: [SINGLE_SOURCE, COMPOSITE_BUCKET, NOT_CORROBORATED]
-  caveat: "descriptive plausibility check only; not calibrated, not validated, not corroborated"
+  caveat: "background context only; not a fit, not validated, not corroborated"
 provenance:
   - dataset: "fixture dataset"
     version: "v1"

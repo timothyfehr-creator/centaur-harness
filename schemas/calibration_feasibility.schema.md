@@ -32,17 +32,24 @@ upgrade_gap: "a method-independent (impact-site / visual-OSINT / satellite) inte
 authority: "WP-E2c data dossier (multi-source live web sweep, 2026-06-23)"
 assessor: "<who / what assessed feasibility>"
 feasibility_date: "2026-06-23"     # ISO-8601 YYYY-MM-DD
-descriptive_band:                  # OPTIONAL -- a labeled plausibility band, NEVER a validation
-  model_value_pct: 80
-  observed_range_pct: [46, 77]
+external_context:                  # OPTIONAL -- a labeled plausibility band, NEVER a validation/comparison
+  observed_range_pct: [46, 77]     # a [low, high] pair in 0..100, ordered
+  coverage: PARTIAL                # PARTIAL | FULL
+  weeks_computed: 4                # <= weeks_in_window
+  weeks_in_window: 14
+  comparability_to_model_p: NONE   # NONE | INDIRECT | DIRECT  -- how comparable the band is to the model's p
+  comparison_role: CONTEXT_ONLY    # the SOLE legal value -- the block is never an input to calibration
+  calibration_effect: NONE         # the SOLE legal value -- the block moves no parameter
   source_class: SELF_REPORTED_BELLIGERENT
   labels: [SINGLE_SOURCE, COMPOSITE_BUCKET, NOT_CORROBORATED]
-  caveat: "descriptive plausibility check only; not calibrated, not validated, not corroborated"
+  caveat: "background context only; not a fit, not validated, not corroborated"
 provenance:                        # OPTIONAL -- a hash exists IFF sha256_status is PINNED
-  - dataset: "piterfm Unmanned Systems Tracker"
+  - dataset: "piterfm Russia-Ukraine war dataset (Petro Ivaniuk; via Kaggle)"
     version: "v196"
     sha256: null
     sha256_status: BLOCKED_FETCH_AUTH_GATED
+    url: "https://www.kaggle.com/..."   # OPTIONAL
+    snapshot_date: "2026-06-23"          # OPTIONAL
 launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denominator honestly
   status: UNRESOLVED
   values:
@@ -66,18 +73,26 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 | `authority` | yes | non-empty string (who/what produced the feasibility assessment) |
 | `assessor` | yes | non-empty string |
 | `feasibility_date` | yes | ISO-8601 `YYYY-MM-DD` → `invalid-format` |
-| `descriptive_band` | no | if present: a mapping; `labels` must include ≥1 honesty marker (`SINGLE_SOURCE`/`COMPOSITE_BUCKET`/`NOT_CORROBORATED`/`SELF_REPORTED`/`ILLUSTRATIVE`) → `unlabeled-band`; `source_class` enum-checked; **no over-claim language** (`calibrated`/`validated`/`corroborated`/`confirmed`/`verified`) → `over-claim-language` |
-| `provenance` | no | if present: a list; each entry's `sha256_status` ∈ {`PINNED`,`BLOCKED_FETCH_AUTH_GATED`,`NOT_ATTEMPTED`}; `PINNED` ⇒ `sha256` is 64-hex (`invalid-format`); otherwise `sha256` MUST be `null` → `provenance-contradiction` (no fabricated hashes) |
-| `launch_denominator_conflict` | no | if present: `status` ∈ {`UNRESOLVED`,`RESOLVED`} + a non-empty `values` list |
+| `external_context` | no | if present: a mapping (replaces the retired `descriptive_band`). Carries machine-readable honesty fields, each REQUIRED: `comparison_role` (sole legal value `CONTEXT_ONLY`), `calibration_effect` (sole legal value `NONE`), `comparability_to_model_p` ∈ {`NONE`,`INDIRECT`,`DIRECT`}, `coverage` ∈ {`PARTIAL`,`FULL`}, `source_class` (enum), `caveat` (non-empty), `labels` (≥1 honesty marker → `unlabeled-band`), `observed_range_pct` (a `[low,high]` pair in 0..100, ordered → `out-of-range`), `weeks_computed`/`weeks_in_window` (ints, `weeks_computed ≤ weeks_in_window` → `out-of-range`). Unknown keys (e.g. a re-added `model_value_pct`) → `unknown-key`. No affirmative over-claim language anywhere → `over-claim-language` |
+| `provenance` | no | if present: a list; each entry's keys ⊆ {`dataset`,`version`,`sha256`,`sha256_status`,`url`,`snapshot_date`} (else `unknown-key`); `sha256_status` ∈ {`PINNED`,`BLOCKED_FETCH_AUTH_GATED`,`NOT_ATTEMPTED`}; `PINNED` ⇒ `sha256` is 64-hex (`invalid-format`); otherwise `sha256` MUST be `null` → `provenance-contradiction` (no fabricated hashes) |
+| `launch_denominator_conflict` | no | if present: `status` ∈ {`UNRESOLVED`,`RESOLVED`} + a non-empty `values` list; keys ⊆ {`status`,`values`,`note`} and each value's keys ⊆ {`month`,`launched`,`source`} (else `unknown-key`) |
+| *(any level)* | — | **Unknown keys are rejected at every object level** (`unknown-key`) — the structural boundary that kills `matches_ground_truth`/smuggled-comparison bypasses a word scan can't enumerate |
 
 ## Contract — say-so-on-the-record (CONSTITUTION §5)
 
 - The record only makes sense under a no-evidence label: the resolving `signoff.calibration_status` must
   be `UNCALIBRATED` / `ILLUSTRATIVE`; a feasibility record under `CALIBRATED` is a `contradictory-status`
   finding (you cannot simultaneously claim calibrated and record non-feasibility).
-- **No back-door calibration.** `verdict` has no "feasible" value; the band can never use validation
-  language; the only path to a positive calibration claim is `calibration.yaml` under `CALIBRATED`, whose
-  proof-obligation in `validate_calibration.py` is left untouched.
+- **No back-door calibration.** `verdict` has no "feasible" value; an `external_context` block is pinned by
+  machine-readable enums to `comparison_role: CONTEXT_ONLY` + `calibration_effect: NONE` (it structurally
+  cannot be an input to calibration or move a parameter) and may never affirm validation language; the only
+  path to a positive calibration claim is `calibration.yaml` under `CALIBRATED`, whose proof-obligation in
+  `validate_calibration.py` is left untouched.
+- **Structure is the boundary, the word scan is defense-in-depth.** Unknown keys are rejected at every
+  object level (`unknown-key`), so a smuggled `matches_ground_truth`/comparison field cannot ride along in a
+  record the gate "doesn't look at"; the clause-aware over-claim word scan over the whole record is a
+  second layer (honest negated disclaimers — "not corroborated", "never validated" — pass; an affirmative
+  in any allowed free-text field fails).
 - **No fabricated provenance.** A SHA exists only when actually `PINNED`; a blocked/un-attempted fetch
   records `sha256: null` + the status — the gap is flagged, not papered over.
 - **Reproducibility binding (extends WP7/WP8).** `code_version` pins the run-ledger snapshot the
@@ -88,7 +103,7 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 ## Error codes
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `invalid-format`, `empty-reasons`,
-`unlabeled-band`, `over-claim-language`, `provenance-contradiction`, `wrong-type`,
-`unresolved-scenario-ref`, `stale-feasibility`, `contradictory-status`. Structure first (single-fault),
+`unknown-key`, `out-of-range`, `unlabeled-band`, `over-claim-language`, `provenance-contradiction`,
+`wrong-type`, `unresolved-scenario-ref`, `stale-feasibility`, `contradictory-status`. Structure first (single-fault),
 then resolution, then signoff consistency. Fail-closed (exit 2) on a missing/unreadable
 scenario/ledger/signoff, or a present-but-unparseable feasibility record.

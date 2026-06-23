@@ -1,33 +1,42 @@
-# WP-E2c calibration-FEASIBILITY record for the heterogeneous salvo. The HONEST artifact the data
-# dossier's verdict demands: the KINETIC drone-intercept channel CANNOT be calibrated against the
-# available Sept-Nov 2024 data. calibration_status stays UNCALIBRATED -- this is NOT a calibration claim.
-# Every number below is transcribed from the dossier (provenance pinned, or flagged BLOCKED); none is fit.
-# See schemas/calibration_feasibility.schema.md + the dossier referenced under dossier_ref.
+# WP-E2c calibration-FEASIBILITY record for the heterogeneous salvo (content rev WP-E2c.1). The HONEST
+# artifact the data dossier's verdict demands: the model's per-ENGAGEMENT-ATTEMPT kinetic drone-kill
+# probability p CANNOT be calibrated against the available Sept-Nov 2024 data. calibration_status stays
+# UNCALIBRATED -- this is NOT a calibration claim. The OBSERVED numbers below are transcribed from the
+# dossier (provenance pinned, or flagged BLOCKED); the model's own p lives in rules.yaml and is deliberately
+# NOT reproduced here as a comparison. See schemas/calibration_feasibility.schema.md + dossier_ref.
 schema_version: "1.0"
 id: calfeas-ru-ua-drone-001
 target: ru_ua_salvo_heterogeneous
 code_version: "735ed3d65ddaab82973ef0dcb8993855c25fcb80"
 verdict: NOT_FEASIBLE
-attempted_observable: "weekly KINETIC drone intercept-% = shot_down / (launched - decoys - EW_lost), Sept-Nov 2024 -- the quantity p_intercept_pct[drone] would calibrate to"
+attempted_observable: "p = P(kill | interceptor engagement attempt) for the kinetic drone channel -- the per-engagement-attempt kill probability the model applies to the magazine-constrained interceptor-attempt total sum(fired[t]) at core/salvo_resolver_het.py:258 (it is the rules.yaml p_intercept_pct[drone]). It is NOT a launch-share and NOT a shot-down / launched ratio; the reported UA-AF feed measures the latter, a different quantity."
 binding_reasons:
-  - "Kinetic-vs-jammed split NOT separable: the UA Air Force reports a two-bucket split (shot-down vs 'locationally lost'), but the 'lost' bucket is a 5-reason composite (EW, decoys, fuel exhaustion, radar-loss, structural defects) per the piterfm data dictionary; Defense Express (quoting the General Staff) and ISIS confirm 'shot down/suppressed' lumps kinetic + EW. The model's intercepted is KINETIC (consumes an interceptor), so the observable cannot be isolated from the reported data -- mapping lost~jammed is an ASSUMPTION, not a reported field."
-  - "No method-independent corroboration: every quantitative source (CSIS, ISW, ISIS, the piterfm / ChrisO tracker, KAS) re-transcribes the single UA Air Force (kpszsu) daily self-report; ABC News states it 'cannot independently verify' the figures. The only genuinely independent signals are qualitative (Belarus Hajun incursion counts), not the rate."
+  - "The engagement-attempt DENOMINATOR is itself unobserved: p is a kill rate PER interceptor engagement attempt, but no source reports interceptor engagement attempts (rounds / interceptors committed). The UA-AF feed reports shot-down COUNTS against a launch / inbound denominator -- a different quantity. So even setting the kinetic-vs-EW lumping aside, the model's p has no observed denominator to fit against; mapping shot-down/launched onto p is HYPOTHESIZED, not measured."
+  - "Kinetic-vs-jammed split NOT separable in the numerator either: the UA Air Force reports a two-bucket split (shot-down vs 'locationally lost'), and the 'lost' bucket is a 5-reason composite (radar-loss, decoys/imitators, EW, fuel exhaustion, structural defects) per the piterfm data dictionary. Defense Express (quoting the General Staff) states the 'lost' cause was not specified -- whether kinetic or EW is left open. SEPARATELY, ISIS states Ukrainian reporting combines kinetically-destroyed UAVs and UAVs neutralised by EW / other suppression under one 'shot down/suppressed' category. The model's intercepted consumes a KINETIC interceptor, so it cannot be isolated from this lumped reporting."
+  - "No method-independent corroboration of the rate: every quantitative source (CSIS, ISIS, the piterfm Kaggle dataset, the ChrisO 'Unmanned Systems Tracker' which self-describes as a piterfm-derived tracker, KAS / Borsari) traces back to the single UA Air Force (kpszsu) daily self-report; ABC News states it cannot independently verify the aerial engagement data. The only method-independent signals are qualitative (the Belarus Hajun incursion counts), not the rate itself."
 dossier_ref: "centaur_engine_planning/WP-E2c_DATA_DOSSIER.md (gathered 2026-06-23; multi-source live web sweep + a main-loop CSIS spot-check; verdict STAYS_UNCALIBRATED)"
-upgrade_gap: "a genuinely method-independent (impact-site / visual-OSINT / satellite-derived) weekly kinetic interception estimate for the Sept-Nov 2024 window -- none was found in the sweep. Absent that, the channel stays UNCALIBRATED; this record upgrades only via a calibration.yaml under CALIBRATED, never by flipping a verdict here."
+upgrade_gap: "two things absent from the sweep, both needed to ever fit p: a genuinely method-independent (impact-site / visual-OSINT / satellite-derived) weekly kinetic-interception estimate for the Sept-Nov 2024 window, AND an observed interceptor-engagement-attempt denominator. Absent both, the channel stays UNCALIBRATED; the only upgrade path is a separate calibration.yaml record justified through validate_calibration.py, never a verdict flip in this feasibility record."
 authority: "WP-E2c data dossier (multi-source live web sweep, 2026-06-23); primary source class SELF_REPORTED_BELLIGERENT (UA Air Force)"
 assessor: "Centaur WP-E2c data-gathering pass (multi-agent web sweep + main-loop CSIS spot-check)"
 feasibility_date: "2026-06-23"
-descriptive_band:
-  model_value_pct: 80                   # the ASSUMED p_intercept_pct[drone] in rules.yaml -- a placeholder, NOT a fit
-  observed_range_pct: [46, 77]          # UA-AF weekly KINETIC shot-down share; fell 76.6% (W36) -> 46.3% (W48) across the window
+external_context:
+  observed_range_pct: [46, 77]
+  coverage: PARTIAL
+  weeks_computed: 4
+  weeks_in_window: 14
+  comparability_to_model_p: NONE
+  comparison_role: CONTEXT_ONLY
+  calibration_effect: NONE
   source_class: SELF_REPORTED_BELLIGERENT
   labels: [SINGLE_SOURCE, COMPOSITE_BUCKET, NOT_CORROBORATED, ILLUSTRATIVE]
-  caveat: "descriptive plausibility check ONLY; the model's 80% is an ASSUMED placeholder, not fit to this range; the observed range is single-source UA-AF self-report over a composite bucket, not corroborated"
+  caveat: "Background context ONLY, never a comparison to the model's p. observed_range_pct is the UA-AF weekly shot-down (kinetic-ish) share of LAUNCHED drones -- it fell 76.6% (2024-W36) to 46.3% (2024-W48) -- computed for 4 of ~14 in-window ISO weeks (PARTIAL coverage). It is single-source self-report over a composite bucket on a launch denominator, so its comparability to the model's per-engagement-attempt p is NONE; it must not be read as a fit, as a band the model was tuned to, or as any kind of validation."
 provenance:
-  - dataset: "piterfm 'Unmanned Systems Tracker' (UA Air Force daily reports, via Kaggle)"
+  - dataset: "piterfm Russia-Ukraine war dataset (Petro Ivaniuk; UA Air Force daily reports, via Kaggle)"
     version: "v196"
     sha256: null
     sha256_status: BLOCKED_FETCH_AUTH_GATED   # Kaggle/Facebook auth-gated; the CSV SHA256 is not pinnable in an autonomous run -- flagged, never fabricated
+    url: "https://www.kaggle.com/datasets/piterfm/massive-missile-attacks-on-ukraine"
+    snapshot_date: "2026-06-23"
 launch_denominator_conflict:
   status: UNRESOLVED
   values:
@@ -35,4 +44,4 @@ launch_denominator_conflict:
     - {month: "2024-09", launched: 1331, source: "FM Sybiha via Ukrainska Pravda"}
     - {month: "2024-10", launched: 2072, source: "ArmyInform / General Staff, 2024-11-05"}
     - {month: "2024-10", launched: 1908, source: "FM Sybiha via Ukrainska Pravda"}
-  note: "different populations (with/without decoys); unreconciled -- the denominator itself is ambiguous, which itself contributes to NOT_FEASIBLE"
+  note: "different populations (with / without decoys); unreconciled. The denominator is itself ambiguous, which independently contributes to NOT_FEASIBLE; any single launch figure used as a denominator would be HYPOTHESIZED."

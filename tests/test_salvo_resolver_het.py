@@ -11,6 +11,8 @@ import copy
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "core"))
 
@@ -335,3 +337,65 @@ def test_allocation_order_change_preserves_conservation() -> None:
         ev = evmap(out["events"])
         for t in ("drone", "cruise", "ballistic"):
             assert ev["STRIKES_LAUNCHED"][t] == ev["STRIKES_INTERCEPTED"][t] + ev["STRIKES_LEAKED"][t]
+
+
+# --- PROPERTY SWEEPS (WP-E2c T4) — standing guards over the 4 properties the external red-team's NO-GO
+# exposed (the WP-E2b3 fixes F3/F4/F6). The single-example regression tests above pin one counter-example
+# each; these sweep a broad input space so the invariant is guarded everywhere, not just at one point. --
+
+@pytest.mark.parametrize("retained", [1, 30, 50, 70, 99])
+@pytest.mark.parametrize("threshold", [1, 7, 100, 1000, 1050])
+def test_property_saturation_is_monotone_in_launches(threshold, retained) -> None:
+    # F3: with abundant supply, drone intercepts must be MONOTONE NON-DECREASING as launches rise, across
+    # the whole threshold/retained grid (the old step form fell off a cliff at threshold+1).
+    sat = {"saturation_threshold": {t: threshold for t in ("drone", "cruise", "ballistic")},
+           "saturation_retained_pct": {t: retained for t in ("drone", "cruise", "ballistic")}}
+    prev = -1
+    for launch in sorted({0, 1, threshold, threshold + 1, threshold + 7, 2 * threshold, 5 * threshold, 30000}):
+        st = make_state(drone=(launch, 10 ** 7, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0),
+                        short=(10 ** 8, 0), longi=(0, 0), pac3=(0, 0))
+        got = evmap(sh.resolve(st, _full_ruleset(**sat))[0])["STRIKES_INTERCEPTED"]["drone"]
+        assert got >= prev, f"non-monotone at threshold={threshold} retained={retained} launch={launch}: {got}<{prev}"
+        prev = got
+
+
+@pytest.mark.parametrize("p", [33, 50, 65, 80, 99])
+@pytest.mark.parametrize("total", [1, 2, 3, 7, 50, 137])
+def test_property_grain_invariance_round_once_over_the_threat(p, total) -> None:
+    # F4: a threat split across short+long (per=1 each) must intercept the ROUND-ONCE sub-pool amount,
+    # invariant to HOW the split falls — sweep every short/long boundary.
+    r = _full_ruleset(p_intercept_pct={"drone": p, "cruise": 65})
+    expected = min(total, (total * p) // 100)               # floor ONCE over the whole sub-pool
+    for short_cap in range(0, total + 1):                   # 0=all-via-long ... total=all-via-short
+        st = make_state(drone=(total, 10 ** 7, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0),
+                        short=(short_cap, 0), longi=(10 ** 7, 0), pac3=(0, 0))
+        got = evmap(sh.resolve(st, r)[0])["STRIKES_INTERCEPTED"]["drone"]
+        assert got == expected, f"grain-variant at p={p} total={total} short_cap={short_cap}: {got}!={expected}"
+
+
+@pytest.mark.parametrize("inv", [0, 500, 2000])
+@pytest.mark.parametrize("resupply", [0, 50, 600, 1000, 5000])
+def test_property_magazine_indicator_is_demand_based(resupply, inv) -> None:
+    # F6: the leading indicator keys off UNCONSTRAINED demand, not realized (starved) consumption. drone
+    # 1000 -> best interceptor short (per=1) -> demand 1000. non_depleting iff demand<=resupply; a starved
+    # week (realized < demand) flags stock_constrained — regardless of how empty the magazine is.
+    st = make_state(drone=(1000, 10 ** 7, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0),
+                    short=(inv, resupply), longi=(0, 0), pac3=(0, 0))
+    mag = status(sh.resolve(st)[0], "MAGAZINE_STATUS")
+    assert mag["magazine_non_depleting"] is (1000 <= resupply)     # demand vs resupply, NOT realized burn
+    assert mag["stock_constrained"] is (inv < 1000)                # realized consumption (<=inv) < demand 1000
+
+
+@pytest.mark.parametrize("collapse", ["drone", "cruise", "ballistic"])
+def test_property_weakest_link_each_class_fires_alone(collapse) -> None:
+    # F6: culmination is per-class WEAKEST-LINK. EACH class, collapsing alone (under fire, no interceptors,
+    # streak 2->3) while the others are idle, fires the headline — none is masked, none falsely advances.
+    fire = {"drone": (1000, 10 ** 7, 0), "cruise": (500, 10 ** 7, 0), "ballistic": (200, 10 ** 7, 0)}
+    vols = {t: (fire[t] if t == collapse else (0, 0, 0)) for t in ("drone", "cruise", "ballistic")}
+    st = make_state(drone=vols["drone"], cruise=vols["cruise"], ballistic=vols["ballistic"],
+                    short=(0, 0), longi=(0, 0), pac3=(0, 0), streak=2)
+    leth = status(sh.resolve(st)[0], "LETHALITY_STATUS")
+    assert leth["streak_by_threat"][collapse] == 3 and leth["lethality_collapsed"] is True
+    for other in ("drone", "cruise", "ballistic"):
+        if other != collapse:
+            assert leth["streak_by_threat"][other] == 0          # idle -> reset (not masked, not advanced)

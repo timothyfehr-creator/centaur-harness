@@ -26,14 +26,14 @@ import argparse
 import sys
 from pathlib import Path
 
+from validate_claims import _usable_registry, load_registry
 from validate_schemas import (
-    REPO_ROOT,
     EVENT_SPEC,
+    REPO_ROOT,
     _display,
     _is_nonempty_str,
     _validate_skeleton,
 )
-from validate_claims import load_registry, _usable_registry
 
 DEFAULT_EVENTS = REPO_ROOT / "factbase" / "events.yaml"
 DEFAULT_CLAIMS = REPO_ROOT / "factbase" / "claims.yaml"

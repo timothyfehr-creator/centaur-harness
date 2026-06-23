@@ -11,10 +11,9 @@ from __future__ import annotations
 import platform
 import subprocess
 
-import yaml  # for the pyyaml version stamp only
-
 import resolver as rsv
 import rng
+import yaml  # for the pyyaml version stamp only
 from atomic import PERSISTENCE_PROFILE, commit_new_slot
 from canon import CANON_VERSION, canonical_bytes, canonical_digest
 

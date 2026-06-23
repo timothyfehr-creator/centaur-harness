@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """WP-E2a salvo run + recompute.
 
 Loads the homogeneous-salvo scenario (engine_state.yaml + rules.yaml), assembles the deterministic

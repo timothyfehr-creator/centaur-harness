@@ -28,6 +28,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from validate_claims import _usable_registry, load_registry
 from validate_schemas import (
     REPO_ROOT,
     WORLD_VS_GAME_LABELS,
@@ -36,7 +37,6 @@ from validate_schemas import (
     _valid_iso_date,
     _validate_skeleton,
 )
-from validate_claims import load_registry, _usable_registry
 
 DEFAULT_STATE = REPO_ROOT / "examples" / "ukraine_crimea_logistics" / "initial_state.yaml"
 DEFAULT_CLAIMS = REPO_ROOT / "factbase" / "claims.yaml"

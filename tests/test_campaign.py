@@ -15,13 +15,11 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "core"))
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import atomic  # noqa: E402
+import campaign_run as cr  # noqa: E402
 import canon  # noqa: E402
 import turn_record as tr  # noqa: E402
-import campaign_run as cr  # noqa: E402
 import validate_turn_replay as vtr  # noqa: E402
 
 TURNS = sorted((REPO_ROOT / "examples" / "ru_ua_salvo_multiturn" / "run" / "turns").glob("*.json"))

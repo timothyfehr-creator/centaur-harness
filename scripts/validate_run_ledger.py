@@ -34,9 +34,8 @@ import sys
 from pathlib import Path
 
 import yaml
-
+from validate_claims import _usable_registry, load_registry
 from validate_schemas import REPO_ROOT, _display, _is_nonempty_str, _valid_iso_date
-from validate_claims import load_registry, _usable_registry
 
 DEFAULT_SCENARIO = REPO_ROOT / "examples" / "ukraine_crimea_logistics"
 DEFAULT_LEDGER = DEFAULT_SCENARIO / "run_ledger.yaml"

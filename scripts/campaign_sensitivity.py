@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """WP-E2b2 culmination-as-RANGE sensitivity sweep — a DERIVED report, NOT a gate.
 
 Runs the multi-turn campaign over a one-at-a-time **resupply** sweep {-100, -50, 0, +100, +200}% (scaling
@@ -27,8 +28,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "core"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import canon  # noqa: E402
 import campaign_run as cr  # noqa: E402
+import canon  # noqa: E402
 
 FACTORS_PCT = (-100, -50, 0, 100, 200)
 

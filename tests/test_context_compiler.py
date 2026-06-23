@@ -6,14 +6,11 @@ ever sees another agent's private state, and adjudicator-only state never reache
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "core"))
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import context_compiler as cc  # noqa: E402
 from validate_claims import load_registry  # noqa: E402
 from validate_state import validate_state  # noqa: E402

@@ -7,13 +7,11 @@ deterministic (the live git fingerprint is the engine entrypoint's concern, not 
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "core"))
 
 import atomic  # noqa: E402
 import canon  # noqa: E402

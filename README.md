@@ -87,9 +87,9 @@ fixed loop: plan → implement one work package → green-gate (the tests *and* 
 verifier must pass) → an **adversarial review by independent agents** → atomic commit.
 Epistemically-sensitive work — anything touching attestation or calibration — is
 **human-gated** and put through a genuinely independent (cross-vendor) review before it is
-trusted. The operating rules are written down, not improvised: [AGENTS.md](AGENTS.md),
-[CLAUDE.md](CLAUDE.md), the [Constitution](docs/CONSTITUTION.md), and the delivery cadence in
-the [Runbook](docs/RUNBOOK.md).
+trusted. The operating rules are written down, not improvised: [CONTRIBUTING.md](CONTRIBUTING.md)
+(start here to build), [AGENTS.md](AGENTS.md), [CLAUDE.md](CLAUDE.md), the
+[Constitution](docs/CONSTITUTION.md), and the delivery cadence in the [Runbook](docs/RUNBOOK.md).
 
 ## Documentation
 
@@ -104,7 +104,7 @@ the [Runbook](docs/RUNBOOK.md).
 ## Requirements
 
 Python 3.11+ and the dependencies in [`requirements-dev.txt`](requirements-dev.txt)
-(`pytest`, `PyYAML`). On an externally-managed Python (PEP 668), use a venv as in the
+(`pytest`, `PyYAML`, `ruff`). On an externally-managed Python (PEP 668), use a venv as in the
 Quickstart. The `draft` and `release` modes require **git** (the safety gate scans tracked
 files via `git ls-files`) — run inside the repository, not an export/tarball; without git
 they fail closed by design. Locally the interpreter is `python3` (there is no `python`

@@ -7,13 +7,11 @@ collide (length-framing), and the master_seed lives only in the binding.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "core"))
 
 import canon  # noqa: E402
 import rng  # noqa: E402

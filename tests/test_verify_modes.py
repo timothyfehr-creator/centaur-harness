@@ -17,7 +17,6 @@ VERIFY = REPO_ROOT / "scripts" / "verify.py"
 
 # Import the verify module in-process for the composition tests (additive to the
 # subprocess style; verify.py has no import side effects -- main() is __main__-guarded).
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import verify  # noqa: E402
 
 

@@ -27,10 +27,9 @@ import sys
 from pathlib import Path
 
 import yaml
-
 from validate_schemas import (
-    REPO_ROOT,
     CLAIM_SPEC,
+    REPO_ROOT,
     SOURCE_SPEC,
     _display,
     _is_nonempty_str,

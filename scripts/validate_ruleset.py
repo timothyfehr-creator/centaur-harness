@@ -33,7 +33,6 @@ for _p in (str(_SCRIPTS), str(_SCRIPTS.parent / "core")):
         sys.path.insert(0, _p)
 
 import yaml  # noqa: E402
-
 from validate_schemas import REPO_ROOT, _display, _is_nonempty_str  # noqa: E402
 
 CANONICAL = "rules.yaml"

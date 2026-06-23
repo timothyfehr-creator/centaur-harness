@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Engine run for the contested-logistics slice (WP-E1): assemble + write a committed turn record.
 
 Writes the canon-v1 bytes of the slice's turn record to the scenario's ``run/turns/`` tree. The

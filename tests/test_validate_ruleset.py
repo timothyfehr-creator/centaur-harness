@@ -1,11 +1,9 @@
 """Tests for scripts/validate_ruleset.py — the structural + provenance ruleset gate (WP-E2b1)."""
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import validate_ruleset as vr  # noqa: E402
 

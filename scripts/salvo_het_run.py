@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """WP-E2b1 heterogeneous salvo run + recompute.
 
 Loads the heterogeneous-salvo scenario (engine_state.yaml + rules.yaml), FLATTENS the rules.yaml

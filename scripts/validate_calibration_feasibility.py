@@ -39,6 +39,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
+from validate_claims import load_registry
+from validate_run_ledger import _sha256
 from validate_schemas import (
     REPO_ROOT,
     _display,
@@ -46,8 +48,6 @@ from validate_schemas import (
     _valid_iso_date,
     _validate_skeleton,
 )
-from validate_claims import load_registry
-from validate_run_ledger import _sha256
 
 # verdict has NO "FEASIBLE" value BY DESIGN -- the record structurally cannot become a back-door
 # calibration claim; a channel that becomes calibratable graduates to calibration.yaml / CALIBRATED.

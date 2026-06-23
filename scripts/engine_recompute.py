@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Deterministic engine recompute for the contested-logistics slice (WP-E1).
 
 A self-contained recompute entrypoint: assemble the slice turn record for a given seed and print its

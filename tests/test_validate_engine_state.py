@@ -7,12 +7,9 @@ types (FORCE / ROUTE / ROUTE_SECRET / SINK) still validate (backward compatibili
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
-sys.path.insert(0, str(REPO_ROOT / "core"))
 
 import canon  # noqa: E402
 import validate_engine_state as ves  # noqa: E402

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Turn-replay gate (WP-E1) — record-replay + recomputation over committed turn records.
 
 Globs ``examples/**/run/turns/*.json``. For each committed turn record:

@@ -10,7 +10,8 @@ from __future__ import annotations
 import copy
 
 from canon import canonical_bytes
-from rng import draw as rng_draw, draw_address
+from rng import draw as rng_draw
+from rng import draw_address
 
 RESOLVER_ID = "contested_logistics"
 RESOLVER_VERSION = "1"

@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _SCRIPTS = str(REPO_ROOT / "scripts")
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
-from validate_claims import load_registry, _usable_registry  # noqa: E402
+from validate_claims import _usable_registry, load_registry  # noqa: E402
 from validate_schemas import _is_nonempty_str  # noqa: E402
 
 ADJUDICATOR_ID = "adjudicator"

@@ -1,0 +1,30 @@
+# Centaur Harness — tooling configuration (lint + test).
+# This repo is a collection of CLI gates + a deterministic engine, not a pip-installable
+# package, so there is no [build-system]; pyproject.toml is the home for tool config.
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = [".venv", "examples/*/run"]
+
+[tool.ruff.lint]
+# F = pyflakes (real defects: unused/undefined names), E/W = pycodestyle, I = import order.
+select = ["F", "E", "W", "I"]
+ignore = [
+    # E402 (import not at top): the standalone CLIs set sys.path before importing siblings,
+    # which is intentional for direct `python scripts/<gate>.py` invocation.
+    "E402",
+    # E501 (line too long): this codebase uses long, information-dense comments by design as
+    # in-line design rationale; line-length is advisory (set above), not a gate. The linter
+    # still enforces real defects (F), whitespace (W), and import order (I).
+    "E501",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "scripts"]
+
+[tool.pytest.ini_options]
+# Put the engine (core/) and the gates (scripts/) on the path ONCE here, so individual test
+# files don't each need a sys.path.insert. testpaths keeps `pytest` scoped to the suite.
+pythonpath = ["scripts", "core"]
+testpaths = ["tests"]

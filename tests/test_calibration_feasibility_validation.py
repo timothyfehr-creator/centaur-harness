@@ -25,7 +25,6 @@ SCN, VALID = FIX / "scn", FIX / "valid" / "calibration_feasibility.yaml"
 CALIBRATED_SIGNOFF = SCN / "signoff_calibrated.yaml"
 BASE = yaml.safe_load(VALID.read_text())
 
-sys.path.insert(0, str(REPO_ROOT / "scripts"))   # in-process import for the sweep-recursion unit test
 import validate_calibration_feasibility as vcf  # noqa: E402
 
 

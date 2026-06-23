@@ -8,13 +8,11 @@ reduce-sole-constructor, and homogeneous-equivalence.
 from __future__ import annotations
 
 import copy
-import sys
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "core"))
 
 import canon  # noqa: E402
 import salvo_resolver_het as sh  # noqa: E402

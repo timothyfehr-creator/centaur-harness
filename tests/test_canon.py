@@ -7,16 +7,13 @@ an independent oracle, not a value the engine invented for itself.
 from __future__ import annotations
 
 import hashlib
-import sys
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "core"))
 
-import canon  # noqa: E402
-
+import canon  # noqa: E402  (core/ is on sys.path via pyproject [tool.pytest.ini_options] pythonpath)
 
 # --- hand-authored canonical byte vectors -------------------------------------------
 

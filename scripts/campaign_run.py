@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """WP-E2b2 multi-turn campaign orchestrator — deterministic chaining over the heterogeneous salvo.
 
 Chains weekly turns: each turn's ``resulting_state`` (which carries the in-``reduce`` ``as_of_turn``

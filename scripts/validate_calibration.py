@@ -36,6 +36,7 @@ import math
 import sys
 from pathlib import Path
 
+from validate_claims import load_registry
 from validate_schemas import (
     REPO_ROOT,
     _display,
@@ -43,7 +44,6 @@ from validate_schemas import (
     _valid_iso_date,
     _validate_skeleton,
 )
-from validate_claims import load_registry
 
 DEFAULT_SCENARIO = REPO_ROOT / "examples" / "ukraine_crimea_logistics"
 

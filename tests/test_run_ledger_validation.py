@@ -21,7 +21,6 @@ VALIDATOR = REPO_ROOT / "scripts" / "validate_run_ledger.py"
 EXAMPLE_LEDGER = REPO_ROOT / "examples" / "ukraine_crimea_logistics" / "run_ledger.yaml"
 INVALID = REPO_ROOT / "tests" / "fixtures" / "run_ledger" / "invalid"
 
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import validate_run_ledger as vrl  # noqa: E402
 
 ALL_LEDGERS = sorted((REPO_ROOT / "examples").glob("*/run_ledger.yaml"))

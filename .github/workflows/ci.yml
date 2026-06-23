@@ -7,6 +7,7 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       PYTHONHASHSEED: "0"   # WP-E1: pin the interpreter hash seed for deterministic engine runs
     steps:
@@ -16,9 +17,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install dev dependencies
         run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
 
       - name: Secret scan
         run: python scripts/secret_scan.py

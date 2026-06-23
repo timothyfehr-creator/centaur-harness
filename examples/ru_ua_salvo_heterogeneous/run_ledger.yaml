@@ -1,6 +1,6 @@
 schema_version: '1.0'
 as_of_date: '2026-06-23'
-code_version: ab9ae8b0b6c0715ace333964111240fc599d6d47-dirty
+code_version: 735ed3d65ddaab82973ef0dcb8993855c25fcb80
 tool_version: '1.0'
 generated_by: validate_run_ledger.py --write
 inputs:

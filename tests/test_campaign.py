@@ -153,3 +153,27 @@ def test_forged_start_state_is_caught_by_self_binding() -> None:
     rec = json.loads(json.dumps(RECORDS[-1]))   # deep copy the culminating record
     rec["start_state"]["state"]["entities"][0]["fields"]["strike_inventory"]["value"] = 999999
     assert "state-digest-self-mismatch" in {c for c, _, _ in vtr.check_record(rec, "forged")}
+
+
+# --- culmination-as-range sensitivity sweep (WP-E2b2) ---------------------------------------------
+
+def test_sensitivity_sweep_is_a_resupply_dominated_range() -> None:
+    import campaign_sensitivity as cs
+    report = cs.sweep(as_of_date="2026-06-23")
+    cells = {c["resupply_factor_pct"]: c for c in report["cells"]}
+    assert set(cells) == set(cs.FACTORS_PCT)
+
+    def wk(f: int) -> int:
+        return cells[f]["culmination_week"] if cells[f]["culmination_week"] is not None else 10 ** 9
+
+    # resupply DOMINATES culmination timing: more resupply -> culmination no earlier (monotone in the axis)
+    assert wk(-50) <= wk(-25) <= wk(0) <= wk(25) <= wk(50)
+    assert cells[0]["culmination_week"] == RECORDS[-1]["turn"]            # base == the committed campaign
+    assert report["culmination_week_range"][0] < report["culmination_week_range"][1]   # a real RANGE, not a point
+
+
+def test_sensitivity_sweep_is_reproducible() -> None:
+    import campaign_sensitivity as cs
+    a, b = cs.sweep(as_of_date="x"), cs.sweep(as_of_date="x")
+    assert [c["config_hash"] for c in a["cells"]] == [c["config_hash"] for c in b["cells"]]
+    assert [c["culmination_week"] for c in a["cells"]] == [c["culmination_week"] for c in b["cells"]]

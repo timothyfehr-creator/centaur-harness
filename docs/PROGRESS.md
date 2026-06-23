@@ -600,8 +600,19 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   the turn-replay gate is now fail-closed on an unknown `resolver_id` with per-resolver `STOCHASTIC_TERMINALS`.
   New `examples/ru_ua_salvo_heterogeneous/` golden record (the drone salvo exercises saturation). An
   adversarial-verify pass caught + fixed two bugs pre-commit. UNCALIBRATED / ILLUSTRATIVE.
-- **Now:** **439 tests green**; `release` composes the WP8–9 gates **plus** the engine-state + **ruleset**
-  + turn-replay gates. The WP-E2 model contract is locked (red-team GO_WITH_CHANGES); **next = WP-E2b2**
-  (the multi-turn campaign: a chaining orchestrator, a cross-record continuity gate, a 12-week golden
-  campaign, culmination-as-range), then WP-E2c (a channel-scoped, falsifiable backtest). The user owes the
-  lethality floor% + k before E2c. Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).
+- **WP-E2b2 — multi-turn campaign** ✅ `scripts/campaign_run.py` chains weekly turns over the het resolver
+  (each turn's resulting_state — carrying the in-`reduce` `as_of_turn` advance via `TURN_ADVANCED` — is the
+  next turn's start_state BYTE-IDENTICALLY); stops at culmination or the horizon. The committed
+  `examples/ru_ua_salvo_multiturn/` campaign holds ~4 weeks, then magazines deplete and it CULMINATES at
+  week 6 (sustained-k streak; the weeks-of-supply indicator leads the collapse). A cross-record
+  **continuity gate** (a chain pass in `validate_turn_replay`: gap-free, digest-identical head handoffs,
+  monotone `as_of_turn`, the successor pointer, one resolver/ruleset; a length-1 chain is a no-op so
+  single-turn scenarios are unaffected) + a per-record **self-binding** check (`state_digest ==
+  canonical_digest(state)`) — the latter from an adversarial-verify pass that caught a forged-state
+  false-negative. `scripts/campaign_sensitivity.py` = culmination-as-RANGE over a resupply sweep (a derived
+  report, not a gate): range [4,6] weeks, resupply-dominated. No `schema_version` bump.
+- **Now:** **456 tests green**; `release` = the WP8–9 gates + engine-state + ruleset + turn-replay (which
+  now also runs the multi-turn chain pass). **next = WP-E2c** (the channel-scoped, falsifiable backtest:
+  KINETIC-only drone observable, out-of-sample holdout). The user owes the lethality floor% + k before E2c
+  (ASSUMED 50/3 today); an EXTERNAL (non-Claude) red-team round is advisable. Calibration *scoring* remains
+  the sole `[SKIP]` (needs resolved outcomes).

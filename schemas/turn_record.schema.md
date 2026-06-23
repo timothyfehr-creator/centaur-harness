@@ -84,10 +84,16 @@ successor_slot: "run/turns/0001.json"     # the single-successor slot (distinct 
 
 `missing-schema-version`, `missing-field`, `wrong-type`, `idempotency-key-mismatch` /
 `transition-input-hash-mismatch` (committed idempotency key ≠ a fresh recompute — a stale record),
-`reduce-mismatch` (PASS#9), `decorative-seed` (`rng` present with no draw), `successor-exists`,
-`digest-domain-mismatch`, `not-byte-identical` (retry conflict).
+`state-digest-self-mismatch` (a record's `state_digest` ≠ `canonical_digest(state)` — a forged/tampered
+state), `reduce-mismatch` (PASS#9), `decorative-seed` (`rng` present with no draw), `successor-exists`,
+`digest-domain-mismatch`, `not-byte-identical` (retry conflict). **Cross-record (WP-E2b2 chain):**
+`chain-gap`, `chain-head-mismatch`, `chain-turn-nonmonotone`, `chain-successor-mismatch`,
+`chain-resolver-switch`.
 
 ## Limitations / deferred
 
-One turn, single-writer, `local-posix-fs-v1`. Multi-turn chaining, multi-host/network-fs durability,
-LLM-step records (`llm_steps`), branching, and the engine→prose `MODEL_OUTPUT` bridge are deferred.
+Single-writer, `local-posix-fs-v1`. **Multi-turn chaining (WP-E2b2) is now expressed** through existing
+fields — the `run/turns/{NNNN}.json` slot tree + the `successor_slot` forward pointer + the in-state
+`as_of_turn` (advanced inside `reduce` via a `TURN_ADVANCED` event) — and enforced by the turn-replay
+gate's chain pass (byte-identical head handoffs); no `schema_version` bump was needed. Multi-host/network-fs
+durability, LLM-step records (`llm_steps`), branching, and the engine→prose `MODEL_OUTPUT` bridge are deferred.

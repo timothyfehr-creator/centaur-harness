@@ -54,8 +54,8 @@ DEFAULT_RULESET = {
     "saturation_retained_pct": {"drone": 70, "cruise": 70, "ballistic": 70},
     "ballistic_leak_floor_pct": 20,                        # EXOGENOUS sourced RANGE (not calibrated)
     "ballistic_leak_high_pct": 35,
-    "lethality_floor_pct": 50,                             # ASSUMED — user refines before E2c
-    "culmination_k_weeks": 3,                              # ASSUMED — user refines before E2c
+    "lethality_floor_pct": 50,                             # LOCKED (doctrinal: sustained sub-50% = culmination)
+    "culmination_k_weeks": 3,                              # LOCKED (3 consecutive weeks below the floor)
     "culmination_threshold": 120,                          # ASSUMED — the inventory limb
 }
 

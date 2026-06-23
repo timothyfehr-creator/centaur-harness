@@ -50,10 +50,10 @@ params:
     source: "SOURCED-RANGE (exogenous) — range high."
   lethality_floor_pct:
     value: 50
-    source: "ASSUMED — culmination lethality floor; USER refines before E2c (load-bearing, lock before backtest)."
+    source: "ASSUMED, LOCKED by the user 2026-06-23 on doctrinal grounds (sustained sub-50% effective interception = the defense can no longer sustain protection; Clausewitz culmination). NOT backtest-calibratable (the Sept-Nov 2024 window has no culmination event); locked BEFORE E2c (no post-hoc tuning). Regime-dependent: inert in a magazine-cliff, load-bearing under gradual degradation."
   culmination_k_weeks:
     value: 3
-    source: "ASSUMED — sustain horizon (consecutive weeks); USER refines before E2c."
+    source: "ASSUMED, LOCKED by the user 2026-06-23: collapse requires the effective rate below the floor for 3 consecutive weeks (filters transient saturation spikes). NOT backtest-calibratable; locked before E2c. Drives the committed campaign's culmination week (~1 wk per unit of k)."
   culmination_threshold:
     value: 120
     source: "ASSUMED — the inventory limb (total magazine), carried from E2a."

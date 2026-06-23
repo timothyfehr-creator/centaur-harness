@@ -47,9 +47,12 @@ state:
     - id: ukraine_air_defense           # the network AGGREGATE (streak + culmination + indicators)
       type: AIR_DEFENSE
       fields:
-        cumulative_intercepted:    {value: 0,     unit: munitions}
-        lethality_collapse_streak: {value: 0,     unit: weeks}    # consecutive below-floor weeks (sustain)
-        lethality_collapsed:       {value: false, unit: bool}     # the HYBRID headline verdict
-        magazine_non_depleting:    {value: false, unit: bool}     # leading-indicator sentinel (canon-safe)
-        magazine_weeks_remaining:  {value: 0,     unit: weeks}    # leading indicator
-        culminated:                {value: false, unit: bool}
+        cumulative_intercepted:     {value: 0,     unit: munitions}
+        streak_drone:               {value: 0,     unit: weeks}    # per-class below-floor streaks (weakest-link)
+        streak_cruise:              {value: 0,     unit: weeks}
+        streak_ballistic:           {value: 0,     unit: weeks}
+        lethality_collapsed:        {value: false, unit: bool}     # headline verdict (any class' streak >= k)
+        magazine_non_depleting:     {value: false, unit: bool}     # leading-indicator sentinel (demand-based)
+        magazine_weeks_remaining:   {value: 0,     unit: weeks}    # leading indicator (weeks of supply)
+        magazine_stock_constrained: {value: false, unit: bool}     # realized consumption < unconstrained demand
+        culminated:                 {value: false, unit: bool}

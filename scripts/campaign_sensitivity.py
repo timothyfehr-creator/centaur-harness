@@ -1,11 +1,15 @@
 """WP-E2b2 culmination-as-RANGE sensitivity sweep — a DERIVED report, NOT a gate.
 
-Runs the multi-turn campaign over a one-at-a-time **resupply** sweep {-50, -25, 0, +25, +50}% (scaling
+Runs the multi-turn campaign over a one-at-a-time **resupply** sweep {-100, -50, 0, +100, +200}% (scaling
 every interceptor's ``weekly_resupply``, integer) and reports the culmination week per cell — so
-culmination timing is presented as a RANGE dominated by the least-constrained input (resupply), never a
-single point. ``run_campaign`` is pure, so this commits NOTHING (only the BASE campaign is committed, by
-campaign_run). Each cell records a ``config_hash`` (canon digest of the perturbed start_state + ruleset),
-the seed, the ``code_version``, and an ``as_of_date`` for reproducibility. Integer scaling stays canon-safe.
+culmination timing is presented as a RANGE, not a single point. The band is deliberately WIDE: with the
+WP-E2b3 per-class lethality culmination (the pooled inventory limb dropped), the culmination week is
+governed by the magazine DEPTH that paces interceptor depletion, so a narrow +-50% resupply band sits in a
+flat region (all wk6) and a wider sweep is needed to exercise the genuine sensitivity (wk5 at zero resupply
+to wk8 at 3x; resupply beyond ~+300% prevents culmination within the horizon). ``run_campaign`` is pure, so
+this commits NOTHING (only the BASE campaign is committed, by campaign_run). Each cell records a
+``config_hash`` (canon digest of the perturbed start_state + ruleset), the seed, the ``code_version``, and
+an ``as_of_date`` for reproducibility. Integer scaling stays canon-safe.
 
 Output is on demand: ``python scripts/campaign_sensitivity.py`` prints the report; ``--write`` saves a
 (git-ignored-by-convention, regenerable) ``campaign_sensitivity.json``. ILLUSTRATIVE / UNCALIBRATED.
@@ -26,7 +30,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import canon  # noqa: E402
 import campaign_run as cr  # noqa: E402
 
-FACTORS_PCT = (-50, -25, 0, 25, 50)
+FACTORS_PCT = (-100, -50, 0, 100, 200)
 
 
 def _scaled(state: dict, factor_pct: int) -> dict:
@@ -71,8 +75,10 @@ def sweep(as_of_date: str | None = None, max_weeks: int = cr.MAX_WEEKS) -> dict:
         "swept_input": "interceptor weekly_resupply (one-at-a-time)",
         "horizon_weeks": max_weeks,
         "culmination_week_range": [min(weeks), max(weeks)] if weeks else None,
-        "headline": ("Culmination timing is governed by the resupply assumption (the least-constrained "
-                     "input) and is reported as a RANGE, not a point. UNCALIBRATED."),
+        "headline": ("Culmination timing shifts with the resupply assumption (wk5 at zero resupply to wk8 "
+                     "at +200%), reported as a RANGE not a point. Within +-50% it is ROBUST at the committed "
+                     "wk6: under per-class lethality culmination, resupply FLOW is a weaker lever than the "
+                     "magazine DEPTH that paces interceptor depletion. UNCALIBRATED."),
         "cells": cells,
     }
 

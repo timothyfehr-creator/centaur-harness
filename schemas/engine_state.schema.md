@@ -81,9 +81,10 @@ The salvo scenarios use `STRIKE_FORCE` (strike pools) + `AIR_DEFENSE` (intercept
 (WP-E2a):** one `russia_strikeforce` + one `ukraine_air_defense`. **Heterogeneous (WP-E2b1):** one
 `STRIKE_FORCE` per threat class (`russia_strike_{drone,cruise,ballistic}`), one `AIR_DEFENSE` per
 interceptor type (`ukraine_intc_{short,long,pac3}`), plus a network-aggregate `AIR_DEFENSE`
-(`ukraine_air_defense`) carrying `cumulative_intercepted`, `lethality_collapse_streak`,
-`lethality_collapsed`, `magazine_non_depleting`, `magazine_weeks_remaining`, `culminated` (additive
-fields — no `schema_version` bump). All ASSUMED / UNCALIBRATED.
+(`ukraine_air_defense`) carrying `cumulative_intercepted`, the per-class weakest-link streaks
+`streak_{drone,cruise,ballistic}` (WP-E2b3), `lethality_collapsed`, `magazine_non_depleting`,
+`magazine_weeks_remaining`, `magazine_stock_constrained`, `culminated` (additive / renamed fields, typed by
+shape — no `schema_version` bump). All ASSUMED / UNCALIBRATED.
 
 ## Error codes (`validate_engine_state.py` emits)
 

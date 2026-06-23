@@ -74,8 +74,12 @@ def test_campaign_conservation_and_leading_indicator_leads_culmination() -> None
 
 
 def test_streak_builds_then_fires_collapse_at_k() -> None:
-    streaks = [_leth(r)["streak"] for r in RECORDS]
-    assert streaks[-1] >= 3 and _leth(RECORDS[-1])["lethality_collapsed"] is True   # sustained-k fired
+    # per-class weakest-link: SOME threat class sustains k weeks below its floor, firing the headline only
+    # at the final week (not before).
+    final = _leth(RECORDS[-1])
+    assert final["lethality_collapsed"] is True
+    assert max(final["streak_by_threat"].values()) >= 3                                # sustained-k fired
+    assert all(not _leth(r)["lethality_collapsed"] for r in RECORDS[:-1])              # and only at the end
 
 
 # --- the orchestrator (pure run + commit, into tmp) -----------------------------------------------
@@ -166,8 +170,9 @@ def test_sensitivity_sweep_is_a_resupply_dominated_range() -> None:
     def wk(f: int) -> int:
         return cells[f]["culmination_week"] if cells[f]["culmination_week"] is not None else 10 ** 9
 
-    # resupply DOMINATES culmination timing: more resupply -> culmination no earlier (monotone in the axis)
-    assert wk(-50) <= wk(-25) <= wk(0) <= wk(25) <= wk(50)
+    # more resupply -> culmination NO EARLIER (monotone in the axis); the wide band exercises the genuine
+    # lethality-culmination sensitivity (the +-50% band is flat once the pooled inventory limb is dropped)
+    assert wk(-100) <= wk(-50) <= wk(0) <= wk(100) <= wk(200)
     assert cells[0]["culmination_week"] == RECORDS[-1]["turn"]            # base == the committed campaign
     assert report["culmination_week_range"][0] < report["culmination_week_range"][1]   # a real RANGE, not a point
 

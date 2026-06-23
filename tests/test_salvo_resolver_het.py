@@ -34,8 +34,9 @@ def make_state(*, drone=(1000, 5000, 1000), cruise=(500, 3000, 500), ballistic=(
         return _ent(eid, "AIR_DEFENSE", interceptor_inventory=t[0], weekly_resupply=t[1])
 
     network = _ent("ukraine_air_defense", "AIR_DEFENSE", cumulative_intercepted=0,
-                   lethality_collapse_streak=streak, lethality_collapsed=False,
-                   magazine_non_depleting=False, magazine_weeks_remaining=0, culminated=False)
+                   streak_drone=streak, streak_cruise=streak, streak_ballistic=streak,
+                   lethality_collapsed=False, magazine_non_depleting=False, magazine_weeks_remaining=0,
+                   magazine_stock_constrained=False, culminated=False)
     return {"schema_version": "1.0", "state": {"as_of_turn": as_of_turn, "entities": [
         strike("russia_strike_drone", drone), strike("russia_strike_cruise", cruise),
         strike("russia_strike_ballistic", ballistic),
@@ -79,9 +80,9 @@ def test_homogeneous_equivalence_reproduces_e2a_arithmetic() -> None:
         _ent("russia_strike_drone", "STRIKE_FORCE", weekly_launch=1500, strike_inventory=10000,
              weekly_production=1500, cumulative_launched=0, cumulative_leaked=0),
         _ent("ukraine_intc_short", "AIR_DEFENSE", interceptor_inventory=1200, weekly_resupply=60),
-        _ent("ukraine_air_defense", "AIR_DEFENSE", cumulative_intercepted=0, lethality_collapse_streak=0,
-             lethality_collapsed=False, magazine_non_depleting=False, magazine_weeks_remaining=0,
-             culminated=False)]}}
+        _ent("ukraine_air_defense", "AIR_DEFENSE", cumulative_intercepted=0, streak_drone=0,
+             streak_cruise=0, streak_ballistic=0, lethality_collapsed=False, magazine_non_depleting=False,
+             magazine_weeks_remaining=0, magazine_stock_constrained=False, culminated=False)]}}
     ruleset = {"threats": ["drone"], "interceptors": ["short"], "p_intercept_pct": {"drone": 80},
                "per_pairing": {"drone": {"short": 1}}, "allocation_priority": {"drone": ["short"]},
                "threat_order": ["drone"], "weekly_engagement_capacity": {"drone": 100000},
@@ -217,33 +218,72 @@ def test_partial_capacity_override_is_rejected_not_keyerror() -> None:
     assert any(code == "missing-param" for code, _ in out["rejections"])
 
 
-# --- hybrid culmination: sustained-k streak (single below-floor week does NOT fire the headline) -------
+# --- per-class WEAKEST-LINK culmination: sustained-k streaks, per class (F6) ---------------------------
 
 def test_one_below_floor_week_does_not_fire_collapse() -> None:
-    # a brutal week (no interceptors) -> effective rate 0 < floor -> streak 1, but k=3 so NOT collapsed.
+    # a brutal week (no interceptors) -> every class' effective rate 0 < its floor -> each streak 1, but
+    # k=3 so NOT collapsed.
     state = make_state(short=(0, 0), longi=(0, 0), pac3=(0, 0), streak=0)
     leth = status(sh.resolve(state)[0], "LETHALITY_STATUS")
-    assert leth["below_floor"] is True and leth["streak"] == 1 and leth["lethality_collapsed"] is False
+    assert leth["below_floor_by_threat"]["drone"] is True
+    assert leth["streak_by_threat"]["drone"] == 1 and leth["lethality_collapsed"] is False
 
 
 def test_kth_consecutive_below_floor_week_fires_collapse() -> None:
     state = make_state(short=(0, 0), longi=(0, 0), pac3=(0, 0), streak=2)   # k=3: this is the 3rd week
     leth = status(sh.resolve(state)[0], "LETHALITY_STATUS")
-    assert leth["streak"] == 3 and leth["lethality_collapsed"] is True
+    assert leth["streak_by_threat"]["drone"] == 3 and leth["lethality_collapsed"] is True
 
 
 def test_above_floor_week_resets_the_streak() -> None:
     state = make_state(short=(100000, 0), longi=(100000, 0), pac3=(100000, 0), streak=2)
     leth = status(sh.resolve(state)[0], "LETHALITY_STATUS")
-    assert leth["below_floor"] is False and leth["streak"] == 0
+    assert leth["below_floor_by_threat"]["drone"] is False and leth["streak_by_threat"]["drone"] == 0
 
 
 def test_idle_week_does_not_advance_collapse_streak() -> None:
     # adversarial-verify BUG 2: a week with NO incoming fire is not a defensive failure -> the streak must
-    # not advance (an idle week can't be "below floor"; the rate is undefined, not failing).
+    # not advance (an idle class can't be "below floor"; its rate is undefined, not failing).
     idle = make_state(drone=(0, 0, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0), streak=2)
     leth = status(sh.resolve(idle)[0], "LETHALITY_STATUS")
-    assert leth["below_floor"] is False and leth["streak"] == 0 and leth["lethality_collapsed"] is False
+    assert leth["below_floor_by_threat"]["drone"] is False
+    assert leth["streak_by_threat"]["drone"] == 0 and leth["lethality_collapsed"] is False
+
+
+def test_per_class_idle_reset_is_independent() -> None:
+    # F6: per-class streaks are INDEPENDENT. With drone idle (no incoming) but cruise under fire and
+    # failing, drone's streak RESETS while cruise's advances -- a class that stops being attacked is not
+    # "collapsing", but a different class still under fire is. (Also exercises weakest-link: cruise alone
+    # fires the headline.)
+    state = make_state(drone=(0, 0, 0), cruise=(500, 3000, 0), ballistic=(0, 0, 0),
+                       short=(0, 0), longi=(0, 0), pac3=(0, 0), streak=2)
+    leth = status(sh.resolve(state)[0], "LETHALITY_STATUS")
+    assert leth["streak_by_threat"]["drone"] == 0          # idle -> reset
+    assert leth["streak_by_threat"]["cruise"] == 3         # under fire, 0% < 40% floor -> advanced (2->3)
+    assert leth["lethality_collapsed"] is True             # weakest-link: cruise hit k=3
+
+
+def test_weakest_link_one_class_collapse_fires_headline() -> None:
+    # F6 (the core fix the red-team's CULM finding demanded): culmination is WEAKEST-LINK. drone is
+    # well-defended (eff >> floor) but ballistic is starved below ITS floor for the kth week -> the headline
+    # collapses on ballistic alone, NOT masked by drone success (the pooled metric's blind spot).
+    state = make_state(drone=(1000, 50000, 0), cruise=(0, 0, 0), ballistic=(200, 5000, 0),
+                       short=(1_000_000, 0), longi=(0, 0), pac3=(0, 0), streak=2)
+    leth = status(sh.resolve(state)[0], "LETHALITY_STATUS")
+    assert leth["below_floor_by_threat"]["drone"] is False      # drone 80% >> 50% floor
+    assert leth["below_floor_by_threat"]["ballistic"] is True   # no PAC-3 -> 0% < 25% floor
+    assert leth["streak_by_threat"]["ballistic"] == 3 and leth["lethality_collapsed"] is True
+
+
+def test_magazine_indicator_uses_unconstrained_demand_under_starvation() -> None:
+    # F6 (external red-team): under STARVATION realized consumption is pinned at/below resupply, so the OLD
+    # realized-consumption net-burn falsely read "non-depleting". The indicator now uses UNCONSTRAINED
+    # demand: an empty short magazine facing 1000 drones is depleting + stock_constrained, not healthy.
+    state = make_state(drone=(1000, 50000, 0), cruise=(0, 0, 0), ballistic=(0, 0, 0),
+                       short=(0, 50), longi=(0, 0), pac3=(0, 0), streak=0)
+    mag = status(sh.resolve(state)[0], "MAGAZINE_STATUS")
+    assert mag["magazine_non_depleting"] is False      # demand (1000) >> resupply (50) -> depleting
+    assert mag["stock_constrained"] is True            # realized consumption (0) < demand (1000)
 
 
 def test_magazine_indicator_is_independent_of_lethality_headline() -> None:

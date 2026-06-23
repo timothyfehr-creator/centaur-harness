@@ -77,9 +77,10 @@ def _row(rec: dict) -> str:
     ev = {e["event_type"]: e for e in rec["event_batch"]}
     leth, mag, culm = ev.get("LETHALITY_STATUS", {}), ev.get("MAGAZINE_STATUS", {}), ev.get("CULMINATION_STATUS", {})
     leaked = sum(e["count"] for e in rec["event_batch"] if e["event_type"] == "STRIKES_LEAKED")
+    streaks = leth.get("streak_by_threat", {})
     return (f"  wk{rec['turn']:2d}  eff={leth.get('effective_intercept_pct')}%  leaked={leaked}  "
-            f"streak={leth.get('streak')}  mag_weeks={mag.get('weeks_remaining')} "
-            f"depleted={mag.get('magazine_depleted')}  culminated={culm.get('culminated')}")
+            f"streaks={ {t: streaks[t] for t in sorted(streaks)} }  mag_weeks={mag.get('weeks_remaining')} "
+            f"constrained={mag.get('stock_constrained')}  culminated={culm.get('culminated')}")
 
 
 def main(argv: list | None = None) -> int:

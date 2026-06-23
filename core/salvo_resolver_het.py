@@ -7,8 +7,10 @@ TYPES, per the locked MODEL CONTRACT (centaur_engine_planning/ADJUDICATION_LEDGE
     The interceptor axis is an INTERNAL magazine-accounting layer (which stock drains) with NO calibrated
     per-pairing rate. BALLISTIC leak-through is an EXOGENOUS sourced RANGE, not a calibrated cell — its
     effective intercept rate derives from that range's central, never a calibratable p.
-  - HYBRID culmination: lethality-collapse (effective intercept-rate below a floor, sustained k weeks via a
-    STATE-carried streak) OR the inventory limb; magazine weeks-of-supply is a separate leading indicator.
+  - WEAKEST-LINK culmination: lethality-collapse when ANY threat class's effective intercept rate stays
+    below ITS per-class floor for k consecutive weeks (per-class STATE-carried streaks; per-class so a
+    ballistic collapse is not masked by drone success). Magazine weeks-of-supply is a separate LEADING
+    INDICATOR (computed from unconstrained demand, not starved consumption), NOT a culmination trigger.
   - DETERMINISTIC (no RNG), no agent commands. Integer math (percents) -> canon-safe. reduce() is the SOLE
     constructor and needs only the events. MULTI-TURN-READY: emits TURN_ADVANCED (WP-E2b2 chains over it).
 
@@ -54,9 +56,11 @@ DEFAULT_RULESET = {
     "saturation_retained_pct": {"drone": 70, "cruise": 70, "ballistic": 70},
     "ballistic_leak_floor_pct": 60,    # EXOGENOUS ASSUMED RANGE (dossier-illustrative; ballistic is HARD)
     "ballistic_leak_high_pct": 80,     # 60-80% leak = 20-40% intercept (was backwards: 65-80% intercept)
-    "lethality_floor_pct": 50,                             # LOCKED (doctrinal: sustained sub-50% = culmination)
+    # Per-class lethality floors (WEAKEST-LINK culmination). drone 50 LOCKED; cruise/ballistic ASSUMED
+    # (contract extension, user-confirmed). Floors descend with interception difficulty; ballistic 25 sits
+    # below its ~30% central nominal so the floor detects COLLAPSE, not inherent marginality.
+    "lethality_floor_pct": {"drone": 50, "cruise": 40, "ballistic": 25},
     "culmination_k_weeks": 3,                              # LOCKED (3 consecutive weeks below the floor)
-    "culmination_threshold": 120,                          # ASSUMED — the inventory limb
 }
 
 
@@ -83,6 +87,27 @@ def _merge(ruleset: object) -> dict:
 
 def _count(events: list, event_type: str) -> int:
     return sum(e["count"] for e in events if e["event_type"] == event_type)
+
+
+def _demand(r: dict, launched: dict, threats: list, interceptors: list) -> dict:
+    """Interceptors a MAGAZINE-UNCONSTRAINED week would consume under the same fixed-priority-best-first
+    rule (infinite stock): saturation/capacity still bound engagements, but supply does not, so each
+    threat's BEST interceptor absorbs all its (sat-capped) attempts. This is the true weekly drawdown
+    pressure -> the magazine leading indicator's net-burn, so a STARVED week (realized consumption pinned
+    to resupply) still reads as depleting rather than falsely 'non-depleting'. Deterministic, float-free."""
+    demand = {i: 0 for i in interceptors}
+    for t in r["threat_order"]:
+        if t not in threats:
+            continue
+        sat_t = r["saturation_threshold"][t]
+        if launched[t] > sat_t:
+            engageable = sat_t + (r["saturation_retained_pct"][t] * (launched[t] - sat_t)) // 100
+        else:
+            engageable = launched[t]
+        attempts = min(engageable, r["weekly_engagement_capacity"][t])
+        best = r["allocation_priority"][t][0]            # infinite stock -> the best interceptor takes all
+        demand[best] += attempts * r["per_pairing"][t][best]
+    return demand
 
 
 # --- ruleset validation (the crash-class fix: out-of-range params -> a REJECTED transition) -----------
@@ -134,15 +159,19 @@ def _validate_ruleset(r: dict) -> list:
     elif not (0 <= lo <= hi <= 100):
         bad("ballistic-leak-range-invalid", f"need 0 <= floor({lo}) <= high({hi}) <= 100")
 
-    lf = r.get("lethality_floor_pct")
-    if not _is_int(lf) or not (0 <= lf <= 100):
-        bad("lethality-floor-out-of-range", f"lethality_floor_pct={lf} must be an int 0..100")
+    floors = r.get("lethality_floor_pct")
+    if not isinstance(floors, dict):
+        bad("lethality-floor-wrong-shape", f"lethality_floor_pct must be a per-threat dict; got {floors!r}")
+    else:
+        for t, lf in floors.items():
+            if not _is_int(lf) or not (0 <= lf <= 100):
+                bad("lethality-floor-out-of-range", f"lethality_floor_pct[{t}]={lf} must be an int 0..100")
+        for t in threats:                                # completeness: every threat needs its own floor
+            if t not in floors:
+                bad("missing-floor", f"lethality_floor_pct has no entry for threat {t!r}")
     k = r.get("culmination_k_weeks")
     if not _is_int(k) or k < 1:
         bad("k-weeks-out-of-range", f"culmination_k_weeks={k} must be an int >= 1")
-    th = r.get("culmination_threshold")
-    if not _is_int(th) or th < 0:
-        bad("threshold-out-of-range", f"culmination_threshold={th} must be an int >= 0")
 
     for t in threats:
         prio = r.get("allocation_priority", {}).get(t)
@@ -233,23 +262,32 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
     launched_tot, intercepted_tot = sum(launched.values()), sum(intercepted.values())
     effective_intercept_pct = (intercepted_tot * 100) // launched_tot if launched_tot > 0 else 0
 
-    # Magazine leading indicator (separate from culmination).
-    magazine_after = {i: magazine[i] - consumed[i] + resupply[i] for i in interceptors}
-    net_burn = {i: consumed[i] - resupply[i] for i in interceptors}
+    # Magazine LEADING INDICATOR (separate from culmination). The net-burn uses UNCONSTRAINED weekly DEMAND
+    # (what a magazine-free week would consume), NOT the realized (starved) consumption -- else under
+    # starvation realized falls toward resupply and the sentinel falsely reads "non-depleting" while the
+    # defense is actually losing the magazine race (the F6 bug the committed records 0005/0006 exhibited).
+    demand = _demand(r, launched, threats, interceptors)
+    magazine_after = {i: magazine[i] - consumed[i] + resupply[i] for i in interceptors}   # realized drawdown
+    net_burn = {i: demand[i] - resupply[i] for i in interceptors}                          # demand vs resupply
     depleting = [i for i in interceptors if net_burn[i] > 0]
     magazine_non_depleting = not depleting
     weeks_remaining = 0 if magazine_non_depleting else min(magazine_after[i] // net_burn[i] for i in depleting)
     magazine_depleted = any(magazine_after[i] <= 0 for i in interceptors)
+    stock_constrained = any(consumed[i] < demand[i] for i in interceptors)    # realized < demand -> starved
 
-    # HYBRID culmination: sustained-k lethality streak (carried in state) OR the inventory limb.
-    old_streak = _v(start_state, _NETWORK, "lethality_collapse_streak")
-    # An IDLE week (no incoming fire) is not a defensive failure -> it must not advance the streak; the
-    # rate is undefined, not below-floor. Only a week with real incoming fire can count toward collapse.
-    below_floor = launched_tot > 0 and effective_intercept_pct < r["lethality_floor_pct"]
-    new_streak = (old_streak + 1) if below_floor else 0
-    lethality_collapsed = new_streak >= r["culmination_k_weeks"]
-    inventory_below = sum(magazine_after.values()) < r["culmination_threshold"]
-    culminated = inventory_below or lethality_collapsed
+    # CULMINATION = lethality-collapse, WEAKEST-LINK over all threat classes: any class whose effective
+    # intercept rate stays below ITS floor for k consecutive weeks. Per-class (not pooled) so a ballistic-
+    # defense collapse is NOT masked by drone success. An IDLE class (no incoming fire that week) has an
+    # undefined -- not failing -- rate, so it does not advance (and resets) its streak. Per the locked
+    # contract, magazine depth is a LEADING INDICATOR, not a trigger -> the prior pooled inventory OR-limb
+    # is DROPPED (it fired culminated on turn 0 and could mask a single-class collapse).
+    floors = r["lethality_floor_pct"]
+    effective_pct = {t: (intercepted[t] * 100) // launched[t] if launched[t] > 0 else 0 for t in threats}
+    old_streak = {t: _v(start_state, _NETWORK, "streak_" + t) for t in threats}
+    below_floor = {t: launched[t] > 0 and effective_pct[t] < floors[t] for t in threats}
+    new_streak = {t: (old_streak[t] + 1) if below_floor[t] else 0 for t in threats}
+    lethality_collapsed = any(new_streak[t] >= r["culmination_k_weeks"] for t in threats)
+    culminated = lethality_collapsed
 
     # Ballistic exogenous-rate SENSITIVITY band. NOT decorative: it holds the magazine-constrained attempts
     # FIXED and varies the leak rate across [floor, central, high], so the leaked band BRACKETS the
@@ -269,8 +307,8 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
     eff_ball_high = (intc_ball_best * 100) // lb if lb > 0 else 0            # best-case effective rate
     eff_ball_low = (intc_ball_worst * 100) // lb if lb > 0 else 0           # worst-case effective rate
     # Does the band straddle the ballistic floor? (output-only -- never feeds the deterministic streak,
-    # which uses the central count alone.) ball_floor is the scalar floor here; F6 makes it per-class.
-    ball_floor = r["lethality_floor_pct"]
+    # which uses the central count alone.) Uses the per-class ballistic floor.
+    ball_floor = floors["ballistic"]
     ballistic_verdict_indeterminate = (lb > 0 and eff_ball_low < ball_floor <= eff_ball_high)
 
     events: list = []
@@ -296,9 +334,11 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
          eff_pct_low=eff_ball_low, eff_pct_high=eff_ball_high,
          verdict_indeterminate=ballistic_verdict_indeterminate)
     emit(event_type="LETHALITY_STATUS", effective_intercept_pct=effective_intercept_pct,
-         below_floor=below_floor, streak=new_streak, lethality_collapsed=lethality_collapsed)
+         effective_pct_by_threat=effective_pct, below_floor_by_threat=below_floor,
+         streak_by_threat=new_streak, lethality_collapsed=lethality_collapsed)
     emit(event_type="MAGAZINE_STATUS", magazine_non_depleting=magazine_non_depleting,
-         weeks_remaining=weeks_remaining, magazine_depleted=magazine_depleted)
+         weeks_remaining=weeks_remaining, magazine_depleted=magazine_depleted,
+         stock_constrained=stock_constrained)
     emit(event_type="CULMINATION_STATUS", culminated=culminated)
     emit(event_type="TURN_ADVANCED", to_turn=turn + 1)
     return events, []   # no draws (deterministic)
@@ -325,12 +365,14 @@ def reduce(start_state: dict, events: list) -> dict:
             _fields(state, _NETWORK)["cumulative_intercepted"]["value"] += ev["count"]
         elif kind == "LETHALITY_STATUS":
             net = _fields(state, _NETWORK)
-            net["lethality_collapse_streak"]["value"] = ev["streak"]
+            for t, s in ev["streak_by_threat"].items():       # per-class weakest-link streaks
+                net["streak_" + t]["value"] = s
             net["lethality_collapsed"]["value"] = ev["lethality_collapsed"]
         elif kind == "MAGAZINE_STATUS":
             net = _fields(state, _NETWORK)
             net["magazine_non_depleting"]["value"] = ev["magazine_non_depleting"]
             net["magazine_weeks_remaining"]["value"] = ev["weeks_remaining"]
+            net["magazine_stock_constrained"]["value"] = ev["stock_constrained"]
         elif kind == "CULMINATION_STATUS":
             _fields(state, _NETWORK)["culminated"]["value"] = ev["culminated"]
         elif kind == "TURN_ADVANCED":

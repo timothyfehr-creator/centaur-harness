@@ -108,7 +108,7 @@ def test_pass10_single_successor_per_head(tmp_path: Path) -> None:
     slot = str(tmp_path / "turns" / "0000.json")
     _, rules = salvo_het_run.load_scenario()
     a = rec()
-    b = rec(ruleset={**rules, "lethality_floor_pct": 90})    # different ruleset -> different candidate
+    b = rec(ruleset={**rules, "lethality_floor_pct": {"drone": 90, "cruise": 40, "ballistic": 25}})  # diff ruleset
     assert tr.commit(a, slot) == "committed"
     assert tr.commit(a, slot) == "idempotent"
     with pytest.raises(atomic.SlotConflict):

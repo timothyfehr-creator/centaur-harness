@@ -49,9 +49,12 @@ grammar; there is no global enum. The table/grammar above is the **contested_log
 - **ru_ua_salvo_heterogeneous (WP-E2b1):** per-threat / per-interceptor-type discriminated —
   `STRIKES_LAUNCHED` / `STRIKES_INTERCEPTED` / `STRIKES_LEAKED` / `RESUPPLY_STRIKE` (carry `threat`);
   `INTERCEPTS_EXPENDED` / `RESUPPLY_INTERCEPTOR` (carry `interceptor_type`); `BALLISTIC_LEAK_BAND` (the
-  exogenous sensitivity band — reporting-only, a `reduce()` no-op); `LETHALITY_STATUS` (effective rate +
-  sustained-k streak); `MAGAZINE_STATUS` (the weeks-of-supply leading indicator); `CULMINATION_STATUS`;
-  and `TURN_ADVANCED` (`to_turn` — the multi-turn advance applied by `reduce()`). Deterministic (no draws).
+  exogenous-rate sensitivity band — `leak_low/high` + a reported effective-rate band `eff_pct_low/high` +
+  `verdict_indeterminate`; reporting-only, a `reduce()` no-op); `LETHALITY_STATUS` (pooled
+  `effective_intercept_pct` + per-class `effective_pct_by_threat` / `below_floor_by_threat` /
+  `streak_by_threat` + the weakest-link `lethality_collapsed` headline, WP-E2b3); `MAGAZINE_STATUS` (the
+  weeks-of-supply leading indicator + `stock_constrained`); `CULMINATION_STATUS`; and `TURN_ADVANCED`
+  (`to_turn` — the multi-turn advance applied by `reduce()`). Deterministic (no draws).
 
 ## Event grammar (`reduce()` rejects violations)
 

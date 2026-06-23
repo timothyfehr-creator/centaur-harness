@@ -48,12 +48,10 @@ params:
   ballistic_leak_high_pct:
     value: 80
     source: "ASSUMED — dossier-illustrative; 80% leak = worst-case ~20% intercept. The band low<=central<=high propagates (holding magazine-constrained attempts fixed) into the reported effective-rate band + a culmination-verdict indeterminacy flag — no longer decorative."
-  lethality_floor_pct:
-    value: 50
-    source: "ASSUMED, LOCKED by the user 2026-06-23 on doctrinal grounds (sustained sub-50% effective interception = the defense can no longer sustain protection; Clausewitz culmination). NOT backtest-calibratable (the Sept-Nov 2024 window has no culmination event); locked BEFORE E2c (no post-hoc tuning). Regime-dependent: inert in a magazine-cliff, load-bearing under gradual degradation."
+  lethality_floor_pct:                     # per-class floors -> WEAKEST-LINK culmination (any class below its floor k wk)
+    drone:     {value: 50, source: "ASSUMED, LOCKED by the user 2026-06-23 on doctrinal grounds (sustained sub-50% effective DRONE interception = the defense can no longer sustain protection; Clausewitz culmination). NOT backtest-calibratable (the Sept-Nov 2024 window has no culmination event); locked BEFORE E2c (no post-hoc tuning)."}
+    cruise:    {value: 40, source: "ASSUMED — contract EXTENSION (user-confirmed, Option A 2026-06-23). Below the drone floor (cruise interception is harder than drone). Load-bearing: decides cruise-class culmination. Locked before E2c, no post-hoc tuning. NOT calibrated."}
+    ballistic: {value: 25, source: "ASSUMED — contract EXTENSION (user-confirmed, Option A 2026-06-23). Set BELOW ballistic's ~30% central nominal intercept (the corrected leak band) so the floor detects COLLAPSE/degradation (e.g. PAC-3 starvation), NOT ballistics' inherent marginality. Load-bearing; locked before E2c. NOT calibrated."}
   culmination_k_weeks:
     value: 3
-    source: "ASSUMED, LOCKED by the user 2026-06-23: collapse requires the effective rate below the floor for 3 consecutive weeks (filters transient saturation spikes). NOT backtest-calibratable; locked before E2c. Drives the committed campaign's culmination week (~1 wk per unit of k)."
-  culmination_threshold:
-    value: 120
-    source: "ASSUMED — the inventory limb (total magazine), carried from E2a."
+    source: "ASSUMED, LOCKED by the user 2026-06-23: collapse requires the effective rate below the floor for 3 consecutive weeks (filters transient saturation spikes); applies PER CLASS (weakest-link). NOT backtest-calibratable; locked before E2c. Drives the committed campaign's culmination week."

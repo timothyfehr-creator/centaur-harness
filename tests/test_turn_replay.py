@@ -57,6 +57,15 @@ def test_decorative_seed_is_caught() -> None:
     assert "decorative-seed" in codes(rec)
 
 
+def test_stale_transition_input_hash_is_caught() -> None:
+    # EC-1: a committed record whose transition_input_hash no longer matches a fresh recompute (e.g. one
+    # written before the `ruleset` preimage change) must be flagged -- even though it would otherwise
+    # record-replay + recompute cleanly. This is the 'looks-valid-but-stale' class the gate must catch.
+    rec = copy.deepcopy(good())
+    rec["transition_input_hash"] = "0" * 64
+    assert "transition-input-hash-mismatch" in codes(rec)
+
+
 # --- CLI exit-code contract ---------------------------------------------------------
 
 def _run(*args: str) -> subprocess.CompletedProcess:

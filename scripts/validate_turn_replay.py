@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core"))
 import canon  # noqa: E402
 import resolver as rsv  # noqa: E402
 import salvo_resolver as salvo  # noqa: E402
+import turn_record as tr  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _TERMINALS = ("SUPPLY_DELIVERED", "SUPPLY_LOST")
@@ -43,6 +44,16 @@ def check_record(rec: dict, where: str) -> list:
 
     resolver = _RESOLVERS.get(rec.get("resolver_id"), rsv)   # dispatch by resolver_id
     ruleset = rec.get("ruleset")                              # int-only params, or None (logistics)
+
+    # idempotency-key integrity (EC-1): the committed transition_input_hash MUST equal a fresh recompute
+    # from the record's OWN causal inputs. Catches a STALE committed record -- e.g. one written before a
+    # preimage change (the `ruleset` field) -- that record-replay + recomputation would otherwise pass.
+    recomputed_tih = tr.transition_input_hash(
+        rec["start_state"], rec["command_batch"], rec.get("rng"), resolver, ruleset)
+    if rec.get("transition_input_hash") != recomputed_tih:
+        add("transition-input-hash-mismatch",
+            f"committed transition_input_hash {str(rec.get('transition_input_hash'))[:12]}... != recompute "
+            f"{recomputed_tih[:12]}... -- stale record; committed bytes no longer match the engine")
 
     # record-replay
     try:

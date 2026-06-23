@@ -65,8 +65,9 @@ Validation **or** post-reduce invariant failure ⇒ **no record, no slot, no cac
 ## Commit identity, durability, idempotency
 
 - **`transition_input_hash` (candidate_id)** = `engine_canonical_digest` over {`start_state`, sorted
-  `command_batch`, `ruleset_version`, `resolver_id`+version, `rng_request` (or **null**), all
-  `schema_version`s, `canon_version`}. A no-draw turn is therefore **seed-independent**.
+  `command_batch`, `ruleset_version`, `resolver_id`+version, `ruleset` (the resolver's int-only params,
+  or **null**), `rng_request` (or **null**), all `schema_version`s, `canon_version`}. A no-draw turn is
+  therefore **seed-independent**; a different `ruleset` ⇒ a different candidate.
 - **`successor_slot`** (e.g. `run/turns/0001.json`) enforces one successor per head via **`O_EXCL`
   create** (NOT `os.replace`, which replaces, not create-if-absent). Slot empty → commit; same
   candidate + byte-identical → idempotent success; different candidate → `successor-exists`.

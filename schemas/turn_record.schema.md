@@ -4,9 +4,10 @@ Contract for a **turn record** — the engine's keystone. It is the **one durabl
 constitutes a committed turn: the typed [engine state](engine_state.schema.md), the validated
 [command batch](engine_command.schema.md), the ordered [transition events](transition_event.schema.md),
 the draw records, and the resulting state. **`engine_state` caches, every agent projection, and all
-three replay tiers are DERIVED from this object alone, consulting no other authority.** **No validator
-yet** — WP-E0 freezes this contract; `validate_turn_record.py` / the turn-replay gate + golden vectors
-arrive in WP-E1. See [docs/ENGINE_CONTRACT.md](../docs/ENGINE_CONTRACT.md) for the phase order,
+three replay tiers are DERIVED from this object alone, consulting no other authority.** **Enforced** by
+the WP-E1 turn-replay gate ([`scripts/validate_turn_replay.py`](../scripts/validate_turn_replay.py):
+record-replay + recomputation + a `transition_input_hash` recompute) + golden-vector tests. See
+[docs/ENGINE_CONTRACT.md](../docs/ENGINE_CONTRACT.md) for the phase order,
 idempotency key, durability sequence, and projection policy.
 
 > **Not the skeleton [`turn`](turn.schema.md).** `turn.schema.md` is the structural `turns.yaml`
@@ -23,6 +24,7 @@ start_state: { ...engine_state... }    # the head this turn was resolved against
 ruleset_version: "1"
 resolver_id: contested_logistics
 resolver_version: "1"
+ruleset: null                          # resolver's int-only params, or null (logistics has none); in the preimage
 rng:                                   # null when no draw was consumed (PASS#8: no decorative seed)
   master_seed: 0
   algorithm: sha256-counter
@@ -55,9 +57,10 @@ successor_slot: "run/turns/0001.json"     # the single-successor slot (distinct 
 |---|---|---|---|
 | `schema_version` | yes | string | non-empty |
 | `turn` | yes | integer | ≥ 0 |
-| `transition_input_hash` | yes | string | `engine_canonical_digest` over {`start_state`, sorted `command_batch`, `ruleset_version`, `resolver_id`+version, `rng` request **or null**, all `schema_version`s, `canon_version`}. **The idempotency key.** `rng` is null when no draw → a no-draw turn is seed-independent. |
+| `transition_input_hash` | yes | string | `engine_canonical_digest` over {`start_state`, sorted `command_batch`, `ruleset_version`, `resolver_id`+version, **`ruleset`** (int-only params or null), `rng` request **or null**, all `schema_version`s, `canon_version`}. **The idempotency key.** `rng` is null when no draw → a no-draw turn is seed-independent; a different `ruleset` ⇒ a different candidate. |
 | `start_state` / `resulting_state` | yes | engine_state | `resulting_state == reduce(start_state, event_batch)` (PASS#9) |
 | `rng` | conditional | mapping \| null | **null** unless a draw was consumed |
+| `ruleset` | yes | mapping \| null | the resolver's int-only params (or **null** for the param-free logistics resolver); stored for self-contained replay and **in the `transition_input_hash` preimage** |
 | `command_batch` | yes | list | canonically **sorted** (unordered set) |
 | `event_batch` | yes | list | **ordered** (preserved) |
 | `draw_records` | conditional | list | one per consumed draw; each carries address + `raw_uint` + `d100` + `consuming_rule_id` |
@@ -79,7 +82,8 @@ successor_slot: "run/turns/0001.json"     # the single-successor slot (distinct 
 
 ## Error codes (WP-E1)
 
-`missing-schema-version`, `missing-field`, `wrong-type`, `idempotency-key-mismatch`,
+`missing-schema-version`, `missing-field`, `wrong-type`, `idempotency-key-mismatch` /
+`transition-input-hash-mismatch` (committed idempotency key ≠ a fresh recompute — a stale record),
 `reduce-mismatch` (PASS#9), `decorative-seed` (`rng` present with no draw), `successor-exists`,
 `digest-domain-mismatch`, `not-byte-identical` (retry conflict).
 

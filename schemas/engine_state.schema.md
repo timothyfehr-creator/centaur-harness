@@ -4,10 +4,10 @@ Contract for the engine's **typed canonical state** (`state/engine/public.yaml` 
 `state/engine/private/adjudicator.yaml` under a scenario). This is the **compute surface** the
 resolver reads and `reduce()` writes — distinct from, and **in addition to**, the prose
 [state registry](state.schema.md), which stays the *evidence ledger* (free-text `statement` + a
-world-vs-game `label`, no numeric slot). **No validator yet** — WP-E0 freezes this contract; the
-`validate_engine_state.py` gate + golden-vector tests arrive in WP-E1 (Constitution §3: status is
-honest). See [docs/ENGINE_CONTRACT.md](../docs/ENGINE_CONTRACT.md) for the digest, canon, and
-partition rules referenced below.
+world-vs-game `label`, no numeric slot). **Enforced** by
+[`scripts/validate_engine_state.py`](../scripts/validate_engine_state.py) (structural + digest-scope; a
+`release`-tier gate) with golden-vector tests. See [docs/ENGINE_CONTRACT.md](../docs/ENGINE_CONTRACT.md)
+for the digest, canon, and partition rules referenced below.
 
 ## Document shape (an envelope)
 
@@ -17,7 +17,7 @@ state:                                  # the hashed payload (see state_digest)
   as_of_turn: 0                         # integer; the turn this state is the head of
   entities:
     - id: blue_supply                   # globally unique within this partition file
-      type: FORCE                       # FORCE | ROUTE | ROUTE_SECRET | SINK
+      type: FORCE                       # FORCE | ROUTE | ROUTE_SECRET | SINK | STRIKE_FORCE | AIR_DEFENSE
       fields:
         origin:     {value: 100, unit: units}
         in_transit: {value: 0,   unit: units}
@@ -37,14 +37,14 @@ state_digest:                           # computed over the `state` field ONLY (
 | `state` | yes | mapping | the hashed payload; contains `as_of_turn` + `entities` |
 | `state.as_of_turn` | yes | integer | ≥ 0; a bool is rejected |
 | `state.entities` | yes | list | ≥ 1 entity; `id` globally unique across the partition (below) |
-| `state_digest` | yes | mapping | typed digest `{algorithm, domain, value}`; **`value` is computed over the `state` field only** (self-reference excluded) |
+| `state_digest` | when sealed | mapping | typed digest `{algorithm, domain, value}`; **`value` is computed over the `state` field only** (self-reference excluded). A *bare scenario-input* envelope MAY omit it — `turn_record.assemble()` seals the state with the digest; the validator enforces digest-scope only when it is present |
 
 ### Entity fields
 
 | Field | Required | Type | Rule |
 |---|---|---|---|
 | `id` | yes | string | non-empty; globally unique across `public` ∪ all `private` typed files |
-| `type` | yes | enum | `FORCE` \| `ROUTE` \| `ROUTE_SECRET` \| `SINK` |
+| `type` | yes | enum | `FORCE` \| `ROUTE` \| `ROUTE_SECRET` \| `SINK` \| `STRIKE_FORCE` \| `AIR_DEFENSE` (the last two are the WP-E2a additive extension — ADJUDICATION_LEDGER ECI-2, backward-compatible, no `schema_version` bump) |
 | `fields` | yes | mapping | name → `{value, unit}`; `value` is `number`/`string`/`bool`; `unit` a non-empty string |
 
 ## Fog-of-war partition (sibling of the prose compiler)
@@ -75,7 +75,7 @@ projection (the existing no-leak test covers it).
 (ROUTE_SECRET: `subject_route: "r1"`, `block_threshold` int 0–99, adjudicator-only). **Conservation
 invariant:** `origin + in_transit + delivered + loss_sink` is constant (= 100) across every turn.
 
-## Error codes (the WP-E1 validator will emit)
+## Error codes (`validate_engine_state.py` emits)
 
 `missing-schema-version`, `missing-field`, `wrong-type`, `invalid-enum` (bad entity `type`),
 `duplicate-id` (across the partition), `digest-scope-violation` (`state_digest` not computed over the
@@ -84,7 +84,7 @@ resulting state, not at rest).
 
 ## Limitations / deferred
 
-Reference contract only in WP-E0 — no validator runs yet. Per-field epistemic labels (an entity field
+Per-field epistemic labels (an entity field
 carrying both `ASSUMED` and `MODEL_OUTPUT`) are **deferred**: the slice mixes labels only at the
 *entity/item* grain (handled by the prose registry's `label`), so the bounded subject-keyed-field model
 is not built. Multi-turn `in_transit` carrying across turns, multiple dispatches, and branching are out

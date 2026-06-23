@@ -59,6 +59,9 @@ jobs:
       - name: Calibration record
         run: python scripts/validate_calibration.py
 
+      - name: Engine-state validation
+        run: python scripts/validate_engine_state.py
+
       - name: Turn-replay (engine run-record)
         run: python scripts/validate_turn_replay.py
 

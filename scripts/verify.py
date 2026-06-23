@@ -73,6 +73,7 @@ RELEASE_GATES = (
     ("run-ledger / reproducibility", "validate_run_ledger.py"),
     ("review + signoff attestation", "validate_review_signoff.py"),
     ("calibration record", "validate_calibration.py"),
+    ("engine state", "validate_engine_state.py"),
     ("turn replay", "validate_turn_replay.py"),
 )
 

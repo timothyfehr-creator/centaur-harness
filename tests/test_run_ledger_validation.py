@@ -24,6 +24,15 @@ INVALID = REPO_ROOT / "tests" / "fixtures" / "run_ledger" / "invalid"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 import validate_run_ledger as vrl  # noqa: E402
 
+ALL_LEDGERS = sorted((REPO_ROOT / "examples").glob("*/run_ledger.yaml"))
+
+
+@pytest.mark.parametrize("ledger", ALL_LEDGERS, ids=lambda p: p.parent.name)
+def test_every_committed_example_ledger_verifies_clean(ledger: Path) -> None:
+    # RTH-3: CI (and this test) validate EVERY committed example ledger, not just the default Ukraine
+    # one, so a stale/orphan engine-scenario ledger cannot land undetected (read-only; no --write).
+    assert vrl.main([str(ledger)]) == 0
+
 
 def _run(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run([sys.executable, str(VALIDATOR), *args],

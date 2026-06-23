@@ -7,8 +7,10 @@ and tool/schema versions. The default mode is a LOCKFILE DRIFT GATE -- it valida
 ledger's structure, then recomputes the live declared-input hashes and confirms the
 committed ledger still reproduces. `--write` regenerates the ledger from the current repo.
 
-Declared inputs (the reproducibility surface): the scenario's scenario/agents/initial_state
-+ its state/ partition, plus factbase/*.yaml and knowledge/**/*.yaml.
+Declared inputs (the reproducibility surface): the scenario's scenario/agents/initial_state,
+its engine_state.yaml + rules.yaml (engine scenarios), its state/ partition, plus factbase/*.yaml
+and knowledge/**/*.yaml. (The committed turn record under run/turns/ is a derived OUTPUT, gated by
+the turn-replay gate, not pinned here.)
 
 LOCKFILE DISCIPLINE: adding / editing / removing ANY declared-input file makes the committed
 ledger stale (CI hash-mismatch / extra-input / missing-input). Re-run with `--write` and
@@ -54,6 +56,8 @@ def declared_inputs(scenario_dir: Path, repo_root: Path) -> list[Path]:
         scenario_dir / "scenario.yaml",
         scenario_dir / "agents.yaml",
         scenario_dir / "initial_state.yaml",
+        scenario_dir / "engine_state.yaml",     # engine scenarios: the typed compute surface (RTH-1)
+        scenario_dir / "rules.yaml",             # engine scenarios: the resolver params (RTH-1)
         scenario_dir / "state" / "public.yaml",
     ]
     paths += sorted((scenario_dir / "state" / "private").glob("*.yaml"))

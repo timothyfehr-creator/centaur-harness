@@ -38,9 +38,12 @@ llm_steps: null                   # PLACEHOLDER — null until an LLM step exist
 
 ## Declared inputs (the reproducibility surface)
 
-The scenario's `scenario.yaml`, `agents.yaml`, `initial_state.yaml`, its `state/` partition
-(`public.yaml` + `private/*.yaml`), plus the repo-wide `factbase/*.yaml` and
-`knowledge/**/*.yaml`. Resolved live and sorted by repo-root POSIX path (one canonical order).
+The scenario's `scenario.yaml`, `agents.yaml`, `initial_state.yaml`, **`engine_state.yaml` +
+`rules.yaml`** (engine scenarios — the typed compute surface + resolver params), its `state/`
+partition (`public.yaml` + `private/*.yaml`), plus the repo-wide `factbase/*.yaml` and
+`knowledge/**/*.yaml`. Resolved live and sorted by repo-root POSIX path (one canonical order). The
+committed turn record (`run/turns/*.json`) is a derived **output**, gated by the turn-replay gate, so
+it is **not** pinned here.
 
 ## Determinism & integrity contract
 

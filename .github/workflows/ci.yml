@@ -50,8 +50,12 @@ jobs:
       - name: Draft verification
         run: python scripts/verify.py --mode draft
 
-      - name: Run-ledger / reproducibility
-        run: python scripts/validate_run_ledger.py
+      - name: Run-ledger / reproducibility (every example)
+        run: |
+          for l in examples/*/run_ledger.yaml; do
+            echo "== $l =="
+            python scripts/validate_run_ledger.py "$l" || exit 1
+          done
 
       - name: Review/signoff attestation
         run: python scripts/validate_review_signoff.py

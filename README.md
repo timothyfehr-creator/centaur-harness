@@ -31,9 +31,13 @@ signoff must resolve to a `calibration.yaml` record with proper-scoring-rule pro
 bound; the harness *records* an external calibration result, never *computes* one; §5). **The
 enforceable-plumbing phase (Phases 0–9) is complete; the wargame ENGINE is now underway in-repo** —
 WP-E1 shipped the durable turn-record engine core (canon / RNG / resolver / `reduce()` / projection +
-the **turn-replay gate** + the 12-condition suite) and WP-E2a the first combat resolver (a deterministic
+the **turn-replay gate** + the 12-condition suite); WP-E2a the first combat resolver (a deterministic
 RU-strike-vs-UA-air-defense salvo, UNCALIBRATED/ILLUSTRATIVE) + the typed **engine-state gate**
-(`validate_engine_state.py`). Next: WP-E2b. See [docs/PROGRESS.md](docs/PROGRESS.md).
+(`validate_engine_state.py`); WP-E2b the heterogeneous + multi-turn salvo + the **ruleset gate**
+(`validate_ruleset.py`), with WP-E2b3 remediating an external red-team NO-GO; and WP-E2c the
+**calibration-feasibility gate** (`validate_calibration_feasibility.py` — the honest "cannot calibrate
+this channel" record that keeps `calibration_status: UNCALIBRATED`). Next: WP-E2d (stochastic
+interception — a frozen-contract change requiring external review). See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
@@ -52,9 +56,11 @@ python scripts/safety_check.py             # safety gate — actionable-harm con
 python scripts/validate_run_ledger.py      # reproducibility run-ledger drift gate (WP7, §6)
 python scripts/validate_review_signoff.py  # review + signoff attestation gate (WP8)
 python scripts/validate_calibration.py     # calibration evidence-or-label gate (WP9, §5)
+python scripts/validate_calibration_feasibility.py  # calibration-feasibility gate (WP-E2c — the honest "cannot calibrate" record)
 python scripts/validate_engine_state.py    # typed engine-state gate (WP-E2a, ECI-2)
+python scripts/validate_ruleset.py         # ruleset structure + provenance gate (WP-E2b)
 python scripts/validate_turn_replay.py     # turn-replay: record-replay + recompute + idempotency-hash (WP-E1)
-python scripts/verify.py --mode release    # release: draft + run-ledger + attestation + calibration + engine-state + turn-replay (STRUCTURAL + ATTESTATION ONLY)
+python scripts/verify.py --mode release    # release: draft + run-ledger + attestation + calibration (+ feasibility) + engine-state + ruleset + turn-replay (STRUCTURAL + ATTESTATION ONLY)
 pytest                                      # run the test suite
 ```
 
@@ -73,9 +79,9 @@ alongside a `[SKIP]` list of not-yet-implemented checks (calibration scoring),
 and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity.
 
 `release` mode (WP8–9 + the engine) composes draft's checks **plus** the reproducibility run-ledger, the
-review + signoff attestations, the calibration evidence-or-label gate, and the **engine-state +
-turn-replay** gates, and surfaces the
-signoff's declared calibration status (enriched with the metric + N when `CALIBRATED`). It is
+review + signoff attestations, the calibration evidence-or-label gate, and the engine gates
+(**engine-state, ruleset, turn-replay, and calibration-feasibility**), and surfaces the declared
+calibration status across the attested scenarios (enriched with the metric + N when `CALIBRATED`). It is
 **STRUCTURAL + ATTESTATION ONLY** — a clean release means complete, reproducible, and attested,
 *not* analytically valid — and it propagates the worst gate exit code (findings → 1, a gate
 that cannot run → 2), so it never falsely passes. An unknown mode (a typo) fails clearly.

@@ -66,6 +66,9 @@ jobs:
       - name: Engine-state validation
         run: python scripts/validate_engine_state.py
 
+      - name: Ruleset validation
+        run: python scripts/validate_ruleset.py
+
       - name: Turn-replay (engine run-record)
         run: python scripts/validate_turn_replay.py
 

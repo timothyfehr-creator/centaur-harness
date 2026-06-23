@@ -74,6 +74,7 @@ RELEASE_GATES = (
     ("review + signoff attestation", "validate_review_signoff.py"),
     ("calibration record", "validate_calibration.py"),
     ("engine state", "validate_engine_state.py"),
+    ("ruleset", "validate_ruleset.py"),
     ("turn replay", "validate_turn_replay.py"),
 )
 

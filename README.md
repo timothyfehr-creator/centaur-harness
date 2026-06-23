@@ -1,109 +1,115 @@
 # Centaur Harness
 
-A disciplined, verifiable development harness for centaur (human + AI) wargaming.
-The near-term goal is **enforceable plumbing before engine**: minimum viable gates
-that prevent unsourced, unsafe, malformed, unreviewed, or non-reproducible outputs
-from appearing valid.
+[![CI](https://github.com/timothyfehr-creator/centaur-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/timothyfehr-creator/centaur-harness/actions/workflows/ci.yml)
 
-See **[IMPLEMENTATION_PLAN_V2.md](IMPLEMENTATION_PLAN_V2.md)** for the canonical plan
-and **[docs/CONSTITUTION.md](docs/CONSTITUTION.md)** for the operating principles.
+**A verifiable harness for centaur (human + AI) wargaming — it refuses to let a model's
+output look more valid than it actually is.**
 
-## Status
+A *centaur wargame* is a strategic scenario played out by human and AI agents. The hard
+part isn't running the game; it's **trusting the output** — knowing which claims are
+sourced, which numbers are calibrated, which results are reproducible, and which are just
+plausible-looking prose. This repo is the discipline layer that makes those distinctions
+**enforceable**: a set of small, composable, **fail-closed gates** an output must pass to
+be presented as valid. Anything unsourced, unsafe, malformed, unreviewed, uncalibrated, or
+non-reproducible is *structurally flagged*, not quietly accepted.
 
-Phases 0–9 complete. Shipped: repo-level `scaffold` verification and a secret scan
-(Phase 0); the scenario + core schema layer (WP1.1–1.2); the full evidence chain —
-source / claim / event validators and the source-or-label state gate (WP2.1–2.3); the
-§7 **safety gate** (WP3.1); the §4 **output-label gate** (WP3.2); the composed
-**`draft`** verification mode (WP4 — `verify.py --mode draft` runs scaffold plus the
-evidence/safety gates and reports a STRUCTURAL-ONLY verdict); the **agent-grounding
-gate** (WP5 — agents must cite a resolving knowledge book *and* a capability resolving to
-a claim/assumption, or fail; `validate_agents` is now part of `draft`); the **fog-of-war
-partition + context compiler** (WP6 — `core/context_compiler.py`, a deterministic
-library that compiles each agent's context to public + only its own private state, leak-
-proven by tests); and the **reproducibility run-ledger** (WP7 — `validate_run_ledger.py`,
-a fail-closed lockfile drift gate pinning a content hash of every declared input, plus
-`as_of_date` ISO-8601 validation on scenario + state); and the **review + signoff
-attestations + `release` mode** (WP8 — a scenario is releasable only if reviewed, signed
-off, reproducible, and carrying a declared calibration status; `verify.py --mode release`
-composes draft's gates + the run-ledger + the attestations, STRUCTURAL + ATTESTATION ONLY);
-and the **calibration evidence-or-label gate** (WP9 — `validate_calibration.py`: a `CALIBRATED`
-signoff must resolve to a `calibration.yaml` record with proper-scoring-rule provenance, ledger-
-bound; the harness *records* an external calibration result, never *computes* one; §5). **The
-enforceable-plumbing phase (Phases 0–9) is complete; the wargame ENGINE is now underway in-repo** —
-WP-E1 shipped the durable turn-record engine core (canon / RNG / resolver / `reduce()` / projection +
-the **turn-replay gate** + the 12-condition suite); WP-E2a the first combat resolver (a deterministic
-RU-strike-vs-UA-air-defense salvo, UNCALIBRATED/ILLUSTRATIVE) + the typed **engine-state gate**
-(`validate_engine_state.py`); WP-E2b the heterogeneous + multi-turn salvo + the **ruleset gate**
-(`validate_ruleset.py`), with WP-E2b3 remediating an external red-team NO-GO; and WP-E2c the
-**calibration-feasibility gate** (`validate_calibration_feasibility.py` — the honest "cannot calibrate
-this channel" record that keeps `calibration_status: UNCALIBRATED`). Next: WP-E2d (stochastic
-interception — a frozen-contract change requiring external review). See [docs/PROGRESS.md](docs/PROGRESS.md).
+The guiding stance is **honesty by construction** — the harness would rather block its own
+output than over-claim:
 
-## Verification
+- A clean release reports **`SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED`**. It *cannot* spell
+  "attested" unless a genuinely independent reviewer — allow-listed by a human — signed off;
+  a model checking its own work is structurally unable to mark it approved.
+- A model that can't be honestly calibrated **says so on the record** (`UNCALIBRATED`, plus a
+  machine-checked "cannot calibrate this channel" finding) instead of dressing up illustrative
+  numbers as validated ones.
+- Every gate **fails closed**: if it can't evaluate something it errors (exit 2), never a
+  silent pass.
+
+## Quickstart
 
 ```bash
-python scripts/verify.py --mode draft      # composed structural gate: scaffold + evidence/safety (STRUCTURAL ONLY)
-python scripts/verify.py --mode scaffold   # repo-level integrity (+ structural scenario-schema check)
-python scripts/verify.py                    # defaults to scaffold
-python scripts/secret_scan.py              # secret scan (a minimum gate)
-python scripts/validate_schemas.py         # validate examples/**/scenario.yaml
-python scripts/validate_sources.py         # source registry
-python scripts/validate_claims.py          # claim→source resolution + source-tier rule
-python scripts/validate_events.py          # event→claim resolution
-python scripts/validate_state.py           # source-or-label state gate (CONSTITUTION §5)
-python scripts/validate_agents.py          # agent grounding (knowledge + capability resolution, WP5)
-python scripts/safety_check.py             # safety gate — actionable-harm content (§7)
-python scripts/validate_run_ledger.py      # reproducibility run-ledger drift gate (WP7, §6)
-python scripts/validate_review_signoff.py  # review + signoff attestation gate (WP8)
-python scripts/validate_calibration.py     # calibration evidence-or-label gate (WP9, §5)
-python scripts/validate_calibration_feasibility.py  # calibration-feasibility gate (WP-E2c — the honest "cannot calibrate" record)
-python scripts/validate_engine_state.py    # typed engine-state gate (WP-E2a, ECI-2)
-python scripts/validate_ruleset.py         # ruleset structure + provenance gate (WP-E2b)
-python scripts/validate_turn_replay.py     # turn-replay: record-replay + recompute + idempotency-hash (WP-E1)
-python scripts/verify.py --mode release    # release: draft + run-ledger + attestation + calibration (+ feasibility) + engine-state + ruleset + turn-replay (STRUCTURAL + ATTESTATION ONLY)
-pytest                                      # run the test suite
+git clone https://github.com/timothyfehr-creator/centaur-harness && cd centaur-harness
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python scripts/verify.py --mode release   # the full composed gate
+.venv/bin/pytest -q                                  # the test suite (~600 tests)
 ```
 
-CI runs these as ordered steps (the resolution gates are dependency-ordered: claims
-after sources, events/state after claims, agent grounding after state, safety last). Each
-gate **fails closed** (exit 0 clean / 1 findings / 2 usage-or-fail-closed).
+`verify.py` composes the individual gates into three modes — `scaffold` (repo integrity),
+`draft` (the structural evidence/safety gates), and `release` (everything: reproducibility
++ attestation + calibration + the engine gates). It propagates the *worst* gate's exit code
+(findings → 1, a gate that cannot run → 2), so it never falsely passes.
 
-`scaffold` mode checks repo-level integrity (required files/dirs present) and
-**structurally** validates any `examples/**/scenario.yaml` that exist. It does
-**not** require a scenario to exist, nor that its claims are sourced (sourcing is a
-later phase) — only that a *present* scenario is well-formed.
+## What's inside
 
-`draft` mode (WP4) is the first **composed** gate: it runs scaffold plus the source /
-claim / event / state / agent-grounding / safety gates, reports each as `[PASS]`/`[FAIL]`
-alongside a `[SKIP]` list of not-yet-implemented checks (calibration scoring),
-and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity.
+| Area | What it enforces |
+|---|---|
+| **Evidence chain** | every claim resolves to a source or carries an explicit label; events resolve to claims; state is source-or-label |
+| **Safety + labels** | an actionable-harm content gate, and a required `world`-vs-`game` output label |
+| **Reproducibility** | a per-scenario `run_ledger.yaml` lockfile pinning a content hash of every declared input; any drift fails CI |
+| **Attestation** | per-scenario review + signoff, honest by construction (a self-check can't read as independent) |
+| **Calibration** | `CALIBRATED` must resolve to a scored record; otherwise the model declares `UNCALIBRATED` / `ILLUSTRATIVE`, or records *why* a channel can't be calibrated |
+| **Engine** | a deterministic, reproducible turn engine — typed state, a seeded RNG oracle, and replayable turn records (record-replay + recomputation + an idempotency hash) |
 
-`release` mode (WP8–9 + the engine) composes draft's checks **plus** the reproducibility run-ledger, the
-review + signoff attestations, the calibration evidence-or-label gate, and the engine gates
-(**engine-state, ruleset, turn-replay, and calibration-feasibility**), and surfaces the declared
-calibration status across the attested scenarios (enriched with the metric + N when `CALIBRATED`). It is
-**STRUCTURAL + ATTESTATION ONLY** — a clean release means complete, reproducible, and attested,
-*not* analytically valid — and it propagates the worst gate exit code (findings → 1, a gate
-that cannot run → 2), so it never falsely passes. An unknown mode (a typo) fails clearly.
+A dozen-plus gates, each also a standalone CI step; `verify.py` composes them. ~600 tests,
+green in CI.
+
+## Repository layout
+
+- **`core/`** — the deterministic wargame engine: turn-record core, canonical serializer,
+  seeded RNG oracle, combat resolvers, and the fog-of-war context compiler.
+- **`scripts/`** — the gates (`validate_*.py`, `safety_check.py`, `secret_scan.py`) and
+  `verify.py`, the composer.
+- **`schemas/`** — the `*.schema.md` contracts each artifact must satisfy.
+- **`examples/`** — illustrative scenarios with their engine runs, ledgers, and attestations.
+- **`factbase/` · `knowledge/`** — the sourced evidence and agent knowledge books.
+- **`tests/`** — ~600 tests. **`docs/`** — the design docs (start with the [Constitution](docs/CONSTITUTION.md)).
+
+## Status & scope
+
+The **enforceable-plumbing phase is complete** (the evidence, safety, reproducibility,
+attestation, and calibration gates), and the **wargame engine is now in-repo and under active
+build** — a deterministic salvo-combat resolver with replayable turn records. The most recent
+work made the attestation honest by construction and was **independently red-teamed
+(cross-vendor)** — which caught a real fail-open that four in-house review passes had missed.
+
+**Everything here is `ILLUSTRATIVE` / `UNCALIBRATED` by design.** The models assert nothing
+about the real world; the point of the project is the *discipline*, not a calibrated forecast.
+Non-goals (for now): a full AI-vs-AI engine, multi-run orchestration, dashboards, and a
+release-ready real-world scenario.
+
+See [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed build ledger and
+[IMPLEMENTATION_PLAN_V2.md](IMPLEMENTATION_PLAN_V2.md) for the plan.
+
+## How this was built
+
+This repo is **AI-directed engineering under enforced discipline.** Every change follows a
+fixed loop: plan → implement one work package → green-gate (the tests *and* the composed
+verifier must pass) → an **adversarial review by independent agents** → atomic commit.
+Epistemically-sensitive work — anything touching attestation or calibration — is
+**human-gated** and put through a genuinely independent (cross-vendor) review before it is
+trusted. The operating rules are written down, not improvised: [AGENTS.md](AGENTS.md),
+[CLAUDE.md](CLAUDE.md), the [Constitution](docs/CONSTITUTION.md), and the delivery cadence in
+the [Runbook](docs/RUNBOOK.md).
+
+## Documentation
+
+- [docs/CONSTITUTION.md](docs/CONSTITUTION.md) — the operating principles the gates enforce.
+- [docs/ENGINE_CONTRACT.md](docs/ENGINE_CONTRACT.md) — the engine's normative contract (determinism, replay, fog-of-war).
+- [docs/RUNBOOK.md](docs/RUNBOOK.md) — the development cadence and the lockfile discipline.
+- [docs/SAFETY_AND_SCOPE.md](docs/SAFETY_AND_SCOPE.md) — safety posture and scope boundaries.
+- [docs/COMMAND_SAFETY.md](docs/COMMAND_SAFETY.md) — the safety gate's command/content policy.
+- [docs/PROGRESS.md](docs/PROGRESS.md) — the build ledger (an internal working record; start here, in the README, for the overview).
+- [schemas/](schemas/) — the per-artifact contract specs.
 
 ## Requirements
 
-- Python 3.11+. On this machine the interpreter is `python3` (there is no `python`
-  binary); use `python3 scripts/...` locally. CI provisions `python` via
-  `actions/setup-python`, so the `python ...` commands above are correct in CI.
-- Dependencies are declared in [`requirements-dev.txt`](requirements-dev.txt)
-  (`pytest`, `PyYAML`). Install before running:
+Python 3.11+ and the dependencies in [`requirements-dev.txt`](requirements-dev.txt)
+(`pytest`, `PyYAML`). On an externally-managed Python (PEP 668), use a venv as in the
+Quickstart. The `draft` and `release` modes require **git** (the safety gate scans tracked
+files via `git ls-files`) — run inside the repository, not an export/tarball; without git
+they fail closed by design. Locally the interpreter is `python3` (there is no `python`
+binary); CI provisions `python` via `actions/setup-python`.
 
-  ```bash
-  python3 -m pip install -r requirements-dev.txt
-  # On an externally-managed Python (PEP 668), use a venv:
-  #   python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-  ```
+## License
 
-- `PyYAML` backs the scenario-schema validator, which `scaffold` mode now invokes.
-  Without it, scaffold **fails closed** with a clear error rather than skipping
-  validation.
-- **Git is required for `draft` mode** (the safety gate scans tracked files via
-  `git ls-files`); run it inside the git repository, not an export/tarball. Without git,
-  draft **fails closed** on the safety check — by design, not a bug. `scaffold` mode does
-  not require git.
+[MIT](LICENSE) © 2026 Timothy Fehr.

@@ -429,7 +429,7 @@ Draft mode requires:
 - initial state is labeled;
 - agents validate structurally.
 
-Release mode should remain unavailable or fail clearly.
+Release mode should remain unavailable or fail clearly. *(WP4 acceptance — superseded by WP8: `release` is now live; see [docs/PROGRESS.md](docs/PROGRESS.md).)*
 
 **Likely files/directories**
 

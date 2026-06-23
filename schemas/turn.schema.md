@@ -1,8 +1,14 @@
 # Turn schema (skeleton, v1) — structural contract
 
+> **Superseded for the engine.** This is the early *skeleton* turn document. The wargame
+> engine's durable, replayable turn record is the richer **[turn_record.schema.md](turn_record.schema.md)**
+> (ordering, idempotency, and replay semantics shipped with it in WP-E1). This skeleton is kept
+> as the structural `--kind turn` contract; its "deferred" notes below refer to that skeleton, not
+> the engine's turn record.
+
 Human-readable contract for a turn document (`turns.yaml`). Authoritative enforcement
 is [`scripts/validate_schemas.py`](../scripts/validate_schemas.py) (`--kind turn`).
-**Skeleton only** — structural shape, no ordering or replay semantics (those are WP7).
+**Skeleton only** — structural shape, no ordering or replay semantics on this kind.
 
 ## Fields
 

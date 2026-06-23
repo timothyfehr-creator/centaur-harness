@@ -42,3 +42,6 @@ secrets.*
 *.swp
 .idea/
 .vscode/
+
+# AI-tooling working dirs (agent sessions, worktrees) — not part of the repo
+.claude/

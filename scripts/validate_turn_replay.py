@@ -21,9 +21,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core"))
 
 import canon  # noqa: E402
 import resolver as rsv  # noqa: E402
+import salvo_resolver as salvo  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 _TERMINALS = ("SUPPLY_DELIVERED", "SUPPLY_LOST")
+# Resolver registry: replay/recompute is dispatched by the record's resolver_id (a literal lookup).
+_RESOLVERS = {rsv.RESOLVER_ID: rsv, salvo.RESOLVER_ID: salvo}
 
 
 def check_record(rec: dict, where: str) -> list:
@@ -38,9 +41,12 @@ def check_record(rec: dict, where: str) -> list:
     if not has_draws and rec.get("rng") is not None:
         add("decorative-seed", "rng block present but no draw was consumed")
 
+    resolver = _RESOLVERS.get(rec.get("resolver_id"), rsv)   # dispatch by resolver_id
+    ruleset = rec.get("ruleset")                              # int-only params, or None (logistics)
+
     # record-replay
     try:
-        rederived = rsv.reduce(rec["start_state"], rec["event_batch"])
+        rederived = resolver.reduce(rec["start_state"], rec["event_batch"])
     except Exception as exc:  # noqa: BLE001
         add("reduce-failed", f"reduce raised: {exc}")
         return problems
@@ -50,8 +56,8 @@ def check_record(rec: dict, where: str) -> list:
     # recomputation
     seed = rec["rng"]["master_seed"] if rec.get("rng") else 0
     try:
-        recomputed = rsv.transition(rec["start_state"], rec["command_batch"],
-                                    master_seed=seed, turn=rec["turn"])
+        recomputed = resolver.transition(rec["start_state"], rec["command_batch"],
+                                         master_seed=seed, turn=rec["turn"], ruleset=ruleset)
     except Exception as exc:  # noqa: BLE001
         add("recompute-failed", f"transition raised: {exc}")
         return problems

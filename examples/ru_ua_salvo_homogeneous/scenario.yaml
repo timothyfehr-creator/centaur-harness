@@ -1,0 +1,34 @@
+schema_version: "1.0"
+title: "Russia strike vs Ukraine air defense — homogeneous salvo (WP-E2a, UNCALIBRATED)"
+label: ILLUSTRATIVE          # NOT a real-world claim; every parameter is an ASSUMED placeholder
+as_of_date: "2026-06-22"
+description: >
+  WP-E2a proof slice: one aggregated Russian strike pool vs one Ukrainian interceptor pool, ONE week,
+  deterministic. Exercises the first combat (salvo) resolver inside the engine. Every parameter is an
+  ASSUMED placeholder; the model is UNCALIBRATED and asserts NOTHING about the real campaign until the
+  WP-E2c backtest. The two branches below are illustrative framing, not analytic estimates.
+
+branches:
+  - id: air_defense_holds
+    title: "Air defense sustains (no culmination in window)"
+    probability: 0.45
+    signposts:
+      - "Weekly interceptor inventory stays above the culmination threshold"
+      - "Leak-through percentage holds at or below the baseline band"
+      - "Resupply keeps pace with weekly consumption"
+    falsifiers:
+      - "Interceptor inventory falls below the culmination threshold within the window"
+    rationale: >
+      Placeholder rationale: 0.45 is an illustrative weight, NOT source-backed. UNCALIBRATED.
+
+  - id: culmination
+    title: "Air defense culminates (magazine depletes)"
+    probability: 0.55
+    signposts:
+      - "Weekly consumption exceeds resupply, draining the interceptor magazine"
+      - "Saturation pushes leak-through above the baseline band"
+      - "Interceptor inventory crosses the culmination threshold"
+    falsifiers:
+      - "Interceptor inventory recovers above the threshold and leak-through falls back to baseline"
+    rationale: >
+      Placeholder rationale: 0.55 is an illustrative weight, NOT source-backed. UNCALIBRATED.

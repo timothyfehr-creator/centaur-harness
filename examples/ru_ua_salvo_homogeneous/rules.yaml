@@ -1,0 +1,16 @@
+# Salvo resolver parameters (WP-E2a). EVERY value is ASSUMED — needs calibration (WP-E2c backtest).
+# Integer-only (p_intercept as a PERCENT) so the engine stays float-free. The loader passes {name: value}
+# to the resolver; the `source` strings are the provenance discipline (no number is presented as real).
+schema_version: "1.0"
+ruleset_id: ru_ua_salvo_homogeneous
+ruleset_version: "1"
+params:
+  p_intercept_pct:
+    value: 80
+    source: "ASSUMED — needs calibration. Illustrative; open reporting puts drone intercept ~75-90% unsaturated (CSIS), collapsing when ballistics mix in."
+  interceptors_per_intercept:
+    value: 1
+    source: "ASSUMED — homogeneous proof: 1 interceptor per attempted intercept."
+  culmination_threshold:
+    value: 120
+    source: "ASSUMED — placeholder. Inventory-based; the inventory-vs-lethality definition is an OPEN DECISION (WP-E2_PLAN.md)."

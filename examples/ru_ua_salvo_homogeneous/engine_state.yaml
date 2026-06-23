@@ -1,0 +1,22 @@
+# Typed engine state for the WP-E2a homogeneous salvo slice (the compute surface the resolver reads).
+# ALL values are ASSUMED placeholders (illustrative orders of magnitude); UNCALIBRATED. Integer-only
+# (the engine is float-free). A BARE envelope {schema_version, state}; assemble() seals it with a digest.
+schema_version: "1.0"
+state:
+  as_of_turn: 0          # week 0
+  entities:
+    - id: russia_strikeforce
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 10000, unit: munitions}        # ASSUMED placeholder
+        weekly_launch:       {value: 1500,  unit: munitions/week}   # ASSUMED placeholder
+        weekly_production:   {value: 1500,  unit: munitions/week}   # ASSUMED placeholder
+        cumulative_launched: {value: 0,     unit: munitions}
+        cumulative_leaked:   {value: 0,     unit: munitions}
+    - id: ukraine_air_defense
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory:  {value: 1200, unit: interceptors}        # ASSUMED placeholder
+        weekly_resupply:        {value: 60,   unit: interceptors/week}   # ASSUMED placeholder
+        cumulative_intercepted: {value: 0,    unit: munitions}
+        culminated:             {value: false, unit: bool}

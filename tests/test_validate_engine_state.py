@@ -6,6 +6,7 @@ types (FORCE / ROUTE / ROUTE_SECRET / SINK) still validate (backward compatibili
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -146,3 +147,18 @@ def test_cli_empty_dir_fails_closed(tmp_path: Path) -> None:
 
 def test_cli_missing_path_is_usage_error(tmp_path: Path) -> None:
     assert ves.main([str(tmp_path / "nope.yaml")]) == 2
+
+
+# --- enum-audit: the validator's enum and the schema doc must not drift (T3) ------
+
+def test_entity_type_enum_matches_the_schema_doc() -> None:
+    # The validator's ENTITY_TYPES is the live authority; the schema doc's Fields-table `type` row must
+    # list exactly the same set. This locks the additive-extension discipline (ECI-2): a new entity type
+    # added to the validator but not the doc (or vice-versa) is caught here, not discovered later.
+    doc = (REPO_ROOT / "schemas" / "engine_state.schema.md").read_text(encoding="utf-8")
+    type_row = next((ln for ln in doc.splitlines() if ln.lstrip().startswith("| `type`")), None)
+    assert type_row is not None, "no `type` row found in engine_state.schema.md Fields table"
+    documented = set(re.findall(r"`([A-Z][A-Z_]+)`", type_row))   # backtick-quoted ALL-CAPS enum tokens
+    assert documented == set(ves.ENTITY_TYPES), (
+        f"engine-state entity-type enum DRIFT: validator={sorted(ves.ENTITY_TYPES)} "
+        f"vs schema doc={sorted(documented)}")

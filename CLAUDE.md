@@ -22,9 +22,12 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   composed into `release`), and WP6 adds the fog-of-war **context compiler**
   (`core/context_compiler.py` — a deterministic library, not a gate). The enforceable-plumbing phase
   (0–9) is complete; the wargame **engine** is now underway IN-REPO — WP-E1 added the durable
-  turn-record core + the **turn-replay** gate, and WP-E2a the first salvo resolver + the **engine-state**
-  gate (`validate_engine_state.py`), so `release` now composes those two engine gates on top of the
-  WP8–9 set. Next: WP-E2b.
+  turn-record core + the **turn-replay** gate, WP-E2a the first salvo resolver + the **engine-state**
+  gate (`validate_engine_state.py`), WP-E2b the heterogeneous + multi-turn salvo + the **ruleset** gate,
+  and WP-E2c the **calibration-feasibility** gate (`scripts/validate_calibration_feasibility.py` — the
+  honest "cannot calibrate this channel" record that keeps `calibration_status: UNCALIBRATED`), so
+  `release` now composes all of those engine gates on top of the WP8–9 set. Next: WP-E2d (stochastic
+  interception — a FROZEN-CONTRACT change requiring external review).
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.

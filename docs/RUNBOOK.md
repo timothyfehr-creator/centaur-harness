@@ -64,14 +64,20 @@ operating rules; this file is the *process*.
   `hash-mismatch` / `extra-input` / `missing-input`. The fix (the failure prints it):
   `.venv/bin/python scripts/validate_run_ledger.py --write`, then commit `run_ledger.yaml`.
   Treat it like a step in the WP loop whenever a WP touches a declared input.
-- **Attestations + the calibration record pin the ledger too (WP8–9).** `examples/<name>/review.yaml`
-  + `signoff.yaml`, and a WP9 `calibration.yaml` (only when `calibration_status: CALIBRATED`), record
-  the ledger's `code_version`; when a declared-input change regenerates the ledger, they go **stale**
-  (`stale-attestation` / `stale-calibration`, CI release fails). The same WP-loop step: after
-  `--write`, update `code_version` in `review.yaml` + `signoff.yaml` (re-review / re-sign) and in any
-  `calibration.yaml` (re-score / re-record) to match, and re-commit. Approval and calibration bind to
-  a reproducible snapshot, by design. (The shipped ukraine example is `ILLUSTRATIVE` — no calibration
-  record — so this calibration step only bites a scenario that actually claims `CALIBRATED`.)
+- **Attestations + the calibration / feasibility records pin the ledger too (WP8–9, WP-E2c).**
+  `examples/<name>/review.yaml` + `signoff.yaml`, a WP9 `calibration.yaml` (only when
+  `calibration_status: CALIBRATED`), and a WP-E2c `calibration_feasibility.yaml` (the honest "cannot
+  calibrate this channel" record, under `UNCALIBRATED`) all record the ledger's `code_version`; when a
+  declared-input change regenerates the ledger, they go **stale** (`stale-attestation` /
+  `stale-calibration` / `stale-feasibility`, CI release fails). The same WP-loop step: after `--write`,
+  update `code_version` in `review.yaml` + `signoff.yaml` (re-review / re-sign), any `calibration.yaml`
+  (re-score / re-record), and any `calibration_feasibility.yaml` (re-assess) to match, and re-commit.
+  None of these is itself a declared ledger input (the binding is one-directional). Approval, calibration,
+  and feasibility bind to a reproducible snapshot, by design. (`ru_ua_salvo_heterogeneous` carries an
+  UNCALIBRATED signoff + a `calibration_feasibility.yaml` verdict NOT_FEASIBLE; ukraine stays
+  `ILLUSTRATIVE` with no record — the CALIBRATED calibration step only bites a scenario claiming it.)
+  A feasibility record's blocked provenance hash (`sha256_status: BLOCKED_FETCH_AUTH_GATED`, `sha256:
+  null`) upgrades to `PINNED` + a real 64-hex hash only when the source is actually fetched — never fabricate one.
 - **Two environment traps seen in practice:** a **pending macOS update** can read-only-lock
   *existing* files on the data volume (write → `EPERM`; new files still create) — a reboot
   clears it; and the Bash tool's **cwd can go stale** after a long Workflow — `cd` from an

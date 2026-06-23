@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** **WP-E2b** (heterogeneity + multi-turn) on the in-repo engine. Phases 0–9 (enforceable plumbing) are complete; the engine then began **in-repo** — WP-E0 froze the contract, WP-E1 shipped the turn-record core + the **turn-replay gate** (delivering the once-deferred WP7.2), WP-E2a the first salvo resolver + the engine-state gate. See [docs/PROGRESS.md](docs/PROGRESS.md) for live status.
+**Immediate next step:** **WP-E2d** (stochastic interception) — a FROZEN-CONTRACT change gated on an external review round, NOT an in-place change. Phases 0–9 (enforceable plumbing) are complete; the engine then began **in-repo** — WP-E0 froze the contract, WP-E1 shipped the turn-record core + the **turn-replay gate** (delivering the once-deferred WP7.2), WP-E2a the first salvo resolver + the engine-state gate, WP-E2b the heterogeneous + multi-turn salvo + the ruleset gate (WP-E2b3 remediated an external red-team NO-GO), and WP-E2c the **calibration-feasibility gate** (the honest "cannot calibrate" record). See [docs/PROGRESS.md](docs/PROGRESS.md) for live status.
 
 ## 1. Goal
 
@@ -978,7 +978,8 @@ After the first tranche:
     *Backlog:* the metric set is fixed at the three published rules; new metrics are gated by need.)
     **The enforceable-plumbing phase (Phases 0–9) is complete. The wargame engine then began IN-REPO
     (WP-E0 contract-freeze → WP-E1 turn-record core + turn-replay gate → WP-E2a first salvo resolver +
-    engine-state gate; WP-E2b next).**
+    engine-state gate → WP-E2b heterogeneous + multi-turn salvo + ruleset gate → WP-E2c
+    calibration-feasibility gate; WP-E2d stochastic — frozen-contract, external-review-gated — next).**
 
 ## 7. Agent operating model
 

@@ -627,9 +627,23 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   {-100,-50,0,+100,+200}% → honest range wk5-8 (the +-50% band is flat once the inventory limb is gone).
   Records + ledgers + schema docs regenerated. Tighter property-specific adversarial-verify added
   (saturation monotonicity, multi-cell grain-invariance, magazine-under-starvation, per-class weakest-link).
-- **Now:** **462 tests green**; `release` = the WP8–9 gates + engine-state + ruleset + turn-replay (which
-  also runs the multi-turn chain pass) — all PASS. The lethality floors + k are LOCKED (drone 50 / cruise 40
-  / ballistic 25; k=3), ledgered before E2c. **next = WP-E2c** as the calibration-FEASIBILITY record (the
-  data dossier verdict: STAYS UNCALIBRATED — kinetic drone-intercept not separably calibratable / no
-  method-independent corroborator), keeping `calibration_status: UNCALIBRATED` + a labeled descriptive band.
-  Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes / a separable, corroborated set).
+- **WP-E2c — calibration-FEASIBILITY record + a Tier-1 hardening pass** ✅ The honest artifact the data
+  dossier's verdict demanded: a new gate `scripts/validate_calibration_feasibility.py` (SEPARATE from the
+  CALIBRATED gate, which is byte-unchanged) validates a committed `calibration_feasibility.yaml` that records
+  the kinetic drone-intercept channel CANNOT be calibrated (mono-source, composite bucket, no method-independent
+  corroborator), keeping `calibration_status: UNCALIBRATED` + a labeled descriptive band. Anti-over-claim teeth:
+  verdict has no "feasible" value; a band is scanned (recursively, negation-aware) for affirmative
+  calibrated/validated/corroborated language + must carry honesty labels; a provenance SHA exists only when
+  PINNED (the piterfm v196 hash is honestly `null` + `BLOCKED_FETCH_AUTH_GATED`, never fabricated); a record
+  under a CALIBRATED signoff is `contradictory-status`. `examples/ru_ua_salvo_heterogeneous/` carries the real
+  record + `signoff.yaml`/`review.yaml` (attestation tier, UNCALIBRATED). The gate logic was adversarially-
+  verified (a fresh skeptic found + we fixed a real escape — over-claims hidden in band lists/nested dicts) and
+  the record content honesty-swept (every number traces to the dossier; verdict faithful; nothing fabricated).
+  **Tier-1 hardening:** refreshed stale salvo run-ledger `code_version`s; corrected the stale rng_seeds/llm_steps
+  "no engine yet" justification; an engine-state enum-audit test; and the 4 WP-E2b3 adversarial-verify
+  properties locked in as **standing property sweeps** (each mutation-verified to have teeth).
+- **Now:** **558 tests green**; `release` = the WP8–9 gates + engine-state + ruleset + turn-replay +
+  **calibration-feasibility** — all PASS; the report surfaces the distinct attested postures
+  (`ILLUSTRATIVE, UNCALIBRATED`). The lethality floors + k are LOCKED (drone 50 / cruise 40 / ballistic 25;
+  k=3). **next = WP-E2d** (stochastic interception) — a FROZEN-CONTRACT change requiring an external review
+  round, NOT an in-place change. Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).

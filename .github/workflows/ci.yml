@@ -60,8 +60,14 @@ jobs:
       - name: Review/signoff attestation
         run: python scripts/validate_review_signoff.py
 
+      - name: Review/signoff attestation (salvo het scenario)
+        run: python scripts/validate_review_signoff.py --scenario-dir examples/ru_ua_salvo_heterogeneous
+
       - name: Calibration record
         run: python scripts/validate_calibration.py
+
+      - name: Calibration-feasibility records
+        run: python scripts/validate_calibration_feasibility.py
 
       - name: Engine-state validation
         run: python scripts/validate_engine_state.py

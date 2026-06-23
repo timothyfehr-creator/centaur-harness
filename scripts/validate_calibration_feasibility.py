@@ -72,6 +72,21 @@ def _usable_doc(doc: object) -> bool:
     return isinstance(doc, dict) and bool(doc)
 
 
+def _walk_strings(node: object):
+    """Yield EVERY string reachable in a nested structure (scalars, list items, nested dict values).
+    The over-claim scan walks this so affirmative language cannot be hidden in a band list/nested dict
+    (an adversarial-verify escape). The honesty labels are scan-safe: NOT_CORROBORATED's underscore
+    blocks the \\bcorroborated\\b word boundary, and the other markers contain no flagged word."""
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for v in node.values():
+            yield from _walk_strings(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _walk_strings(v)
+
+
 def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
     """Structure of the feasibility record: skeleton + the list/date/band/provenance checks it omits."""
     problems: list[tuple[str, str, str]] = list(_validate_skeleton(fdoc, where, FEASIBILITY_SPEC))
@@ -106,13 +121,14 @@ def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
             if sc is not None and sc not in SOURCE_CLASS_ENUM:
                 add("invalid-enum",
                     f"descriptive_band.source_class must be one of {sorted(SOURCE_CLASS_ENUM)}; got {sc!r}")
-            for key, val in band.items():
-                if isinstance(val, str):
-                    hit = _FORBIDDEN.search(val)
-                    if hit:
-                        add("over-claim-language",
-                            f"descriptive_band.{key} contains over-claim language {hit.group(0)!r}; a "
-                            f"descriptive band is a plausibility check, never calibrated/validated/corroborated")
+            for text in _walk_strings(band):                  # recurse: lists + nested dicts too
+                hit = _FORBIDDEN.search(text)
+                if hit:
+                    add("over-claim-language",
+                        f"descriptive_band contains affirmative over-claim language {hit.group(0)!r} "
+                        f"(in {text!r}); a band is a plausibility check, never calibrated/validated/"
+                        f"corroborated -- found anywhere in the band, including nested lists/dicts")
+                    break                                      # one finding suffices (single-fault)
 
     # provenance (OPTIONAL): a hash exists iff PINNED -- a hash under a 'blocked' status is fabrication.
     prov = fdoc.get("provenance")

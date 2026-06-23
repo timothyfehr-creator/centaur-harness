@@ -85,6 +85,9 @@ _MUTATIONS = [
     ("bad_feasibility_date", lambda d: d.__setitem__("feasibility_date", "2026/06/23"), "invalid-format", "feasibility_date"),
     ("unlabeled_band", lambda d: d["descriptive_band"].__setitem__("labels", []), "unlabeled-band", "labels"),
     ("overclaim_band", lambda d: d["descriptive_band"].__setitem__("caveat", "this channel is calibrated against the data"), "over-claim-language", "calibrated"),
+    # adversarial-verify regression: an over-claim hidden in a band LIST or NESTED DICT must still be caught.
+    ("overclaim_band_in_list", lambda d: d["descriptive_band"].__setitem__("caveats", ["ok", "fully calibrated and independently verified"]), "over-claim-language", "calibrated"),
+    ("overclaim_band_nested_dict", lambda d: d["descriptive_band"].__setitem__("meta", {"note": "validated against ground truth"}), "over-claim-language", "validated"),
     ("bad_source_class", lambda d: d["descriptive_band"].__setitem__("source_class", "BOGUS"), "invalid-enum", "source_class"),
     ("sha_pinned_but_null", lambda d: d["provenance"][0].__setitem__("sha256_status", "PINNED"), "invalid-format", "sha256"),
     ("sha_blocked_but_hash", lambda d: d["provenance"][0].__setitem__("sha256", "a" * 64), "provenance-contradiction", "sha256"),

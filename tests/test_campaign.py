@@ -111,3 +111,45 @@ def test_commit_campaign_idempotent_then_conflict(tmp_path: Path) -> None:
     bad["transition_input_hash"] = "0" * 64
     with pytest.raises(atomic.SlotConflict):
         tr.commit(bad, str(slot))                             # a changed record on an existing slot fails
+
+
+# --- the chain pass (continuity gate, WP-E2b2) ----------------------------------------------------
+
+def _group() -> list:
+    return [(f"wk{i}", TURNS[i], RECORDS[i]) for i in range(len(RECORDS))]
+
+
+def test_chain_pass_accepts_the_committed_campaign() -> None:
+    assert vtr.check_chain(_group()) == []
+
+
+def test_chain_pass_is_noop_for_a_single_turn_group() -> None:
+    assert vtr.check_chain([("x", TURNS[0], RECORDS[0])]) == []   # length-1 -> no chain to check
+
+
+def test_chain_pass_catches_a_broken_head_handoff() -> None:
+    g = [(w, p, json.loads(json.dumps(r))) for w, p, r in _group()]   # deep copy
+    g[1][2]["start_state"]["state_digest"]["value"] = "0" * 64        # break week-1's handoff
+    assert "chain-head-mismatch" in {c for c, _, _ in vtr.check_chain(g)}
+
+
+def test_chain_pass_catches_a_gap() -> None:
+    gapped = _group()[:2] + _group()[3:]                              # drop week 2
+    assert "chain-gap" in {c for c, _, _ in vtr.check_chain(gapped)}
+
+
+def test_full_gate_passes_over_all_scenarios() -> None:
+    # the single-turn scenarios (chain no-op) AND the multi-turn chain all pass the live gate
+    import subprocess
+    r = subprocess.run([sys.executable, str(REPO_ROOT / "scripts" / "validate_turn_replay.py")],
+                       cwd=REPO_ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+
+
+def test_forged_start_state_is_caught_by_self_binding() -> None:
+    # adversarial-verify HOLE 1: a fabricated start_state.state whose committed state_digest no longer
+    # matches it must be caught directly -- so a forged initial condition can't ride a digest-only chain
+    # head-handoff + a recomputed transition_input_hash through the gate.
+    rec = json.loads(json.dumps(RECORDS[-1]))   # deep copy the culminating record
+    rec["start_state"]["state"]["entities"][0]["fields"]["strike_inventory"]["value"] = 999999
+    assert "state-digest-self-mismatch" in {c for c, _, _ in vtr.check_record(rec, "forged")}

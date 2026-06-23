@@ -6,7 +6,7 @@
 schema_version: "1.0"
 id: review-ru-ua-salvo-het-001
 target: ru_ua_salvo_heterogeneous
-code_version: "735ed3d65ddaab82973ef0dcb8993855c25fcb80"
+code_version: "95860122cecbc06d1a76adda15ea3e1ca9827e8d"
 attestation_kind: SYNTHETIC_SELF_CHECK
 verdict: SELF_CHECK_PASSED
 reviewer: "synthetic self-check (NOT an independent refuter pass); the substantive external red-team round is recorded in centaur_engine_planning/"

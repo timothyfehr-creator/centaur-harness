@@ -1,13 +1,13 @@
 schema_version: '1.0'
 as_of_date: '2026-06-23'
-code_version: 735ed3d65ddaab82973ef0dcb8993855c25fcb80
+code_version: 95860122cecbc06d1a76adda15ea3e1ca9827e8d
 tool_version: '1.0'
 generated_by: validate_run_ledger.py --write
 inputs:
 - path: examples/ru_ua_salvo_heterogeneous/engine_state.yaml
   sha256: af2964092683f27e407b5da451639ec959926436aaecf7774c84a4a0e9d461a3
 - path: examples/ru_ua_salvo_heterogeneous/rules.yaml
-  sha256: f9930e3d0462c047bd9c428dd6b5c72a99e9b641a677c3a483ee7b20d3200b2a
+  sha256: cc45332cb5d2880dbecfba93bc7d3f4634891f8d11694dedc990562889c84d12
 - path: examples/ru_ua_salvo_heterogeneous/scenario.yaml
   sha256: 8cb24d6ecf798a3d32167f57486cfacfab3b07cbcbcb4e8ed44aa369c868c9aa
 - path: factbase/assumptions.yaml

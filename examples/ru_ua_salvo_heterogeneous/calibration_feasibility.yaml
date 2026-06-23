@@ -7,7 +7,7 @@
 schema_version: "1.0"
 id: calfeas-ru-ua-drone-001
 target: ru_ua_salvo_heterogeneous
-code_version: "735ed3d65ddaab82973ef0dcb8993855c25fcb80"
+code_version: "95860122cecbc06d1a76adda15ea3e1ca9827e8d"
 verdict: NOT_FEASIBLE
 attempted_observable: "p = P(kill | interceptor engagement attempt) for the kinetic drone channel -- the per-engagement-attempt kill probability the model applies to the magazine-constrained interceptor-attempt total sum(fired[t]) at core/salvo_resolver_het.py:258 (it is the rules.yaml p_intercept_pct[drone]). It is NOT a launch-share and NOT a shot-down / launched ratio; the reported UA-AF feed measures the latter, a different quantity."
 binding_reasons:

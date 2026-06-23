@@ -564,8 +564,33 @@ ledger. **This is the last numbered WP — Phases 0–9 (enforceable plumbing) a
 - Out of scope (deferred): **calibration scoring / backtest** (needs the engine + outcomes), the
   engine itself (turn-replay), `CUSTOM` metrics, a scoring suite, dashboards.
 
-## Deferred (not started)
+## Phase E — wargame engine (in progress)
 
-The enforceable-plumbing phase (Phases 0–9) is complete. Remaining work is the **wargame engine** —
-a separate effort planned outside this repo (turn advancement, combat adjudication, the deterministic
-transition authority; turn-replay then becomes implementable). Not a numbered plumbing WP.
+The enforceable-plumbing phase (Phases 0–9) is complete; the wargame **engine** then began **in this
+repo** (planning lives separately at `~/Documents/centaur_engine_planning/`). Concise entries — these
+landed in focused sessions, not the per-WP CI-run cadence above.
+
+- **WP-E0 — engine contract freeze** ✅ the typed schema docs (`engine_state`, `engine_command`,
+  `transition_event`, `turn_record`) + `docs/ENGINE_CONTRACT.md` (keystone turn-record, TOTAL resolution
+  table, canon-v1, event-addressed RNG, fog policy, the 12 PASS conditions) + the abstract
+  `examples/contested_logistics_abstract/` slice.
+- **WP-E1 — durable turn-record engine core** ✅ `core/{canon,rng,resolver,turn_record,atomic,
+  engine_projection}.py` + `scripts/{engine_run,engine_recompute,validate_turn_replay}.py`. The
+  contested-logistics slice runs end-to-end (validate_all → resolve → `reduce()` sole-constructor →
+  O_EXCL durable commit → fog projection → record-replay + recomputation), all 12 PASS conditions green.
+  **Delivers the once-deferred WP7.2 turn-replay** as a live `release` gate.
+- **WP-E2a — first combat resolver** ✅ `core/salvo_resolver.py`: a DETERMINISTIC homogeneous Hughes
+  salvo (Russia strike force vs Ukraine air defense, weekly, integer math, BDA + culmination),
+  **UNCALIBRATED / ILLUSTRATIVE**. Generalized the turn record to be resolver-pluggable (a `resolver`
+  param + a stored `ruleset` in the preimage) and the replay gate to a resolver registry.
+- **ECI-2 / ECI-1 — engine-contract hygiene** ✅ `scripts/validate_engine_state.py` enforces the typed
+  entity-type enum (additively extended with `STRIKE_FORCE`/`AIR_DEFENSE`), wired as a `release` gate;
+  the agent-view projector allowlist is pinned so the salvo `ruleset` can't leak.
+- **WP-E2 consolidation pass** ✅ closed the stale-committed-record class (the turn-replay gate now
+  recomputes `transition_input_hash`; the contested record was regenerated), pinned the engine
+  run-ledgers' inputs (`engine_state.yaml` + `rules.yaml`) + re-pinned `code_version` to a reachable SHA
+  + made CI validate every example ledger, and reconciled this honest-status doc debt.
+- **Now:** **390 tests green**; `release` composes the WP8–9 gates **plus** the engine-state +
+  turn-replay gates. A WP-E2 combat-model red-team (GO_WITH_CHANGES) locked the model contract;
+  **next = WP-E2b** (diagonal-first heterogeneity + multi-turn), then WP-E2c (a channel-scoped,
+  falsifiable backtest). Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).

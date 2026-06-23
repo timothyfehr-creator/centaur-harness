@@ -29,8 +29,11 @@ composes draft's gates + the run-ledger + the attestations, STRUCTURAL + ATTESTA
 and the **calibration evidence-or-label gate** (WP9 — `validate_calibration.py`: a `CALIBRATED`
 signoff must resolve to a `calibration.yaml` record with proper-scoring-rule provenance, ledger-
 bound; the harness *records* an external calibration result, never *computes* one; §5). **The
-enforceable-plumbing phase (Phases 0–9) is complete.** Next: the wargame engine — a separate effort
-planned outside this repo. See [docs/PROGRESS.md](docs/PROGRESS.md).
+enforceable-plumbing phase (Phases 0–9) is complete; the wargame ENGINE is now underway in-repo** —
+WP-E1 shipped the durable turn-record engine core (canon / RNG / resolver / `reduce()` / projection +
+the **turn-replay gate** + the 12-condition suite) and WP-E2a the first combat resolver (a deterministic
+RU-strike-vs-UA-air-defense salvo, UNCALIBRATED/ILLUSTRATIVE) + the typed **engine-state gate**
+(`validate_engine_state.py`). Next: WP-E2b. See [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Verification
 
@@ -49,7 +52,9 @@ python scripts/safety_check.py             # safety gate — actionable-harm con
 python scripts/validate_run_ledger.py      # reproducibility run-ledger drift gate (WP7, §6)
 python scripts/validate_review_signoff.py  # review + signoff attestation gate (WP8)
 python scripts/validate_calibration.py     # calibration evidence-or-label gate (WP9, §5)
-python scripts/verify.py --mode release    # release: draft + run-ledger + attestation + calibration (STRUCTURAL + ATTESTATION ONLY)
+python scripts/validate_engine_state.py    # typed engine-state gate (WP-E2a, ECI-2)
+python scripts/validate_turn_replay.py     # turn-replay: record-replay + recompute + idempotency-hash (WP-E1)
+python scripts/verify.py --mode release    # release: draft + run-ledger + attestation + calibration + engine-state + turn-replay (STRUCTURAL + ATTESTATION ONLY)
 pytest                                      # run the test suite
 ```
 
@@ -64,11 +69,12 @@ later phase) — only that a *present* scenario is well-formed.
 
 `draft` mode (WP4) is the first **composed** gate: it runs scaffold plus the source /
 claim / event / state / agent-grounding / safety gates, reports each as `[PASS]`/`[FAIL]`
-alongside a `[SKIP]` list of not-yet-implemented checks (turn-replay, calibration scoring),
+alongside a `[SKIP]` list of not-yet-implemented checks (calibration scoring),
 and is **STRUCTURAL ONLY** — a clean draft is *not* a claim of analytical validity.
 
-`release` mode (WP8–9) composes draft's checks **plus** the reproducibility run-ledger, the
-review + signoff attestations, and the calibration evidence-or-label gate, and surfaces the
+`release` mode (WP8–9 + the engine) composes draft's checks **plus** the reproducibility run-ledger, the
+review + signoff attestations, the calibration evidence-or-label gate, and the **engine-state +
+turn-replay** gates, and surfaces the
 signoff's declared calibration status (enriched with the metric + N when `CALIBRATED`). It is
 **STRUCTURAL + ATTESTATION ONLY** — a clean release means complete, reproducible, and attested,
 *not* analytically valid — and it propagates the worst gate exit code (findings → 1, a gate

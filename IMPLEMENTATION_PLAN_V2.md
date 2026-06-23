@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** the wargame **engine** — a separate effort planned outside this repo; the enforceable-plumbing phase is complete. (Phases 0–9 are complete through WP9.1; see [docs/PROGRESS.md](docs/PROGRESS.md) for live status.)
+**Immediate next step:** **WP-E2b** (heterogeneity + multi-turn) on the in-repo engine. Phases 0–9 (enforceable plumbing) are complete; the engine then began **in-repo** — WP-E0 froze the contract, WP-E1 shipped the turn-record core + the **turn-replay gate** (delivering the once-deferred WP7.2), WP-E2a the first salvo resolver + the engine-state gate. See [docs/PROGRESS.md](docs/PROGRESS.md) for live status.
 
 ## 1. Goal
 
@@ -976,8 +976,9 @@ After the first tranche:
     `UNCALIBRATED`/`ILLUSTRATIVE` need none. Composed into `release`. The harness **records**
     an external proper-scoring result; it never **computes** one — scoring is engine-ward.
     *Backlog:* the metric set is fixed at the three published rules; new metrics are gated by need.)
-    **The enforceable-plumbing phase (Phases 0–9) is complete. The wargame engine is the next
-    effort — planned separately, outside this repo.**
+    **The enforceable-plumbing phase (Phases 0–9) is complete. The wargame engine then began IN-REPO
+    (WP-E0 contract-freeze → WP-E1 turn-record core + turn-replay gate → WP-E2a first salvo resolver +
+    engine-state gate; WP-E2b next).**
 
 ## 7. Agent operating model
 

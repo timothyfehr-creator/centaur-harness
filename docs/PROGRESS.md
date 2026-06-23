@@ -590,7 +590,18 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   recomputes `transition_input_hash`; the contested record was regenerated), pinned the engine
   run-ledgers' inputs (`engine_state.yaml` + `rules.yaml`) + re-pinned `code_version` to a reachable SHA
   + made CI validate every example ledger, and reconciled this honest-status doc debt.
-- **Now:** **390 tests green**; `release` composes the WP8–9 gates **plus** the engine-state +
-  turn-replay gates. A WP-E2 combat-model red-team (GO_WITH_CHANGES) locked the model contract;
-  **next = WP-E2b** (diagonal-first heterogeneity + multi-turn), then WP-E2c (a channel-scoped,
-  falsifiable backtest). Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).
+- **WP-E2b1 — heterogeneous salvo resolver** ✅ `core/salvo_resolver_het.py` (`ru_ua_salvo_heterogeneous`):
+  DIAGONAL-FIRST over 3 threat classes (drone/cruise calibrated; ballistic an EXOGENOUS sourced range), an
+  internal interceptor-magazine axis with a named allocation rule (`fixed-priority-best-first-v1`) + a
+  saturation term, per-threat-subpool capped intercept (consumed decoupled), HYBRID culmination (sustained-k
+  lethality streak OR inventory limb; magazine weeks-of-supply as a leading indicator), ruleset-range
+  validation (a REJECTED transition — the crash-class fix), and a multi-turn-ready `TURN_ADVANCED`. New
+  `scripts/validate_ruleset.py` (structure + provenance, a `release` gate) + `schemas/ruleset.schema.md`;
+  the turn-replay gate is now fail-closed on an unknown `resolver_id` with per-resolver `STOCHASTIC_TERMINALS`.
+  New `examples/ru_ua_salvo_heterogeneous/` golden record (the drone salvo exercises saturation). An
+  adversarial-verify pass caught + fixed two bugs pre-commit. UNCALIBRATED / ILLUSTRATIVE.
+- **Now:** **439 tests green**; `release` composes the WP8–9 gates **plus** the engine-state + **ruleset**
+  + turn-replay gates. The WP-E2 model contract is locked (red-team GO_WITH_CHANGES); **next = WP-E2b2**
+  (the multi-turn campaign: a chaining orchestrator, a cross-record continuity gate, a 12-week golden
+  campaign, culmination-as-range), then WP-E2c (a channel-scoped, falsifiable backtest). The user owes the
+  lethality floor% + k before E2c. Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).

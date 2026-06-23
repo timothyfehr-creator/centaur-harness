@@ -1,0 +1,26 @@
+schema_version: '1.0'
+as_of_date: '2026-06-23'
+code_version: 97d596ab13165a26fd6f86cfcd13746874074e32-dirty
+tool_version: '1.0'
+generated_by: validate_run_ledger.py --write
+inputs:
+- path: examples/ru_ua_salvo_heterogeneous/engine_state.yaml
+  sha256: a468a29f81a0b426a88cfd941d3c7c7c97db1a02378fa27d5ba85d7e9c55814f
+- path: examples/ru_ua_salvo_heterogeneous/rules.yaml
+  sha256: bf91873643700f831569a6b67367dccbca553126cd7ca42e6f3141349911ae36
+- path: examples/ru_ua_salvo_heterogeneous/scenario.yaml
+  sha256: 8cb24d6ecf798a3d32167f57486cfacfab3b07cbcbcb4e8ed44aa369c868c9aa
+- path: factbase/assumptions.yaml
+  sha256: 2934091a97bb2586a45cee34b934519d9ff2e93facb757e2908a7e77a7f5fcc4
+- path: factbase/claims.yaml
+  sha256: 26da6f47508567a688fdad915078e61e3db0b10dbadd88f9acdac411861e3cf7
+- path: factbase/events.yaml
+  sha256: 16c295527086f755b78b40044adadf6e85828baee92d24f940dee8e44fb32fb6
+- path: factbase/sources.yaml
+  sha256: bd162b5956ce63ef56a3c5f02a8bd6e1303ad12b632757a05a5a0a70ae0d3caa
+- path: knowledge/country_books/ukraine_logistics.yaml
+  sha256: 9fa4e875dc66ff6e5219d671a47ee0547e19110fa24ff2365db272d8d10b1b93
+- path: knowledge/institution_books/nato_jflc.yaml
+  sha256: 464609f16ebe1468352de480b969cdcb3601cb93de648aaf1bdab16732c7b0c3
+rng_seeds: null
+llm_steps: null

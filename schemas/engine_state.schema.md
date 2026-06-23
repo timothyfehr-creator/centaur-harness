@@ -75,6 +75,16 @@ projection (the existing no-leak test covers it).
 (ROUTE_SECRET: `subject_route: "r1"`, `block_threshold` int 0–99, adjudicator-only). **Conservation
 invariant:** `origin + in_transit + delivered + loss_sink` is constant (= 100) across every turn.
 
+## Slice entities (ru_ua_salvo_homogeneous / ru_ua_salvo_heterogeneous)
+
+The salvo scenarios use `STRIKE_FORCE` (strike pools) + `AIR_DEFENSE` (interceptor pools). **Homogeneous
+(WP-E2a):** one `russia_strikeforce` + one `ukraine_air_defense`. **Heterogeneous (WP-E2b1):** one
+`STRIKE_FORCE` per threat class (`russia_strike_{drone,cruise,ballistic}`), one `AIR_DEFENSE` per
+interceptor type (`ukraine_intc_{short,long,pac3}`), plus a network-aggregate `AIR_DEFENSE`
+(`ukraine_air_defense`) carrying `cumulative_intercepted`, `lethality_collapse_streak`,
+`lethality_collapsed`, `magazine_non_depleting`, `magazine_weeks_remaining`, `culminated` (additive
+fields — no `schema_version` bump). All ASSUMED / UNCALIBRATED.
+
 ## Error codes (`validate_engine_state.py` emits)
 
 `missing-schema-version`, `missing-field`, `wrong-type`, `invalid-enum` (bad entity `type`),

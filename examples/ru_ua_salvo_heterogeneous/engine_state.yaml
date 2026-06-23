@@ -1,0 +1,55 @@
+# Typed engine state for the WP-E2b1 heterogeneous salvo (3 threat classes x interceptor types).
+# ALL values ASSUMED placeholders; UNCALIBRATED / ILLUSTRATIVE. Integer-only (the engine is float-free).
+# A BARE envelope {schema_version, state}; assemble() seals it with a state_digest.
+schema_version: "1.0"
+state:
+  as_of_turn: 0          # week 0
+  entities:
+    - id: russia_strike_drone           # one STRIKE_FORCE per threat class
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 8000, unit: munitions}        # ASSUMED placeholder
+        weekly_launch:       {value: 1200, unit: munitions/week}   # ASSUMED placeholder
+        weekly_production:   {value: 1200, unit: munitions/week}   # ASSUMED placeholder
+        cumulative_launched: {value: 0,    unit: munitions}
+        cumulative_leaked:   {value: 0,    unit: munitions}
+    - id: russia_strike_cruise
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 4000, unit: munitions}
+        weekly_launch:       {value: 300,  unit: munitions/week}
+        weekly_production:   {value: 300,  unit: munitions/week}
+        cumulative_launched: {value: 0,    unit: munitions}
+        cumulative_leaked:   {value: 0,    unit: munitions}
+    - id: russia_strike_ballistic
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 2000, unit: munitions}
+        weekly_launch:       {value: 150,  unit: munitions/week}
+        weekly_production:   {value: 150,  unit: munitions/week}
+        cumulative_launched: {value: 0,    unit: munitions}
+        cumulative_leaked:   {value: 0,    unit: munitions}
+    - id: ukraine_intc_short            # one AIR_DEFENSE per interceptor TYPE (internal magazine axis)
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory: {value: 1500, unit: interceptors}        # ASSUMED placeholder
+        weekly_resupply:       {value: 50,   unit: interceptors/week}   # ASSUMED placeholder
+    - id: ukraine_intc_long
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory: {value: 700, unit: interceptors}
+        weekly_resupply:       {value: 20,  unit: interceptors/week}
+    - id: ukraine_intc_pac3
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory: {value: 500, unit: interceptors}
+        weekly_resupply:       {value: 15,  unit: interceptors/week}
+    - id: ukraine_air_defense           # the network AGGREGATE (streak + culmination + indicators)
+      type: AIR_DEFENSE
+      fields:
+        cumulative_intercepted:    {value: 0,     unit: munitions}
+        lethality_collapse_streak: {value: 0,     unit: weeks}    # consecutive below-floor weeks (sustain)
+        lethality_collapsed:       {value: false, unit: bool}     # the HYBRID headline verdict
+        magazine_non_depleting:    {value: false, unit: bool}     # leading-indicator sentinel (canon-safe)
+        magazine_weeks_remaining:  {value: 0,     unit: weeks}    # leading indicator
+        culminated:                {value: false, unit: bool}

@@ -1,0 +1,27 @@
+# WP-E2b1 heterogeneous salvo scenario — ILLUSTRATIVE / UNCALIBRATED. Asserts NO real-world fact; every
+# parameter is an ASSUMED placeholder. Russia's heterogeneous strike (drone / cruise / ballistic) vs
+# Ukraine's layered interceptors (short / long / PAC-3). Diagonal-first; ballistic leak is an exogenous
+# range. The branch weights are illustrative, NOT forecasts.
+schema_version: "1.0"
+label: ILLUSTRATIVE
+as_of_date: "2026-06-22"
+title: "RU heterogeneous salvo vs UA layered air defense (illustrative)"
+branches:
+  - id: air_defense_holds
+    probability: 0.4
+    rationale: "Interceptor resupply keeps pace across the layers; effective intercept-rate stays above the lethality floor."
+    signposts:
+      - "Aggregate effective intercept-rate stays above the lethality floor week over week."
+      - "No interceptor type's magazine weeks-of-supply trends toward exhaustion."
+      - "Leak-through stays in the baseline band across drone / cruise / ballistic."
+    falsifiers:
+      - "Effective intercept-rate falls below the floor for the sustained-k window."
+  - id: layered_collapse
+    probability: 0.6
+    rationale: "Saturation and a scarce ballistic-capable magazine drive leak-through up and the effective rate below the floor."
+    signposts:
+      - "A scarce interceptor type (e.g. PAC-3) depletes faster than it resupplies."
+      - "Weekly consumption outpaces resupply, draining magazines toward culmination."
+      - "Saturation above the salvo-size threshold pushes leak-through above the baseline band."
+    falsifiers:
+      - "Magazines recover above the culmination threshold and the effective rate climbs back over the floor."

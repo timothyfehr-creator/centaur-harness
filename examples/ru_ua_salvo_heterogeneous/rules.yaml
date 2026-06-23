@@ -1,0 +1,59 @@
+# Heterogeneous salvo ruleset (WP-E2b1). EVERY value ASSUMED unless tagged otherwise; UNCALIBRATED.
+# Integer-only (canon-safe). The loader flattens this {value, source} tree -> the int-only ruleset the
+# engine hashes; the `source` provenance stays here (validate_ruleset.py enforces a tag on every leaf).
+schema_version: "1.0"
+ruleset_id: ru_ua_salvo_heterogeneous
+ruleset_version: "1"
+params:
+  threats:
+    value: [drone, cruise, ballistic]
+    source: "ASSUMED — the 3 threat classes (diagonal-first: drone+cruise calibrated, ballistic exogenous)."
+  interceptors:
+    value: [short, long, pac3]
+    source: "ASSUMED — internal interceptor types (magazine-accounting axis; NOT calibrated)."
+  p_intercept_pct:                       # CALIBRATED axis (drone, cruise only)
+    drone:  {value: 80, source: "ASSUMED — CSIS drone intercept ~75-90% unsaturated; CALIBRATION TARGET (E2c)."}
+    cruise: {value: 65, source: "ASSUMED — placeholder; CALIBRATION TARGET (E2c)."}
+  per_pairing:                           # interceptors-per-intercept (internal; UNIDENTIFIABLE)
+    drone:
+      short: {value: 1, source: "ASSUMED — magazine-accounting; STRUCTURALLY-UNIDENTIFIABLE."}
+      long:  {value: 1, source: "ASSUMED — STRUCTURALLY-UNIDENTIFIABLE."}
+    cruise:
+      long:  {value: 1, source: "ASSUMED — STRUCTURALLY-UNIDENTIFIABLE."}
+      short: {value: 2, source: "ASSUMED — STRUCTURALLY-UNIDENTIFIABLE."}
+    ballistic:
+      pac3:  {value: 2, source: "ASSUMED — STRUCTURALLY-UNIDENTIFIABLE."}
+  allocation_priority:                   # the named rule input: best-vs-threat interceptor first
+    drone:     {value: [short, long], source: "ASSUMED — doctrine placeholder."}
+    cruise:    {value: [long, short], source: "ASSUMED — doctrine placeholder."}
+    ballistic: {value: [pac3],        source: "ASSUMED — only PAC-3 engages ballistic."}
+  threat_order:
+    value: [ballistic, cruise, drone]
+    source: "ASSUMED — scarce-interceptor priority; VERSIONED in fixed-priority-best-first-v1."
+  weekly_engagement_capacity:
+    drone:     {value: 100000, source: "ASSUMED — high default; CSIS '>150/day' anchors the realistic band."}
+    cruise:    {value: 100000, source: "ASSUMED."}
+    ballistic: {value: 100000, source: "ASSUMED."}
+  saturation_threshold:
+    drone:     {value: 1050, source: "EXPLORATORY — CSIS '>150/day' ~ 1050/week; anchor, not a fit."}
+    cruise:    {value: 1050, source: "EXPLORATORY."}
+    ballistic: {value: 1050, source: "EXPLORATORY."}
+  saturation_retained_pct:
+    drone:     {value: 70, source: "EXPLORATORY — degradation above threshold."}
+    cruise:    {value: 70, source: "EXPLORATORY."}
+    ballistic: {value: 70, source: "EXPLORATORY."}
+  ballistic_leak_floor_pct:
+    value: 20
+    source: "SOURCED-RANGE (exogenous) — ballistic intercept is hard; range low. NOT a calibrated cell."
+  ballistic_leak_high_pct:
+    value: 35
+    source: "SOURCED-RANGE (exogenous) — range high."
+  lethality_floor_pct:
+    value: 50
+    source: "ASSUMED — culmination lethality floor; USER refines before E2c (load-bearing, lock before backtest)."
+  culmination_k_weeks:
+    value: 3
+    source: "ASSUMED — sustain horizon (consecutive weeks); USER refines before E2c."
+  culmination_threshold:
+    value: 120
+    source: "ASSUMED — the inventory limb (total magazine), carried from E2a."

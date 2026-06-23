@@ -3,8 +3,10 @@
 Contract for the engine's **transition events** — the ordered record of what happened in a turn,
 carried inside a [turn record](turn_record.schema.md). `reduce(start_state, event_batch)` is the
 **sole** constructor of the next state, so these events must carry enough payload to reproduce the
-resulting state **without** consulting the resolver's reasoning or any hidden value. **No validator
-yet** — WP-E0 freezes this contract; `reduce()` + the validator + golden-vector tests arrive in WP-E1.
+resulting state **without** consulting the resolver's reasoning or any hidden value. **Enforced** by each
+resolver's `reduce()` (per-resolver `event_type` vocabularies — see below) + the turn-replay gate +
+golden-vector tests; there is no standalone `validate_transition_event.py` (the event grammar is
+resolver-specific, so `reduce()` is the enforcer).
 
 > **Namespace firewall.** This is **NOT** the factbase evidence [`event`](event.schema.md) (which
 > carries a DIME `category` and resolves to claims). A *transition* event is a distinct kind with its
@@ -35,9 +37,21 @@ events:
 | `source_command_id` | conditional | string | the command that produced the event (audit) |
 | `draw_ref` | conditional | string | required iff a stochastic outcome consumed a draw (the `LOST`/`DELIVERED` terminal of a contested r1 dispatch); references a `draw_record` |
 
-## `event_type` enum
+## `event_type` enum (per resolver)
 
-`SUPPLY_DISPATCHED`, `ROUTE_BLOCK_ATTEMPTED`, `SUPPLY_DELIVERED`, `SUPPLY_LOST`.
+The `event_type` vocabulary is **resolver-specific** — each resolver's `reduce()` enforces its own
+grammar; there is no global enum. The table/grammar above is the **contested_logistics** vocabulary.
+
+- **contested_logistics:** `SUPPLY_DISPATCHED`, `ROUTE_BLOCK_ATTEMPTED`, `SUPPLY_DELIVERED`, `SUPPLY_LOST`
+  (stochastic terminals consume a `draw_ref`).
+- **ru_ua_salvo_homogeneous (WP-E2a):** `STRIKES_LAUNCHED`, `INTERCEPTS_EXPENDED`, `STRIKES_INTERCEPTED`,
+  `STRIKES_LEAKED`, `RESUPPLY` (`side`), `CULMINATION_STATUS` — deterministic (no draws).
+- **ru_ua_salvo_heterogeneous (WP-E2b1):** per-threat / per-interceptor-type discriminated —
+  `STRIKES_LAUNCHED` / `STRIKES_INTERCEPTED` / `STRIKES_LEAKED` / `RESUPPLY_STRIKE` (carry `threat`);
+  `INTERCEPTS_EXPENDED` / `RESUPPLY_INTERCEPTOR` (carry `interceptor_type`); `BALLISTIC_LEAK_BAND` (the
+  exogenous sensitivity band — reporting-only, a `reduce()` no-op); `LETHALITY_STATUS` (effective rate +
+  sustained-k streak); `MAGAZINE_STATUS` (the weeks-of-supply leading indicator); `CULMINATION_STATUS`;
+  and `TURN_ADVANCED` (`to_turn` — the multi-turn advance applied by `reduce()`). Deterministic (no draws).
 
 ## Event grammar (`reduce()` rejects violations)
 
@@ -63,5 +77,7 @@ resolver consumed those to *choose* the terminal; the event encodes the *outcome
 
 ## Limitations / deferred
 
-Four event types, one interaction per turn. Combat events, multi-turn effects, and delayed/triggered
-events are deferred.
+The logistics slice is four event types, one interaction per turn. WP-E2a/E2b1 add the deterministic
+salvo vocabularies (above), incl. the multi-turn `TURN_ADVANCED`. Stochastic salvo terminals (a draw per
+intercept) and agent-facing salvo commands are deferred (WP-E2d / a later agent WP); delayed/triggered
+events remain deferred.

@@ -1,0 +1,55 @@
+# Typed engine state for the WP-E2b2 MULTI-TURN heterogeneous-salvo campaign (week 0 head).
+# ALL values ASSUMED placeholders; UNCALIBRATED / ILLUSTRATIVE. Integer-only (the engine is float-free).
+# Tuned so the layered defense DEPLETES and CULMINATES within the 12-week horizon (a campaign demo).
+schema_version: "1.0"
+state:
+  as_of_turn: 0
+  entities:
+    - id: russia_strike_drone
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 30000, unit: munitions}       # ASSUMED — deep magazine, launches all 12 wk
+        weekly_launch:       {value: 600,   unit: munitions/week}   # ASSUMED — below the saturation threshold
+        weekly_production:   {value: 600,   unit: munitions/week}   # ASSUMED
+        cumulative_launched: {value: 0,     unit: munitions}
+        cumulative_leaked:   {value: 0,     unit: munitions}
+    - id: russia_strike_cruise
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 8000, unit: munitions}
+        weekly_launch:       {value: 150,  unit: munitions/week}
+        weekly_production:   {value: 150,  unit: munitions/week}
+        cumulative_launched: {value: 0,    unit: munitions}
+        cumulative_leaked:   {value: 0,    unit: munitions}
+    - id: russia_strike_ballistic
+      type: STRIKE_FORCE
+      fields:
+        strike_inventory:    {value: 3000, unit: munitions}
+        weekly_launch:       {value: 80,   unit: munitions/week}
+        weekly_production:   {value: 80,   unit: munitions/week}
+        cumulative_launched: {value: 0,    unit: munitions}
+        cumulative_leaked:   {value: 0,    unit: munitions}
+    - id: ukraine_intc_short            # interceptor TYPES (internal magazine axis) — deplete over the campaign
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory: {value: 1500, unit: interceptors}        # ASSUMED
+        weekly_resupply:       {value: 60,   unit: interceptors/week}   # ASSUMED — below weekly consumption
+    - id: ukraine_intc_long
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory: {value: 1200, unit: interceptors}
+        weekly_resupply:       {value: 50,   unit: interceptors/week}
+    - id: ukraine_intc_pac3
+      type: AIR_DEFENSE
+      fields:
+        interceptor_inventory: {value: 700, unit: interceptors}
+        weekly_resupply:       {value: 20,  unit: interceptors/week}
+    - id: ukraine_air_defense           # the network AGGREGATE (streak + culmination + indicators)
+      type: AIR_DEFENSE
+      fields:
+        cumulative_intercepted:    {value: 0,     unit: munitions}
+        lethality_collapse_streak: {value: 0,     unit: weeks}
+        lethality_collapsed:       {value: false, unit: bool}
+        magazine_non_depleting:    {value: false, unit: bool}
+        magazine_weeks_remaining:  {value: 0,     unit: weeks}
+        culminated:                {value: false, unit: bool}

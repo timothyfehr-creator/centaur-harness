@@ -1,0 +1,27 @@
+# WP-E2b2 MULTI-TURN heterogeneous-salvo campaign — ILLUSTRATIVE / UNCALIBRATED. Asserts NO real-world
+# fact; every parameter is an ASSUMED placeholder. A weekly campaign: Russia's heterogeneous strike vs
+# Ukraine's layered interceptors, chained turn-over-turn until culmination or the 12-week horizon. Branch
+# weights are illustrative, NOT forecasts.
+schema_version: "1.0"
+label: ILLUSTRATIVE
+as_of_date: "2026-06-23"
+title: "RU heterogeneous salvo vs UA layered air defense — multi-turn campaign (illustrative)"
+branches:
+  - id: defense_sustains
+    probability: 0.35
+    rationale: "Resupply keeps pace across the layers; the effective intercept-rate holds above the lethality floor through the horizon."
+    signposts:
+      - "Each interceptor type's magazine weeks-of-supply stays well above zero week over week."
+      - "Aggregate effective intercept-rate stays above the lethality floor every week."
+      - "Leak-through stays in the baseline band across drone / cruise / ballistic."
+    falsifiers:
+      - "The effective intercept-rate falls below the floor for the sustained-k window."
+  - id: magazine_culmination
+    probability: 0.65
+    rationale: "Weekly consumption outpaces resupply; a layer's magazine empties, leak-through climbs, and the effective rate falls below the floor for k consecutive weeks."
+    signposts:
+      - "A scarce interceptor type's weeks-of-supply trends to zero as consumption outpaces resupply."
+      - "Leak-through climbs week over week as the depleting layer stops intercepting."
+      - "The lethality-collapse streak builds toward the sustained-k threshold."
+    falsifiers:
+      - "Resupply recovers, magazines climb back above the threshold, and the effective rate returns above the floor."

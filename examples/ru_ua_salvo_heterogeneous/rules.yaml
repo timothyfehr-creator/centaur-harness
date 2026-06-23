@@ -12,8 +12,8 @@ params:
     value: [short, long, pac3]
     source: "ASSUMED — internal interceptor types (magazine-accounting axis; NOT calibrated)."
   p_intercept_pct:                       # CALIBRATED axis (drone, cruise only)
-    drone:  {value: 80, source: "ASSUMED — CSIS drone intercept ~75-90% unsaturated; CALIBRATION TARGET (E2c)."}
-    cruise: {value: 65, source: "ASSUMED — placeholder; CALIBRATION TARGET (E2c)."}
+    drone:  {value: 80, source: "ASSUMED — UNCALIBRATED (illustrative; CSIS drone intercept ~75-90% unsaturated). E2c data dossier (WP-E2c_DATA_DOSSIER): the kinetic drone-intercept rate is NOT separably calibratable for the Sept-Nov 2024 window (mono-source UA-AF self-report, composite 'lost' bucket, no method-independent corroborator) -> STAYS UNCALIBRATED, not a calibration target."}
+    cruise: {value: 65, source: "ASSUMED — UNCALIBRATED placeholder; no separable/corroborated cruise-intercept data (E2c dossier) -> not a calibration target."}
   per_pairing:                           # interceptors-per-intercept (internal; UNIDENTIFIABLE)
     drone:
       short: {value: 1, source: "ASSUMED — magazine-accounting; STRUCTURALLY-UNIDENTIFIABLE."}

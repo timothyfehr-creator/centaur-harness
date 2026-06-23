@@ -14,10 +14,14 @@ ruleset_id: ru_ua_salvo_heterogeneous
 ruleset_version: "1"
 params:                                  # a tree of {value, source} LEAVES, nested freely
   p_intercept_pct:                       # a grouping (no `value` key) -> recurse
-    drone:  {value: 80, source: "ASSUMED — CSIS drone intercept ~75-90%; CALIBRATION TARGET (E2c)"}
-    cruise: {value: 65, source: "ASSUMED — placeholder; CALIBRATION TARGET (E2c)"}
+    drone:  {value: 80, source: "ASSUMED — UNCALIBRATED (E2c dossier: not separably calibratable)"}
+    cruise: {value: 65, source: "ASSUMED — UNCALIBRATED placeholder"}
+  lethality_floor_pct:                   # per-class WEAKEST-LINK culmination floors (a grouping)
+    drone:     {value: 50, source: "ASSUMED, LOCKED (doctrinal)"}
+    cruise:    {value: 40, source: "ASSUMED — contract extension"}
+    ballistic: {value: 25, source: "ASSUMED — contract extension"}
   threat_order: {value: [ballistic, cruise, drone], source: "ASSUMED — scarce-interceptor priority"}
-  ballistic_leak_floor_pct: {value: 20, source: "SOURCED-RANGE (exogenous) — not a calibrated cell"}
+  ballistic_leak_floor_pct: {value: 60, source: "ASSUMED — dossier-illustrative (exogenous); not a calibrated cell"}
 ```
 
 ## Fields
@@ -41,9 +45,12 @@ A node with a `value` key is a **leaf**; any other mapping is a **grouping** to 
 ### Source-tag taxonomy (convention)
 
 `ASSUMED` (placeholder, needs calibration) · `SOURCED-RANGE (exogenous)` (a bounded range propagated as a
-sensitivity band, e.g. ballistic leak) · `EXPLORATORY` (a what-if anchor) · `STRUCTURALLY-UNIDENTIFIABLE`
-(a cell no data can constrain — e.g. the interceptor-axis per-pairing rates — excluded from the
-calibration gate, WP-E2c). `CALIBRATION TARGET (E2c)` marks the cells the backtest will fit.
+sensitivity band) · `EXPLORATORY` (a what-if anchor) · `STRUCTURALLY-UNIDENTIFIABLE` (a cell no data can
+constrain — e.g. the interceptor-axis per-pairing rates — excluded from the calibration gate, WP-E2c).
+There is **no `CALIBRATION TARGET` tag**: the WP-E2c data dossier found the kinetic drone/cruise intercept
+rates are NOT separably calibratable for the available window (mono-source, composite bucket, no
+method-independent corroborator), so they stay `ASSUMED`/UNCALIBRATED and E2c ships a calibration-FEASIBILITY
+record rather than a calibration claim.
 
 ## What this gate does NOT check (by design)
 

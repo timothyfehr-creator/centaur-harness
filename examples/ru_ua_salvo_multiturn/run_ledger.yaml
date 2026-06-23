@@ -1,13 +1,13 @@
 schema_version: '1.0'
 as_of_date: '2026-06-23'
-code_version: d1fe3f1e0c46d97ab65dc98836fee23d603008da-dirty
+code_version: ab9ae8b0b6c0715ace333964111240fc599d6d47-dirty
 tool_version: '1.0'
 generated_by: validate_run_ledger.py --write
 inputs:
 - path: examples/ru_ua_salvo_multiturn/engine_state.yaml
   sha256: e49072a97939bfd10bd28150a21b068cdeb2f16bdae254063ed09fd24642bc90
 - path: examples/ru_ua_salvo_multiturn/rules.yaml
-  sha256: e41d9221e0f8246efefeeddfc9398dd34a36da7fca604bc67afbcb1a2e14d4dd
+  sha256: 6e8ff56a4883df461d9390e6fc208ed186a1df743bc9fbc2542cbf408ae1e466
 - path: examples/ru_ua_salvo_multiturn/scenario.yaml
   sha256: b6de156cc4dd9ca11d13237c11e54a26a266a90491ca0864ffb0645644d39498
 - path: factbase/assumptions.yaml

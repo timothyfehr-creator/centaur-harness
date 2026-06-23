@@ -39,7 +39,8 @@ _NETWORK = "ukraine_air_defense"  # the aggregate air-defense entity (streak + c
 DEFAULT_RULESET = {
     "threats": ["drone", "cruise", "ballistic"],
     "interceptors": ["short", "long", "pac3"],
-    "p_intercept_pct": {"drone": 80, "cruise": 65},        # CALIBRATION TARGET (E2c); ballistic EXCLUDED
+    "p_intercept_pct": {"drone": 80, "cruise": 65},        # ASSUMED/UNCALIBRATED (E2c verdict: not separably
+                                                           # calibratable); ballistic EXCLUDED (exogenous)
     "per_pairing": {                                       # interceptors_per_intercept[threat][type]
         "drone": {"short": 1, "long": 1},
         "cruise": {"long": 1, "short": 2},
@@ -281,6 +282,10 @@ def resolve(start_state: dict, ruleset: object = None, turn: int = 0):
     # undefined -- not failing -- rate, so it does not advance (and resets) its streak. Per the locked
     # contract, magazine depth is a LEADING INDICATOR, not a trigger -> the prior pooled inventory OR-limb
     # is DROPPED (it fired culminated on turn 0 and could mask a single-class collapse).
+    # KNOWN LIMITATION (documented, deferred): per-class idle-reset is LESS sensitive than the aggregate to
+    # an adversary that ALTERNATES which class it saturates -- no single class then sustains k consecutive
+    # below-floor weeks. Acceptable for this ILLUSTRATIVE model; a future WP could add a combined or
+    # decaying streak if alternating-saturation regimes become decision-relevant.
     floors = r["lethality_floor_pct"]
     effective_pct = {t: (intercepted[t] * 100) // launched[t] if launched[t] > 0 else 0 for t in threats}
     old_streak = {t: _v(start_state, _NETWORK, "streak_" + t) for t in threats}

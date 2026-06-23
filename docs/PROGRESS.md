@@ -611,8 +611,25 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   canonical_digest(state)`) — the latter from an adversarial-verify pass that caught a forged-state
   false-negative. `scripts/campaign_sensitivity.py` = culmination-as-RANGE over a resupply sweep (a derived
   report, not a gate): range [4,6] weeks, resupply-dominated. No `schema_version` bump.
-- **Now:** **456 tests green**; `release` = the WP8–9 gates + engine-state + ruleset + turn-replay (which
-  now also runs the multi-turn chain pass). **next = WP-E2c** (the channel-scoped, falsifiable backtest:
-  KINETIC-only drone observable, out-of-sample holdout). The user owes the lethality floor% + k before E2c
-  (ASSUMED 50/3 today); an EXTERNAL (non-Claude) red-team round is advisable. Calibration *scoring* remains
-  the sole `[SKIP]` (needs resolved outcomes).
+- **WP-E2b3 — heterogeneous-salvo correctness fixes (external red-team NO-GO remediation)** ✅ An
+  INDEPENDENT external red-team NO-GO'd the shipped het resolver; 5 findings verified as real shipped
+  defects the E2b1/b2 verify MISSED, all fixed: **F3** monotone (was discontinuous/non-monotonic)
+  saturation; **F4** round-ONCE-per-threat-subpool intercept (per-cell flooring dropped split-threat kills);
+  **F5** ballistic band made non-decorative (brackets the central count, propagates an effective-rate band
+  + a `verdict_indeterminate` flag) and the backwards ballistic leak range corrected to 60-80% leak
+  (20-40% intercept; ballistics are HARD); **F6** culmination is now per-class **WEAKEST-LINK** (per-class
+  floors drone 50 [LOCKED] / cruise 40 / ballistic 25, a ledgered contract extension) so a single-class
+  collapse is no longer masked by pooling, the pooled inventory OR-limb is DROPPED (magazine = leading
+  indicator per the locked contract), and the magazine indicator uses UNCONSTRAINED demand (+ a
+  `stock_constrained` flag) so a starved week no longer reads "non-depleting"; **F7** stale `CALIBRATION
+  TARGET` labels relabeled UNCALIBRATED (the E2c dossier found the channel not separably calibratable).
+  Multiturn still culminates wk6 (now drone-driven, weakest-link); sensitivity sweep widened to
+  {-100,-50,0,+100,+200}% → honest range wk5-8 (the +-50% band is flat once the inventory limb is gone).
+  Records + ledgers + schema docs regenerated. Tighter property-specific adversarial-verify added
+  (saturation monotonicity, multi-cell grain-invariance, magazine-under-starvation, per-class weakest-link).
+- **Now:** **462 tests green**; `release` = the WP8–9 gates + engine-state + ruleset + turn-replay (which
+  also runs the multi-turn chain pass) — all PASS. The lethality floors + k are LOCKED (drone 50 / cruise 40
+  / ballistic 25; k=3), ledgered before E2c. **next = WP-E2c** as the calibration-FEASIBILITY record (the
+  data dossier verdict: STAYS UNCALIBRATED — kinetic drone-intercept not separably calibratable / no
+  method-independent corroborator), keeping `calibration_status: UNCALIBRATED` + a labeled descriptive band.
+  Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes / a separable, corroborated set).

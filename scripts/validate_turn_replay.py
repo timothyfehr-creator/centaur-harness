@@ -25,8 +25,9 @@ import salvo_resolver as salvo  # noqa: E402
 import turn_record as tr  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-_TERMINALS = ("SUPPLY_DELIVERED", "SUPPLY_LOST")
-# Resolver registry: replay/recompute is dispatched by the record's resolver_id (a literal lookup).
+# Resolver registry: replay/recompute is dispatched by the record's resolver_id (a literal lookup). Each
+# resolver declares its STOCHASTIC_TERMINALS (logistics has draws; the deterministic salvos do not), read
+# below for the draw->event coherence check.
 _RESOLVERS = {rsv.RESOLVER_ID: rsv, salvo.RESOLVER_ID: salvo}
 
 
@@ -42,7 +43,11 @@ def check_record(rec: dict, where: str) -> list:
     if not has_draws and rec.get("rng") is not None:
         add("decorative-seed", "rng block present but no draw was consumed")
 
-    resolver = _RESOLVERS.get(rec.get("resolver_id"), rsv)   # dispatch by resolver_id
+    resolver = _RESOLVERS.get(rec.get("resolver_id"))        # dispatch by resolver_id
+    if resolver is None:                                     # fail-closed: never substitute a default (EC-2)
+        add("unknown-resolver-id",
+            f"resolver_id {rec.get('resolver_id')!r} is not registered; refusing to replay")
+        return problems
     ruleset = rec.get("ruleset")                              # int-only params, or None (logistics)
 
     # idempotency-key integrity (EC-1): the committed transition_input_hash MUST equal a fresh recompute
@@ -78,8 +83,11 @@ def check_record(rec: dict, where: str) -> list:
             != canon.canonical_bytes(rec["resulting_state"]["state"]):
         add("recompute-state-mismatch", "recomputed resulting state != committed")
 
-    # draw -> event coherence (each stochastic terminal references exactly one draw, and vice versa)
-    stochastic = [e for e in rec["event_batch"] if e["event_type"] in _TERMINALS and e.get("draw_ref")]
+    # draw -> event coherence: each stochastic terminal references exactly one draw, and vice versa. The
+    # stochastic-terminal event types are RESOLVER-declared, so the check is correct per resolver (vacuous
+    # for the deterministic salvos -- 0 terminals, 0 draws) rather than coincidentally passing.
+    terminals = getattr(resolver, "STOCHASTIC_TERMINALS", ())
+    stochastic = [e for e in rec["event_batch"] if e["event_type"] in terminals and e.get("draw_ref")]
     if len(stochastic) != len(rec.get("draw_records", [])):
         add("draw-event-count", "stochastic-terminal count != draw count")
     return problems

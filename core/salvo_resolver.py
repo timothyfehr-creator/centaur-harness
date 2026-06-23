@@ -14,6 +14,7 @@ import copy
 RESOLVER_ID = "ru_ua_salvo_homogeneous"
 RESOLVER_VERSION = "1"
 RULESET_VERSION = "1"
+STOCHASTIC_TERMINALS = ()   # deterministic salvo: no draws, no stochastic terminals (turn-replay reads this)
 
 # Default params (ALL ASSUMED — needs calibration). Integer-only (p as a percent) to stay canon-safe.
 DEFAULT_RULESET = {

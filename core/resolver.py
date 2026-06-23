@@ -15,6 +15,9 @@ from rng import draw as rng_draw, draw_address
 RESOLVER_ID = "contested_logistics"
 RESOLVER_VERSION = "1"
 RULESET_VERSION = "1"
+# Event types that are STOCHASTIC terminals (each references exactly one consumed draw). The turn-replay
+# gate reads this per-resolver for its draw->event coherence check.
+STOCHASTIC_TERMINALS = ("SUPPLY_DELIVERED", "SUPPLY_LOST")
 
 ACTORS = ("BLUE", "RED")
 ROUTES = ("r1", "r2")

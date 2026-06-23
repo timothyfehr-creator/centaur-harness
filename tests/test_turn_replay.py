@@ -66,6 +66,14 @@ def test_stale_transition_input_hash_is_caught() -> None:
     assert "transition-input-hash-mismatch" in codes(rec)
 
 
+def test_unknown_resolver_id_fails_closed() -> None:
+    # EC-2: a record carrying an unregistered resolver_id must NOT silently fall back to the logistics
+    # resolver -- the gate refuses to replay it (fail-closed), per the harness's never-falsely-pass rule.
+    rec = copy.deepcopy(good())
+    rec["resolver_id"] = "no_such_resolver"
+    assert "unknown-resolver-id" in codes(rec)
+
+
 # --- CLI exit-code contract ---------------------------------------------------------
 
 def _run(*args: str) -> subprocess.CompletedProcess:

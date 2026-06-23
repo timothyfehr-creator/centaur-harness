@@ -103,6 +103,9 @@ _MUTATIONS = [
     ("sha_pinned_but_null", lambda d: d["provenance"][0].__setitem__("sha256_status", "PINNED"), "invalid-format", "sha256"),
     ("sha_blocked_but_hash", lambda d: d["provenance"][0].__setitem__("sha256", "a" * 64), "provenance-contradiction", "sha256"),
     ("unknown_provenance_key", lambda d: d["provenance"][0].__setitem__("matches", "ground-truth"), "unknown-key", "matches"),
+    # WP-E2c.1 #7-min: the dossier is external, so a hash exists iff PINNED (never fabricated).
+    ("dossier_pinned_but_null", lambda d: d.__setitem__("dossier_sha256_status", "PINNED"), "invalid-format", "dossier_sha256"),
+    ("dossier_hash_under_external", lambda d: d.__setitem__("dossier_sha256", "a" * 64), "dossier-contradiction", "dossier_sha256"),
     ("unresolved_target", lambda d: d.__setitem__("target", "some-other-scenario"), "unresolved-scenario-ref", "some-other-scenario"),
     ("stale_code_version", lambda d: d.__setitem__("code_version", "f" * 40), "stale-feasibility", "feasibility code_version"),
 ]
@@ -156,6 +159,75 @@ def test_committed_het_record_passes_hardened_gate() -> None:
     result = _run("--scenario-dir", str(het))
     assert result.returncode == 0, result.stderr
     assert "NOT_FEASIBLE" in result.stdout
+
+
+# --- WP-E2c.1 #2: the signoff DECLARES the disposition + is BOUND to the record bytes -------
+# (binding runs in disposition-driven mode -- `--scenario-dir` with NO `--feasibility` override)
+
+import hashlib  # noqa: E402
+
+
+def _bind_scn(tmp_path: Path, *, disposition: str, ref: str = "calfeas-001",
+              record: bool = True, record_mut=None, sha: str | None = None) -> Path:
+    """A synthetic scn/ dir: SCN's scenario + ledger, a signoff DECLARING `disposition` (+ ref/sha bound to
+    the record's bytes when sha is None), and optionally the record itself. Returns the dir to validate."""
+    d = tmp_path / "scn"
+    d.mkdir()
+    shutil.copy(SCN / "scenario.yaml", d / "scenario.yaml")
+    shutil.copy(SCN / "run_ledger.yaml", d / "run_ledger.yaml")
+    rec_sha = None
+    if record:
+        doc = copy.deepcopy(BASE)
+        if record_mut:
+            record_mut(doc)
+        body = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True).encode()
+        (d / "calibration_feasibility.yaml").write_bytes(body)
+        rec_sha = hashlib.sha256(body).hexdigest()
+    signoff = {"schema_version": "1.0", "calibration_status": "UNCALIBRATED",
+               "calibration_disposition": disposition}
+    if disposition in ("NOT_FEASIBLE", "INSUFFICIENT_DATA"):
+        signoff["calibration_feasibility_ref"] = ref
+        signoff["calibration_feasibility_sha256"] = sha if sha is not None else (rec_sha or "0" * 64)
+    (d / "signoff.yaml").write_text(yaml.safe_dump(signoff, sort_keys=False))
+    return d
+
+
+def test_binding_passes_when_record_matches(tmp_path: Path) -> None:
+    assert _run("--scenario-dir", str(_bind_scn(tmp_path, disposition="NOT_FEASIBLE"))).returncode == 0
+
+
+def test_missing_feasibility_record(tmp_path: Path) -> None:
+    # disposition says a record exists, but it does NOT -- the "say-so" must be backed (#2 keystone).
+    d = _bind_scn(tmp_path, disposition="NOT_FEASIBLE", record=False)
+    r = _run("--scenario-dir", str(d))
+    assert r.returncode == 1 and "missing-feasibility-record" in r.stderr
+
+
+def test_stale_binding_when_record_edited_without_resign(tmp_path: Path) -> None:
+    # the signed sha no longer matches the record bytes -> editing without re-signing fails closed.
+    d = _bind_scn(tmp_path, disposition="NOT_FEASIBLE", sha="0" * 64)
+    r = _run("--scenario-dir", str(d))
+    assert r.returncode == 1 and "stale-feasibility-binding" in r.stderr
+
+
+def test_disposition_mismatch_verdict(tmp_path: Path) -> None:
+    # the record's verdict (NOT_FEASIBLE) must equal the declared disposition (INSUFFICIENT_DATA here).
+    d = _bind_scn(tmp_path, disposition="INSUFFICIENT_DATA", ref="calfeas-001")
+    r = _run("--scenario-dir", str(d))
+    assert r.returncode == 1 and "disposition-mismatch" in r.stderr
+
+
+def test_unresolved_feasibility_ref(tmp_path: Path) -> None:
+    d = _bind_scn(tmp_path, disposition="NOT_FEASIBLE", ref="wrong-id")
+    r = _run("--scenario-dir", str(d))
+    assert r.returncode == 1 and "unresolved-feasibility-ref" in r.stderr
+
+
+def test_record_present_under_none_disposition(tmp_path: Path) -> None:
+    # a record exists but the signoff disposes NONE -- a record obliges a feasibility verdict.
+    d = _bind_scn(tmp_path, disposition="NONE")
+    r = _run("--scenario-dir", str(d))
+    assert r.returncode == 1 and "disposition-mismatch" in r.stderr
 
 
 # --- fail-closed (exit 2) ---------------------------------------------------------------

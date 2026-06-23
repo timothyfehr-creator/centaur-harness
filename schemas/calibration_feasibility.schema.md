@@ -28,6 +28,8 @@ binding_reasons:                    # >= 1 non-empty string -- WHY calibration i
   - "kinetic-vs-jammed split not separable: the UA-AF 'locationally lost' bucket is a composite ..."
   - "no method-independent corroboration: every quantitative source traces to the one UA-AF feed ..."
 dossier_ref: "centaur_engine_planning/WP-E2c_DATA_DOSSIER.md@2026-06-23"
+dossier_sha256: null                          # OPTIONAL -- a hash exists IFF dossier_sha256_status is PINNED
+dossier_sha256_status: EXTERNAL_NOT_PINNED    # PINNED | EXTERNAL_NOT_PINNED | NOT_ATTEMPTED (#7-min)
 upgrade_gap: "a method-independent (impact-site / visual-OSINT / satellite) intercept estimate -- none found"
 authority: "WP-E2c data dossier (multi-source live web sweep, 2026-06-23)"
 assessor: "<who / what assessed feasibility>"
@@ -69,6 +71,7 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 | `attempted_observable` | yes | non-empty string (the quantity calibration was attempted on) |
 | `binding_reasons` | yes | a **non-empty list of non-empty strings** → `empty-reasons` (absent → `missing-field`) |
 | `dossier_ref` | yes | non-empty string (provenance pointer to the feasibility finding) |
+| `dossier_sha256` / `dossier_sha256_status` | no | #7-min binding. `dossier_sha256_status` ∈ {`PINNED`,`EXTERNAL_NOT_PINNED`,`NOT_ATTEMPTED`}; `PINNED` ⇒ `dossier_sha256` is 64-hex (`invalid-format`); otherwise it MUST be `null` → `dossier-contradiction`. The dossier lives OUTSIDE the repo, so the honest value is `EXTERNAL_NOT_PINNED` + `null` (no fabricated hash; an in-repo copy + a full manifest are deferred) |
 | `upgrade_gap` | yes | non-empty string (what would have to exist to ever calibrate) |
 | `authority` | yes | non-empty string (who/what produced the feasibility assessment) |
 | `assessor` | yes | non-empty string |
@@ -83,6 +86,13 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 - The record only makes sense under a no-evidence label: the resolving `signoff.calibration_status` must
   be `UNCALIBRATED` / `ILLUSTRATIVE`; a feasibility record under `CALIBRATED` is a `contradictory-status`
   finding (you cannot simultaneously claim calibrated and record non-feasibility).
+- **The disposition is enforced, not voluntary (WP-E2c.1 #2).** The gate is **signoff-driven**: a
+  `signoff.calibration_disposition` of `NOT_FEASIBLE` / `INSUFFICIENT_DATA` **obliges** a record whose
+  `verdict` equals the disposition (`disposition-mismatch`), whose `id` equals
+  `signoff.calibration_feasibility_ref` (`unresolved-feasibility-ref`), and whose exact bytes hash to
+  `signoff.calibration_feasibility_sha256` (`stale-feasibility-binding`). Deleting the record →
+  `missing-feasibility-record`; a record present under a `NONE`/`CALIBRATED` disposition → `disposition-mismatch`.
+  So "we cannot calibrate" can no longer be silently removed and still pass release.
 - **No back-door calibration.** `verdict` has no "feasible" value; an `external_context` block is pinned by
   machine-readable enums to `comparison_role: CONTEXT_ONLY` + `calibration_effect: NONE` (it structurally
   cannot be an input to calibration or move a parameter) and may never affirm validation language; the only
@@ -104,6 +114,8 @@ launch_denominator_conflict:       # OPTIONAL -- record an unreconciled denomina
 
 `missing-schema-version`, `missing-field`, `invalid-enum`, `invalid-format`, `empty-reasons`,
 `unknown-key`, `out-of-range`, `unlabeled-band`, `over-claim-language`, `provenance-contradiction`,
+`dossier-contradiction`, `missing-feasibility-record`, `disposition-mismatch`, `unresolved-feasibility-ref`,
+`stale-feasibility-binding`,
 `wrong-type`, `unresolved-scenario-ref`, `stale-feasibility`, `contradictory-status`. Structure first (single-fault),
 then resolution, then signoff consistency. Fail-closed (exit 2) on a missing/unreadable
 scenario/ledger/signoff, or a present-but-unparseable feasibility record.

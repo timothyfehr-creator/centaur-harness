@@ -112,6 +112,11 @@ _MUTATIONS = [
     # an INDEPENDENT signer not in the allow-list cannot mint its own independence (HOLE-1 fix: allow-list, not regex)
     ("unlisted_independent_signer", _s(lambda d: d.__setitem__("signed_by", "some unlisted signer")), "unlisted-independent-reviewer", "signed_by"),
     ("unlisted_independent_reviewer", _r(lambda d: d.__setitem__("reviewer", "some unlisted reviewer")), "unlisted-independent-reviewer", "reviewer"),
+    # WP-E2c.1 #2: the approver must DECLARE a disposition; a feasibility verdict obliges a ref + a 64-hex sha.
+    ("signoff_missing_disposition", _s(lambda d: d.pop("calibration_disposition")), "missing-field", "calibration_disposition"),
+    ("signoff_bad_disposition", _s(lambda d: d.__setitem__("calibration_disposition", "BOGUS")), "invalid-enum", "calibration_disposition"),
+    ("feasibility_disposition_without_ref", lambda r, s: s.update(calibration_disposition="NOT_FEASIBLE", calibration_feasibility_sha256="a" * 64), "missing-field", "calibration_feasibility_ref"),
+    ("feasibility_disposition_bad_sha", lambda r, s: s.update(calibration_disposition="NOT_FEASIBLE", calibration_feasibility_ref="calfeas-x"), "invalid-format", "calibration_feasibility_sha256"),
 ]
 
 

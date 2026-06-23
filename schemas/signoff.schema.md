@@ -19,6 +19,9 @@ decision: APPROVED                 # INDEPENDENT: APPROVED|REJECTED ; SYNTHETIC_
 signed_by: "T. Fehr"
 date: "2026-06-22"
 calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
+calibration_disposition: NOT_FEASIBLE          # NONE | NOT_FEASIBLE | INSUFFICIENT_DATA | CALIBRATED
+calibration_feasibility_ref: calfeas-001       # required iff disposition is a feasibility verdict
+calibration_feasibility_sha256: "<64 hex>"     # binds the calibration_feasibility.yaml bytes
 ```
 
 ## Fields
@@ -34,6 +37,9 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
 | `signed_by` | yes | non-empty string (who signed) |
 | `date` | yes | ISO-8601 `YYYY-MM-DD` → else `invalid-format` |
 | `calibration_status` | yes | enum `UNCALIBRATED` \| `ILLUSTRATIVE` \| `CALIBRATED` — a **DECLARED** posture; **CALIBRATED requires a resolving `calibration.yaml`** record (WP9, [calibration.schema.md](calibration.schema.md)), the other two need none |
+| `calibration_disposition` | yes | enum `NONE` \| `NOT_FEASIBLE` \| `INSUFFICIENT_DATA` \| `CALIBRATED` (WP-E2c.1 #2) — the **DECLARED** calibration disposition. A feasibility verdict (`NOT_FEASIBLE`/`INSUFFICIENT_DATA`) **obliges** a bound `calibration_feasibility.yaml` (cross-checked by [validate_calibration_feasibility.py](../scripts/validate_calibration_feasibility.py)); `NONE`/`CALIBRATED` must carry no record |
+| `calibration_feasibility_ref` | iff feasibility verdict | non-empty string; **must equal the feasibility record's `id`** → else `unresolved-feasibility-ref` (in the feasibility gate); absent under a feasibility disposition → `missing-field` |
+| `calibration_feasibility_sha256` | iff feasibility verdict | 64 lowercase hex; **must equal `sha256(calibration_feasibility.yaml)`** → else `stale-feasibility-binding` (in the feasibility gate); a non-64-hex value → `invalid-format`. Editing the record without re-signing this hash fails release |
 
 ## Contract
 
@@ -53,6 +59,13 @@ calibration_status: ILLUSTRATIVE   # UNCALIBRATED | ILLUSTRATIVE | CALIBRATED
   line so a clean `release` is never mistaken for a calibrated/analytically-valid one
   (CONSTITUTION §3). A `CALIBRATED` posture is evidence-or-label (§5): it must resolve to a
   `calibration.yaml` record (WP9, `validate_calibration.py`); `UNCALIBRATED`/`ILLUSTRATIVE` need none.
+- **The approver declares the calibration DISPOSITION, and it cannot just "say so" (WP-E2c.1 #2).**
+  `calibration_disposition` records whether calibration was `NONE` (not attempted), `NOT_FEASIBLE` /
+  `INSUFFICIENT_DATA` (attempted, cannot), or `CALIBRATED`. A feasibility verdict **obliges a bound record**:
+  `calibration_feasibility_ref` + `calibration_feasibility_sha256` pin a `calibration_feasibility.yaml` whose
+  id and exact bytes must match (cross-checked in `validate_calibration_feasibility.py`). So deleting the
+  record (`missing-feasibility-record`) or editing it without re-signing the hash (`stale-feasibility-binding`)
+  fails release — the disposition is enforced, not voluntary.
 - **The signoff binds to a reviewed, reproducible snapshot.** `review_ref` ties the approval to a
   specific refuter verdict; `code_version` ties both to the run-ledger snapshot. A `REVISE` review
   or a stale `code_version` means the approval no longer applies. ⚠ **Lockfile discipline**: a

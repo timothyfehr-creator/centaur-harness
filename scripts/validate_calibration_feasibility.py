@@ -46,6 +46,7 @@ from validate_schemas import (
     _validate_skeleton,
 )
 from validate_claims import load_registry
+from validate_run_ledger import _sha256
 
 # verdict has NO "FEASIBLE" value BY DESIGN -- the record structurally cannot become a back-door
 # calibration claim; a channel that becomes calibratable graduates to calibration.yaml / CALIBRATED.
@@ -65,12 +66,18 @@ COMPARABILITY_ENUM = ("NONE", "INDIRECT", "DIRECT")  # how comparable the observ
 COVERAGE_ENUM = ("PARTIAL", "FULL")
 # provenance hash status: a hash exists ONLY when PINNED; otherwise it must be null (no fabrication).
 SHA_STATUS_ENUM = ("PINNED", "BLOCKED_FETCH_AUTH_GATED", "NOT_ATTEMPTED")
+# the dossier lives OUTSIDE the repo (centaur_engine_planning/) -- its hash is recorded honestly as
+# EXTERNAL_NOT_PINNED (#7-min), never fabricated; an in-repo copy + full manifest are deferred.
+DOSSIER_SHA_STATUS_ENUM = ("PINNED", "EXTERNAL_NOT_PINNED", "NOT_ATTEMPTED")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+# feasibility-verdict dispositions oblige a bound record; the others must NOT carry one.
+_FEASIBILITY_DISPOSITIONS = ("NOT_FEASIBLE", "INSUFFICIENT_DATA")
 
 # Unknown-key allow-lists: rejecting extra keys at EVERY object level is the real boundary -- it kills the
 # `matches_ground_truth: true` / smuggled-comparison-field bypasses a word scan can never enumerate.
 ALLOWED_TOP = {"schema_version", "id", "target", "code_version", "verdict", "attempted_observable",
-               "binding_reasons", "dossier_ref", "upgrade_gap", "authority", "assessor", "feasibility_date",
+               "binding_reasons", "dossier_ref", "dossier_sha256", "dossier_sha256_status",
+               "upgrade_gap", "authority", "assessor", "feasibility_date",
                "external_context", "provenance", "launch_denominator_conflict"}
 ALLOWED_CONTEXT = {"observed_range_pct", "coverage", "weeks_computed", "weeks_in_window",
                    "comparability_to_model_p", "comparison_role", "calibration_effect",
@@ -230,6 +237,20 @@ def _structural_problems(fdoc: dict, where: str) -> list[tuple[str, str, str]]:
                         f"provenance[{i}].sha256 must be null when sha256_status is {st} "
                         f"(cannot hold a hash for an un-fetched source); got {sha!r}")
 
+    # dossier binding (#7-min, OPTIONAL): the dossier is EXTERNAL (centaur_engine_planning/), so its hash is
+    # recorded as EXTERNAL_NOT_PINNED -- a hash exists iff PINNED, never fabricated for an un-pinned source.
+    dstatus, dsha = fdoc.get("dossier_sha256_status"), fdoc.get("dossier_sha256")
+    if dstatus is not None or dsha is not None:
+        if dstatus not in DOSSIER_SHA_STATUS_ENUM:
+            add("invalid-enum", f"dossier_sha256_status must be one of {sorted(DOSSIER_SHA_STATUS_ENUM)}; got {dstatus!r}")
+        elif dstatus == "PINNED":
+            if not (_is_nonempty_str(dsha) and _SHA256_RE.fullmatch(dsha)):
+                add("invalid-format", f"dossier_sha256 must be 64 lowercase hex when dossier_sha256_status is PINNED; got {dsha!r}")
+        elif dsha is not None:
+            add("dossier-contradiction",
+                f"dossier_sha256 must be null when dossier_sha256_status is {dstatus} "
+                f"(an external/un-pinned dossier carries no in-repo hash); got {dsha!r}")
+
     # launch_denominator_conflict (OPTIONAL): record an unreconciled denominator honestly.
     ldc = fdoc.get("launch_denominator_conflict")
     if ldc is not None:
@@ -293,9 +314,46 @@ def _report(problems: list[tuple[str, str, str]]) -> int:
     return 1
 
 
-def _judge_one(scenario_dir: Path, feasibility_path: Path, signoff_path: Path):
-    """Validate ONE feasibility record. Returns (rc, payload): rc 0/1/2; payload is an ok-message (0),
-    a problems list (1), or a fail-closed reason (2)."""
+def _binding_problems(disp: object, record_exists: bool, feasibility_path: Path, fdoc: dict | None,
+                      ref: object, sha_decl: object, where: str) -> list[tuple[str, str, str]]:
+    """Disposition <-> record binding (#2). The signoff DECLARES the disposition; this enforces that a
+    feasibility verdict is backed by a record whose verdict/id/bytes match what was signed -- so deleting or
+    silently editing the record fails release. Assumes any present record already passed structure."""
+    problems: list[tuple[str, str, str]] = []
+
+    def add(code: str, msg: str) -> None:
+        problems.append((code, where, msg))
+
+    if disp in _FEASIBILITY_DISPOSITIONS:
+        if not record_exists:
+            add("missing-feasibility-record",
+                f"signoff calibration_disposition is {disp} but no calibration_feasibility.yaml exists -- "
+                f"the disposition must be backed by a record (it cannot just 'say so')")
+            return problems
+        if fdoc.get("verdict") != disp:
+            add("disposition-mismatch",
+                f"record verdict {fdoc.get('verdict')!r} != signoff calibration_disposition {disp!r}")
+        if fdoc.get("id") != ref:
+            add("unresolved-feasibility-ref",
+                f"record id {fdoc.get('id')!r} != signoff calibration_feasibility_ref {ref!r}")
+        actual = _sha256(feasibility_path)
+        if actual != sha_decl:
+            add("stale-feasibility-binding",
+                f"sha256(record) {actual[:12]}... != signoff calibration_feasibility_sha256 "
+                f"{(sha_decl if _is_nonempty_str(sha_decl) else '<absent>')[:12]}...; "
+                f"re-sign (update calibration_feasibility_sha256) after editing the record")
+    elif disp in ("NONE", "CALIBRATED") and record_exists:
+        add("disposition-mismatch",
+            f"a calibration_feasibility.yaml is present but signoff calibration_disposition is {disp} "
+            f"(a record obliges a feasibility verdict -- NOT_FEASIBLE / INSUFFICIENT_DATA)")
+    return problems
+
+
+def _judge_one(scenario_dir: Path, feasibility_path: Path, signoff_path: Path, *, bind: bool):
+    """Judge ONE scenario. Returns (rc, payload): rc 0/1/2; payload is an ok-message (0), a problems list
+    (1), or a fail-closed reason (2). When `bind`, the signoff's calibration_disposition drives a
+    bidirectional record binding (a feasibility verdict obliges a matching, hash-bound record); when not
+    (an explicit --feasibility override), only the record's own well-formedness is checked."""
     if not (scenario_dir / "scenario.yaml").is_file():
         return 2, f"{scenario_dir}/scenario.yaml is absent (no scenario to attest)"
     ldoc, lerr = load_registry(scenario_dir / "run_ledger.yaml")
@@ -307,18 +365,30 @@ def _judge_one(scenario_dir: Path, feasibility_path: Path, signoff_path: Path):
     status = sdoc.get("calibration_status")
     if not _is_nonempty_str(status):
         return 2, f"{signoff_path} has no usable calibration_status"
-    fdoc, ferr = load_registry(feasibility_path)
-    if ferr is not None or not _usable_doc(fdoc):
-        return 2, (ferr or f"{feasibility_path} is present but not a usable record (non-empty mapping)")
 
     where = _display(feasibility_path)
-    problems = _structural_problems(fdoc, where)                       # structure first (single-fault)
-    if not problems:
-        problems = _resolution_problems(fdoc, ldoc["code_version"], scenario_dir.name, where)
-    if not problems:
-        problems = _consistency_problems(status, where)
+    record_exists = feasibility_path.is_file()
+    fdoc: dict | None = None
+    problems: list[tuple[str, str, str]] = []
+    if record_exists:
+        fdoc, ferr = load_registry(feasibility_path)
+        if ferr is not None or not _usable_doc(fdoc):
+            return 2, (ferr or f"{feasibility_path} is present but not a usable record (non-empty mapping)")
+        problems = _structural_problems(fdoc, where)                   # structure first (single-fault)
+        if not problems:
+            problems = _resolution_problems(fdoc, ldoc["code_version"], scenario_dir.name, where)
+        if not problems:
+            problems = _consistency_problems(status, where)
+
+    if bind and not problems:        # don't pile binding findings onto a structurally-broken record
+        problems = _binding_problems(sdoc.get("calibration_disposition"), record_exists, feasibility_path,
+                                     fdoc, sdoc.get("calibration_feasibility_ref"),
+                                     sdoc.get("calibration_feasibility_sha256"),
+                                     where if record_exists else _display(signoff_path))
     if problems:
         return 1, problems
+    if not record_exists:
+        return 0, f"{scenario_dir.name}: disposition {sdoc.get('calibration_disposition')!r}, no record required"
     return 0, f"{where}: {fdoc['verdict']} (target {fdoc['target']})"
 
 
@@ -328,18 +398,24 @@ def main(argv: list[str] | None = None) -> int:
         description="Validate calibration-feasibility records: a well-formed, attested 'cannot calibrate' claim.",
     )
     parser.add_argument("--scenario-dir", default=None,
-                        help="validate one scenario's record (default: glob examples/*/calibration_feasibility.yaml)")
-    parser.add_argument("--feasibility", default=None, help="record path (default: <scenario-dir>/calibration_feasibility.yaml)")
+                        help="validate one scenario (default: sweep examples/*/ driven by each signoff's disposition)")
+    parser.add_argument("--feasibility", default=None,
+                        help="record path override (default: <scenario-dir>/calibration_feasibility.yaml). "
+                             "Passing it validates that record's SHAPE only -- no disposition binding.")
     parser.add_argument("--signoff", default=None, help="signoff.yaml path (default: <scenario-dir>/signoff.yaml)")
     args = parser.parse_args(argv)
 
     if args.scenario_dir:
         scenario_dir = Path(args.scenario_dir).resolve()
-        feas = Path(args.feasibility).resolve() if args.feasibility else scenario_dir / "calibration_feasibility.yaml"
         sign = Path(args.signoff).resolve() if args.signoff else scenario_dir / "signoff.yaml"
-        if not feas.is_file():
-            return _fail_closed(f"{feas} is absent (nothing to validate in --scenario-dir mode)")
-        rc, payload = _judge_one(scenario_dir, feas, sign)
+        if args.feasibility:                  # explicit record override => shape-only, must exist
+            feas = Path(args.feasibility).resolve()
+            if not feas.is_file():
+                return _fail_closed(f"{feas} is absent (nothing to validate with an explicit --feasibility)")
+            rc, payload = _judge_one(scenario_dir, feas, sign, bind=False)
+        else:                                 # default => disposition-driven binding (record may be absent)
+            feas = scenario_dir / "calibration_feasibility.yaml"
+            rc, payload = _judge_one(scenario_dir, feas, sign, bind=True)
         if rc == 2:
             return _fail_closed(payload)
         if rc == 1:
@@ -347,24 +423,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"calibration-feasibility OK ({payload})")
         return 0
 
-    # Glob mode (CI / release): validate every committed feasibility record; none present -> vacuous pass.
-    records = sorted((REPO_ROOT / "examples").glob("*/calibration_feasibility.yaml"))
-    if not records:
-        print("calibration-feasibility OK (no feasibility records present)")
+    # Sweep mode (CI / release): every example scenario, driven by its signoff disposition (so a NOT_FEASIBLE
+    # signoff with a deleted record FAILS, not vacuously passes). dir set = signoff-bearing OR record-bearing.
+    examples = REPO_ROOT / "examples"
+    dirs = sorted({p.parent for p in examples.glob("*/signoff.yaml")}
+                  | {p.parent for p in examples.glob("*/calibration_feasibility.yaml")})
+    if not dirs:
+        print("calibration-feasibility OK (no attested scenarios present)")
         return 0
     all_problems: list[tuple[str, str, str]] = []
-    ok = 0
-    for rec in records:
-        rc, payload = _judge_one(rec.parent, rec, rec.parent / "signoff.yaml")
+    records = 0
+    for d in dirs:
+        rc, payload = _judge_one(d, d / "calibration_feasibility.yaml", d / "signoff.yaml", bind=True)
         if rc == 2:
-            return _fail_closed(payload)        # a fail-closed record taints the whole gate
+            return _fail_closed(payload)        # a fail-closed scenario taints the whole gate
         if rc == 1:
             all_problems.extend(payload)
-        else:
-            ok += 1
+        elif (d / "calibration_feasibility.yaml").is_file():
+            records += 1
     if all_problems:
         return _report(all_problems)
-    print(f"calibration-feasibility OK ({ok} record(s) validated)")
+    print(f"calibration-feasibility OK ({len(dirs)} scenario(s) checked, {records} record(s) validated)")
     return 0
 
 

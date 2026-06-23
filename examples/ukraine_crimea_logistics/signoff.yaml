@@ -11,3 +11,4 @@ decision: EXTERNAL_REVIEW_PENDING
 signed_by: "Centaur harness self-check (synthetic; pending independent review)"
 date: "2026-06-22"
 calibration_status: ILLUSTRATIVE
+calibration_disposition: NONE   # no calibration was attempted for this illustrative scenario -- no feasibility record

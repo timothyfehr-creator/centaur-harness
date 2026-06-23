@@ -12,3 +12,8 @@ decision: EXTERNAL_REVIEW_PENDING
 signed_by: "Centaur harness self-check (synthetic; pending independent review)"
 date: "2026-06-23"
 calibration_status: UNCALIBRATED
+# WP-E2c.1 #2: the disposition is DECLARED here and bound to the record -- deleting or editing
+# calibration_feasibility.yaml without re-signing this sha256 fails the release gate.
+calibration_disposition: NOT_FEASIBLE
+calibration_feasibility_ref: calfeas-ru-ua-drone-001
+calibration_feasibility_sha256: "9a23d5a11c0c1fa8a89ac173df1624d6c3bc1d2f22fa29c54673ed48c17967b2"

@@ -72,8 +72,17 @@ SIGNOFF_SPEC = {
         # WP9: CALIBRATED requires a resolving calibration.yaml (enforced by
         # validate_calibration.py); UNCALIBRATED / ILLUSTRATIVE need no record.
         "calibration_status": ("UNCALIBRATED", "ILLUSTRATIVE", "CALIBRATED"),
+        # WP-E2c.1 #2: the approver DECLARES the calibration disposition. A feasibility verdict
+        # (NOT_FEASIBLE / INSUFFICIENT_DATA) obliges a bound calibration_feasibility.yaml (ref + sha256,
+        # cross-checked by validate_calibration_feasibility.py) -- so deleting the record fails release.
+        "calibration_disposition": ("NONE", "NOT_FEASIBLE", "INSUFFICIENT_DATA", "CALIBRATED"),
     },
 }
+_FEASIBILITY_DISPOSITIONS = ("NOT_FEASIBLE", "INSUFFICIENT_DATA")
+
+
+def _is_hex64(s: object) -> bool:
+    return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
 
 # attestation_kind PARTITIONS the legal decision/verdict values. An INDEPENDENT attestation (a human or a
 # genuinely independent reviewer) can APPROVE / ACCEPT; a SYNTHETIC_SELF_CHECK (the loop checking its own
@@ -184,6 +193,19 @@ def _resolution_problems(rdoc: dict, sdoc: dict, ledger_cv: str, scenario_name: 
         add("unlisted-independent-reviewer", signoff_where,
             f"attestation_kind is INDEPENDENT but signed_by {sdoc['signed_by']!r} is not in the "
             f"independent-reviewer allow-list")
+    # disposition obligation (#2): a feasibility verdict MUST carry a ref + a 64-hex sha256 binding the
+    # calibration_feasibility.yaml record (the cross-check that the record exists + is unedited lives in
+    # validate_calibration_feasibility.py; here we enforce the signoff carries the binding at all).
+    if sdoc["calibration_disposition"] in _FEASIBILITY_DISPOSITIONS:
+        if not _is_nonempty_str(sdoc.get("calibration_feasibility_ref")):
+            add("missing-field", signoff_where,
+                f"calibration_feasibility_ref is required when calibration_disposition is "
+                f"{sdoc['calibration_disposition']} (it must name the feasibility record's id)")
+        if not _is_hex64(sdoc.get("calibration_feasibility_sha256")):
+            add("invalid-format", signoff_where,
+                f"calibration_feasibility_sha256 must be 64 lowercase hex when calibration_disposition is "
+                f"{sdoc['calibration_disposition']} (it binds the feasibility record's exact bytes)")
+
     # honesty blocks: a refuter wanting changes / a failed self-check / a REJECTED human signoff block release
     if rdoc["verdict"] in _BLOCKING_VERDICT:
         add("revise-verdict" if rdoc["verdict"] == "REVISE" else "self-check-revise", review_where,

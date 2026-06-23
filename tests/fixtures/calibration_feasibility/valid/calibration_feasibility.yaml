@@ -11,6 +11,8 @@ binding_reasons:
   - "kinetic-vs-jammed split not separable (composite bucket)"
   - "no method-independent corroboration (single self-report feed)"
 dossier_ref: "fixtures/dossier@fixed"
+dossier_sha256: null
+dossier_sha256_status: EXTERNAL_NOT_PINNED
 upgrade_gap: "a method-independent intercept estimate -- none available"
 authority: "fixture feasibility assessment"
 assessor: "fixture-assessor"

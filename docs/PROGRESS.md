@@ -677,6 +677,17 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED` by worst-kind logic (ukraine is still a self-check).
 - **Now:** the full suite passes (~600 tests); `release` exit 0 with the honest `SELF-VERIFIED; NOT INDEPENDENTLY
   ATTESTED` banner; the feasibility sweep reports `2 scenario(s) checked, 1 record(s) validated`. The lethality
-  floors + k are LOCKED (drone 50 / cruise 40 / ballistic 25; k=3). **next = WP-E2d** (stochastic interception) — a
-  FROZEN-CONTRACT change requiring an external review round, NOT an in-place change; the red-team returned NO-GO
-  on it as scoped. Calibration *scoring* remains the sole `[SKIP]` (needs resolved outcomes).
+  floors + k are LOCKED (drone 50 / cruise 40 / ballistic 25; k=3). Calibration *scoring* remains the sole
+  `[SKIP]` (needs resolved outcomes).
+- **WP-E2d (stochastic interception) — design-frozen, INDEPENDENTLY REVIEWED → NO-GO, SHELVED (2026-06-24).**
+  A full frozen-contract spec (binomial-per-threat sampler, reuse `draw_index`, live PASS#6/#12, seed-
+  conditioned culmination, a `SEED_CONDITIONED_SAMPLE` label, calibration-unchanged) was authored and put to a
+  cross-vendor independent review (OpenAI GPT-5.5 Pro). **Verdict NO-GO:** no concrete decision survives the
+  bar — the variance is assumption-propagation from an ASSUMED `p` (not empirical uncertainty), and a published
+  seed-ensemble distribution would be professionally-packaged false precision, the exact thing the harness
+  exists to prevent. (It also disproved the spec's claim of a magazine-drawdown distribution — depletion is
+  fixed before interception, seed-invariant.) The model stays DETERMINISTIC / UNCALIBRATED; deterministic
+  parameter-sensitivity is the right tool. Recorded in `centaur_engine_planning/ADJUDICATION_LEDGER.md` (the
+  WP-E2d decision) + `WP-E2d_SPEC.md` (verdict header). A decoupled **engineering-only** RNG-assurance fixture
+  (a synthetic test resolver, no analytical claim) is the one possible future path; an analytical revisit needs
+  a named tail-probability decision + a defensible prior for `p` — not "more seeds."

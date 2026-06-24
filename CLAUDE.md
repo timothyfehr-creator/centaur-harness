@@ -32,8 +32,11 @@ shared agent rules in [AGENTS.md](AGENTS.md). Read
   ATTESTED`), independence allow-listed in `attestation_reviewers.yaml` (not self-declared), the feasibility
   gate's boundary shifted from a word regex to structure (unknown-key rejection + machine-readable honesty
   enums), and the `calibration_disposition` bound to the record by sha256 so it cannot be silently deleted.
-  Next: WP-E2d (stochastic interception — a FROZEN-CONTRACT change requiring external review; the red-team
-  returned NO-GO on it as scoped).
+  WP-E2d (stochastic interception) was design-frozen + INDEPENDENTLY REVIEWED (cross-vendor) → **NO-GO,
+  SHELVED** (2026-06-24): the variance from an ASSUMED `p` is assumption-propagation, not empirical
+  uncertainty, and a published distribution would be false precision — the model stays DETERMINISTIC /
+  UNCALIBRATED (recorded in `centaur_engine_planning/ADJUDICATION_LEDGER.md`). The one possible future path is
+  a decoupled engineering-only RNG-assurance fixture, NOT an analytical stochastic model.
 - **Non-goals (for now):** a full AI-vs-AI wargame engine, institutional
   governance, multi-run orchestration, dashboards, calibration suites, OSINT
   ingestion, a release-ready scenario. See the plan's Non-goals.

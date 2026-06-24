@@ -396,10 +396,12 @@ def _binding_problems(disp: object, record_exists: bool, feasibility_path: Path,
 
 
 def _sweep_dirs(examples_root: Path) -> list[Path]:
-    """The scenario dirs the release sweep judges: any carrying a signoff.yaml OR a calibration_feasibility.yaml,
-    at ANY depth. Globs `**/` so the set is a SUPERSET of verify.py's `examples/**/` attestation coverage --
-    a nested scenario can never be attestation-covered there but feasibility-skipped here."""
-    return sorted({p.parent for p in examples_root.glob("**/signoff.yaml")}
+    """The scenario dirs the release sweep judges: any carrying a review.yaml, a signoff.yaml, OR a
+    calibration_feasibility.yaml, at ANY depth. The review.yaml OR signoff.yaml terms make this a true
+    SUPERSET of verify.py's `_attested_scenario_dirs` (review-OR-signoff at `**/`) -- so a directory in the
+    attestation coverage set (e.g. a review-only one) can never be omitted from the feasibility sweep."""
+    return sorted({p.parent for p in examples_root.glob("**/review.yaml")}
+                  | {p.parent for p in examples_root.glob("**/signoff.yaml")}
                   | {p.parent for p in examples_root.glob("**/calibration_feasibility.yaml")})
 
 

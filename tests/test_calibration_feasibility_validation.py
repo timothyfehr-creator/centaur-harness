@@ -198,7 +198,9 @@ def test_dict_in_labels_fails_gracefully_no_crash(tmp_path: Path) -> None:
 def test_sweep_dirs_finds_nested_scenario(tmp_path: Path) -> None:
     # the bug an independent review caught: verify.py covers examples/**/ but the feasibility sweep used
     # examples/*/, so a nested NOT_FEASIBLE scenario with a missing record was attestation-covered yet
-    # feasibility-skipped. _sweep_dirs must glob recursively so its dir-set is a superset of the coverage set.
+    # feasibility-skipped. _sweep_dirs must glob recursively, and its dir-set must be a true SUPERSET of
+    # verify.py's attestation coverage (review-OR-signoff) -- including a review-ONLY dir (round-2 review).
+    import verify  # noqa: E402  (scripts/ is on sys.path via pyproject pythonpath)
     ex = tmp_path / "examples"
     (ex / "flat").mkdir(parents=True)
     (ex / "flat" / "signoff.yaml").write_text("schema_version: '1.0'\n")
@@ -206,10 +208,17 @@ def test_sweep_dirs_finds_nested_scenario(tmp_path: Path) -> None:
     (ex / "nested" / "scn" / "signoff.yaml").write_text("schema_version: '1.0'\n")
     (ex / "deep" / "a" / "b").mkdir(parents=True)
     (ex / "deep" / "a" / "b" / "calibration_feasibility.yaml").write_text("schema_version: '1.0'\n")
-    found = vcf._sweep_dirs(ex)
+    (ex / "reviewonly").mkdir(parents=True)
+    (ex / "reviewonly" / "review.yaml").write_text("schema_version: '1.0'\n")   # review-only: in coverage, must be swept
+    found = set(vcf._sweep_dirs(ex))
     assert ex / "flat" in found
     assert ex / "nested" / "scn" in found            # the previously-skipped nested case
     assert ex / "deep" / "a" / "b" in found           # record-bearing at depth, also covered
+    assert ex / "reviewonly" in found                 # review-only dir (round-2: was omitted before)
+    # the actual invariant: the feasibility sweep is a SUPERSET of verify.py's attestation coverage set,
+    # so nothing attestation-covered can be feasibility-skipped (tmp_path is the repo_root verify globs under).
+    attested = set(verify._attested_scenario_dirs(tmp_path))
+    assert attested <= found, f"attestation-covered dirs NOT in the feasibility sweep: {attested - found}"
 
 
 # --- the committed het record passes the hardened gate ------------------------------------

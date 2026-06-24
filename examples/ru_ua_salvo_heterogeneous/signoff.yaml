@@ -1,16 +1,17 @@
-# WP-E2c signoff attestation for the heterogeneous salvo. attestation_kind: SYNTHETIC_SELF_CHECK -- the
-# harness checking its OWN work, NOT an independent approval; decision is EXTERNAL_REVIEW_PENDING (a
-# self-check structurally cannot spell APPROVED). review_ref resolves to review.yaml's id; code_version
-# pins the run_ledger snapshot (re-sign on drift). calibration_status UNCALIBRATED; calibration_feasibility.yaml
-# records WHY the kinetic drone channel cannot be calibrated. See schemas/signoff.schema.md.
+# WP-E2c.1 INDEPENDENT signoff for the heterogeneous salvo. attestation_kind: INDEPENDENT -- signed by an
+# allow-listed, genuinely independent cross-vendor (non-Claude) AI reviewer (see attestation_reviewers.yaml),
+# obtained by the human (Tim Fehr). decision: APPROVED approves the WP-E2c.1 WORK as structurally sound and
+# honestly labeled -- it does NOT claim the model is calibrated or analytically valid: calibration_status
+# stays UNCALIBRATED and calibration_disposition NOT_FEASIBLE. review_ref resolves to review.yaml's id;
+# code_version pins the run_ledger snapshot (re-sign on drift). See schemas/signoff.schema.md.
 schema_version: "1.0"
 id: signoff-ru-ua-salvo-het-001
 review_ref: review-ru-ua-salvo-het-001
 code_version: "95860122cecbc06d1a76adda15ea3e1ca9827e8d"
-attestation_kind: SYNTHETIC_SELF_CHECK
-decision: EXTERNAL_REVIEW_PENDING
-signed_by: "Centaur harness self-check (synthetic; pending independent review)"
-date: "2026-06-23"
+attestation_kind: INDEPENDENT
+decision: APPROVED
+signed_by: "OpenAI GPT-5.5 Pro — independent cross-vendor AI adversarial review, 2026-06-24"
+date: "2026-06-24"
 calibration_status: UNCALIBRATED
 # WP-E2c.1 #2: the disposition is DECLARED here and bound to the record -- deleting or editing
 # calibration_feasibility.yaml without re-signing this sha256 fails the release gate.

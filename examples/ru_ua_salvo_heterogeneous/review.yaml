@@ -1,16 +1,17 @@
-# WP-E2c adversarial-review attestation for the heterogeneous salvo (SYNTHETIC / ILLUSTRATIVE, like the
-# Ukraine example -- it exercises the release attestation gate end-to-end). It does NOT stand in for the
-# substantive EXTERNAL red-team round that NO-GO'd WP-E2b and was remediated in WP-E2b3 (recorded in
-# centaur_engine_planning/). code_version pins the run_ledger snapshot; re-review on drift (else
+# WP-E2c.1 INDEPENDENT review attestation for the heterogeneous salvo. attestation_kind: INDEPENDENT -- a
+# genuinely independent, cross-vendor (non-Claude) AI adversarial review obtained by the human (Tim Fehr) and
+# allow-listed in attestation_reviewers.yaml. It does NOT claim the model is calibrated or analytically valid:
+# the scenario stays UNCALIBRATED / NOT_FEASIBLE; what was independently reviewed is that the WP-E2c.1 work is
+# structurally sound and honestly labeled. code_version pins the run_ledger snapshot; re-review on drift (else
 # stale-attestation). See schemas/review.schema.md.
 schema_version: "1.0"
 id: review-ru-ua-salvo-het-001
 target: ru_ua_salvo_heterogeneous
 code_version: "95860122cecbc06d1a76adda15ea3e1ca9827e8d"
-attestation_kind: SYNTHETIC_SELF_CHECK
-verdict: SELF_CHECK_PASSED
-reviewer: "synthetic self-check (NOT an independent refuter pass); the substantive external red-team round is recorded in centaur_engine_planning/"
+attestation_kind: INDEPENDENT
+verdict: ACCEPT
+reviewer: "OpenAI GPT-5.5 Pro — independent cross-vendor AI adversarial review, 2026-06-24"
 findings:
-  - "ILLUSTRATIVE: the heterogeneous salvo resolver is structurally sound after the WP-E2b3 fixes (monotone saturation, round-once-per-threat intercept, per-class weakest-link culmination, demand-based magazine indicator); all release gates green, properties guarded by standing tests."
-  - "UNCALIBRATED: the kinetic drone-intercept channel is NOT calibratable against the available data -- see calibration_feasibility.yaml (verdict NOT_FEASIBLE). The model asserts nothing about the real world; SELF_CHECK_PASSED means 'the self-check found a structurally-sound UNCALIBRATED illustrative model', NOT an independent refuter pass and NOT analytical validity."
-as_of_date: "2026-06-23"
+  - "ACCEPT (independent, cross-vendor): a 3-round adversarial review confirmed the WP-E2c.1 attestation + feasibility model is structurally sound. The review CAUGHT a real release-coverage fail-open the in-house adversarial-verify had missed (the feasibility sweep was not a superset of verify.py's attestation coverage) and a follow-on precision gap; both were remediated and re-verified before this ACCEPT."
+  - "UNCALIBRATED / NOT_FEASIBLE, by design: the kinetic drone-intercept channel is NOT calibratable against the available data (see calibration_feasibility.yaml, verdict NOT_FEASIBLE). ACCEPT means an independent reviewer found a structurally-sound, honestly-labeled UNCALIBRATED illustrative model -- NOT that the model is calibrated or asserts anything about the real world."
+as_of_date: "2026-06-24"

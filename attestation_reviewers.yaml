@@ -13,4 +13,10 @@
 # Add an entry ONLY when that reviewer has genuinely, independently reviewed the scenario package, e.g.:
 #   independent_reviewers:
 #     - "Jane Doe <jane@example.org>"     # external red-team, 2026-06-23
-independent_reviewers: []
+independent_reviewers:
+  # WP-E2c.1: a cross-vendor (non-Claude) AI adversarial review of the het scenario package + the
+  # remediation. 3-round process: it caught a real release-coverage fail-open the in-house review had
+  # MISSED, then a coverage-superset precision gap; both were fixed and the final verdict was APPROVE.
+  # Tim Fehr (human) obtained the review and authorized this entry. The string below is the reviewer's
+  # verbatim REVIEWER_ID and must match the het review.yaml `reviewer` / signoff.yaml `signed_by`.
+  - "OpenAI GPT-5.5 Pro — independent cross-vendor AI adversarial review, 2026-06-24"

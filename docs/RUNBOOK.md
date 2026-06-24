@@ -82,8 +82,10 @@ operating rules; this file is the *process*.
   `attestation_kind`: a `SYNTHETIC_SELF_CHECK` (the loop checking its own work) **cannot** spell
   `APPROVED`/`ACCEPT` (the enum partition forbids it), and `release` reports `SELF-VERIFIED; NOT INDEPENDENTLY
   ATTESTED`. `attestation_kind: INDEPENDENT` is honored only if `signed_by`/`reviewer` is in the
-  human-controlled `attestation_reviewers.yaml` (which **starts empty** — until a human lists a real reviewer,
-  nothing is independent; the loop must not add itself). The signoff also DECLARES `calibration_disposition`,
+  human-controlled `attestation_reviewers.yaml` (which **ships empty by default** — while it is empty nothing
+  is independent, and a reviewer is added only by a deliberate human act; the loop must not add itself). One
+  cross-vendor reviewer is now listed, so the het scenario is INDEPENDENT, though the repo banner stays
+  worst-kind (`SELF-VERIFIED`) while ukraine remains a self-check. The signoff also DECLARES `calibration_disposition`,
   and a `NOT_FEASIBLE`/`INSUFFICIENT_DATA` disposition binds the `calibration_feasibility.yaml` by id + sha256
   — so the "cannot calibrate" record can no longer be silently deleted (`missing-feasibility-record`) or edited
   without re-signing (`stale-feasibility-binding`). An autonomous loop may build + green-gate this, but the

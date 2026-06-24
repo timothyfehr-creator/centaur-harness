@@ -69,8 +69,12 @@ green in CI.
 The **enforceable-plumbing phase is complete** (the evidence, safety, reproducibility,
 attestation, and calibration gates), and the **wargame engine is now in-repo and under active
 build** — a deterministic salvo-combat resolver with replayable turn records. The most recent
-work made the attestation honest by construction and was **independently red-teamed
-(cross-vendor)** — which caught a real fail-open that four in-house review passes had missed.
+work made the attestation honest by construction and was **independently reviewed (cross-vendor)**
+over three adversarial rounds — which caught a real fail-open that four in-house review passes had
+missed — ending in the harness's **first recorded INDEPENDENT attestation** (the het scenario; the
+reviewer is allow-listed in [`attestation_reviewers.yaml`](attestation_reviewers.yaml)). The
+repo-level banner stays conservative (`SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED`) until *every*
+scenario clears independent review.
 
 **Everything here is `ILLUSTRATIVE` / `UNCALIBRATED` by design.** The models assert nothing
 about the real world; the point of the project is the *discipline*, not a calibrated forecast.

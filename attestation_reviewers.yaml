@@ -5,10 +5,13 @@
 # appears verbatim below. A regex heuristic on the signer name is NOT a security boundary -- a synthetic
 # signer that dodges a few flagged words evades it; a positive allow-list is the boundary.
 #
-# This list is HUMAN-CONTROLLED. It starts EMPTY: until a human adds a genuinely-independent reviewer,
-# NOTHING can be INDEPENDENT, so every attestation in the repo must be a SYNTHETIC_SELF_CHECK and the
-# release banner reads "SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED". An autonomous loop must NOT add
-# itself here -- a change to this file is conspicuous and is reviewed at the human-gated merge.
+# This list is HUMAN-CONTROLLED and ships EMPTY by default: a reviewer is added ONLY by a deliberate human
+# act (an autonomous loop must NOT add itself -- a change to this file is conspicuous and merge-reviewed).
+# While the list is empty, nothing can be INDEPENDENT and every attestation is a SYNTHETIC_SELF_CHECK. The
+# release banner is worst-kind across scenarios, so it reads "INDEPENDENTLY attested" only once EVERY attested
+# scenario is signed by an allow-listed reviewer. (Current state: one reviewer is listed below; the
+# ru_ua_salvo_heterogeneous scenario is INDEPENDENT, but the repo banner stays "SELF-VERIFIED; NOT
+# INDEPENDENTLY ATTESTED" because the ukraine scenario remains a self-check.)
 #
 # Add an entry ONLY when that reviewer has genuinely, independently reviewed the scenario package, e.g.:
 #   independent_reviewers:

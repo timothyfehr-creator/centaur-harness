@@ -664,12 +664,17 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   the resolver / rules.yaml / the contract relabeled to "candidate / observable axis" (nothing is calibrated;
   comments seed future-loop premises). Built on a branch, green-gated, fresh-agent adversarially-verified; the
   merge is **human-gated** (a synthetic self-check must not self-merge an epistemically-sensitive path).
-  WP-E2c.1 was reviewed + human-gated MERGED to origin/main, then **independently red-teamed (cross-vendor,
-  Gemini 5.5 Pro)**: APPROVE_WITH_CHANGES, which caught a real HIGH fail-open four in-house adversarial-verify
-  agents had MISSED — the feasibility release sweep globbed `examples/*/` while `verify.py`'s attestation
-  coverage globs `examples/**/`, so a NESTED scenario could be attestation-covered yet feasibility-skipped.
-  Remediated in a round-2 commit (recursive `_sweep_dirs`; required fields in `launch_denominator_conflict.values`;
-  stale review prose). The independent attestation is recorded only after round-2 re-review clears.
+  WP-E2c.1 was reviewed + human-gated MERGED to origin/main, then **independently reviewed (cross-vendor AI;
+  recorded reviewer: OpenAI GPT-5.5 Pro)** over 3 adversarial rounds. Round 1 caught a real HIGH fail-open four
+  in-house adversarial-verify agents had MISSED — the feasibility release sweep globbed `examples/*/` while
+  `verify.py`'s attestation coverage globs `examples/**/`, so a NESTED scenario could be attestation-covered yet
+  feasibility-skipped (remediated: recursive `_sweep_dirs`; required fields in `launch_denominator_conflict.values`;
+  stale review prose). Round 2 caught a coverage-superset precision gap (the sweep was not strictly a superset of
+  the review-OR-signoff coverage set; remediated by adding the `review.yaml` term). Round 3 = **APPROVE**, and the
+  **first genuine INDEPENDENT attestation was RECORDED** for the het scenario (reviewer added to
+  `attestation_reviewers.yaml`; review/signoff → INDEPENDENT/ACCEPT/APPROVED; calibration stays
+  UNCALIBRATED/NOT_FEASIBLE — the ACCEPT is of the WORK's soundness, not validity). The repo banner stays
+  `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED` by worst-kind logic (ukraine is still a self-check).
 - **Now:** the full suite passes (~600 tests); `release` exit 0 with the honest `SELF-VERIFIED; NOT INDEPENDENTLY
   ATTESTED` banner; the feasibility sweep reports `2 scenario(s) checked, 1 record(s) validated`. The lethality
   floors + k are LOCKED (drone 50 / cruise 40 / ballistic 25; k=3). **next = WP-E2d** (stochastic interception) — a

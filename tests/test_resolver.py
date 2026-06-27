@@ -110,12 +110,36 @@ def test_empty_turn_is_legal_and_noop() -> None:
 
 # --- invariants & rejections --------------------------------------------------------
 
+def red_dispatch(qty: int = 10, route: str = "r1") -> dict:
+    """A RED actor issuing BLUE's action (would validate-then-go-inert before the legality fix)."""
+    return {"command_id": "cmd-x", "turn": 0, "actor_id": "RED",
+            "action_type": "DISPATCH_SUPPLY", "params": {"quantity": qty, "route": route}}
+
+
+def blue_block(route: str = "r1") -> dict:
+    """A BLUE actor issuing RED's action (would validate-then-go-inert before the legality fix)."""
+    return {"command_id": "cmd-y", "turn": 0, "actor_id": "BLUE",
+            "action_type": "BLOCK_ROUTE", "params": {"route": route}}
+
+
+def green_dispatch(qty: int = 10, route: str = "r1") -> dict:
+    """An unknown actor (would be silently ignored by resolve() before the legality fix)."""
+    return {"command_id": "cmd-z", "turn": 0, "actor_id": "GREEN",
+            "action_type": "DISPATCH_SUPPLY", "params": {"quantity": qty, "route": route}}
+
+
 @pytest.mark.parametrize("cmds,code", [
     ([dispatch(31, "r1")], "out-of-range"),
     ([dispatch(0, "r1")], "out-of-range"),
     ([dispatch(10, "r3")], "unknown-route"),
     ([block("r3")], "unknown-route"),
     ([dispatch(10, "r1"), dispatch(5, "r2")], "too-many-commands"),
+    # legality fix: actor enum + role/action capability (closes the legal-but-inert trapdoor)
+    ([green_dispatch()], "unknown-actor"),
+    ([red_dispatch()], "role-action-mismatch"),
+    ([blue_block()], "role-action-mismatch"),
+    ([{"command_id": "c1", "turn": 0, "actor_id": "BLUE",
+       "action_type": "NUKE", "params": {}}], "invalid-enum"),
 ])
 def test_invalid_commands_rejected_zero_mutation(cmds: list, code: str) -> None:
     state = make_state()
@@ -123,6 +147,16 @@ def test_invalid_commands_rejected_zero_mutation(cmds: list, code: str) -> None:
     assert r["status"] == "rejected"
     assert any(c == code for c, _ in r["rejections"])
     assert r["events"] == [] and r["resulting_state"] is state  # unchanged
+
+
+def test_cross_role_and_unknown_actor_are_rejected_not_inert() -> None:
+    """The legal-but-inert trapdoor: a cross-role or unknown-actor command must be REJECTED
+    (commit no record, zero mutation), never accepted-then-ignored by resolve()."""
+    for cmds in ([red_dispatch()], [blue_block()], [green_dispatch()]):
+        r = rsv.transition(make_state(), cmds, master_seed=0)
+        assert r["status"] == "rejected", f"{cmds} should be rejected, not inert"
+        assert r["events"] == [] and r["draws"] == []
+        assert supply(r) == {"origin": 100, "in_transit": 0, "delivered": 0, "loss_sink": 0}
 
 
 def test_conservation_holds_for_every_resolved_case() -> None:

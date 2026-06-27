@@ -48,8 +48,9 @@ route that was `DISPATCH`-ed this turn **and** has a `block_threshold` — i.e. 
 
 \* **Empty turn (both none): LEGAL** — commits a record with empty `event_batch`,
 `resulting_state == start_state`, no draw. Distinguished from a **rejected** command (which commits
-**no** record). Invalid commands (`quantity` ∉ [1,30], unknown route, >1 per actor) → rejected,
-zero mutation, no record. Fixed event order: `DISPATCHED` → `BLOCK_ATTEMPTED` → terminal.
+**no** record). Invalid commands (`quantity` ∉ [1,30], unknown route, >1 per actor, unknown
+`actor_id` (not `BLUE`/`RED`), or an actor issuing the other's action — `BLUE` may only
+`DISPATCH_SUPPLY`, `RED` may only `BLOCK_ROUTE`) → rejected, zero mutation, no record. Fixed event order: `DISPATCHED` → `BLOCK_ATTEMPTED` → terminal.
 
 ## Transition protocol (phase order)
 

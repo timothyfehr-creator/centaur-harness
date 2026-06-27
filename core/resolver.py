@@ -21,6 +21,11 @@ RULESET_VERSION = "1"
 STOCHASTIC_TERMINALS = ("SUPPLY_DELIVERED", "SUPPLY_LOST")
 
 ACTORS = ("BLUE", "RED")
+# Role/action capability: each actor commands exactly one action type (BLUE supplies, RED
+# interdicts). A command whose actor/action pairing is absent here is REJECTED — it would
+# otherwise validate, then go INERT in resolve() (which acts only on a BLUE DISPATCH_SUPPLY and a
+# RED BLOCK_ROUTE). Closes the "legal-but-inert" trapdoor (independent red-team finding §1).
+ACTION_BY_ACTOR = {"BLUE": "DISPATCH_SUPPLY", "RED": "BLOCK_ROUTE"}
 ROUTES = ("r1", "r2")
 BLOCKABLE_WITH_THRESHOLD = ("r1",)  # r2 is unblockable (no route_secret)
 MIN_QTY, MAX_QTY = 1, 30
@@ -59,12 +64,18 @@ def validate_all(commands: list, start_state: dict, ruleset: object = None):
     seen_actor: dict[str, int] = {}
     for i, cmd in enumerate(commands):
         actor = cmd.get("actor_id")
+        action = cmd.get("action_type")
+        params = cmd.get("params", {})
+        if actor not in ACTORS:
+            rejections.append(("unknown-actor", f"actor_id {actor!r} not in {ACTORS}"))
+        elif action in ("DISPATCH_SUPPLY", "BLOCK_ROUTE") and ACTION_BY_ACTOR[actor] != action:
+            rejections.append(
+                ("role-action-mismatch",
+                 f"actor {actor!r} may not issue {action!r} (only {ACTION_BY_ACTOR[actor]!r})"))
         if actor in seen_actor:
             rejections.append(("too-many-commands", f"actor {actor!r} has more than one command"))
         else:
             seen_actor[actor] = i
-        action = cmd.get("action_type")
-        params = cmd.get("params", {})
         if action == "DISPATCH_SUPPLY":
             qty = params.get("quantity")
             if isinstance(qty, bool) or not isinstance(qty, int) or not (MIN_QTY <= qty <= MAX_QTY):

@@ -44,4 +44,10 @@ secrets.*
 .vscode/
 
 # AI-tooling working dirs (agent sessions, worktrees) — not part of the repo
-.claude/
+.claude/*
+# ...EXCEPT the committed, version-controlled security guardrail (transparent by design):
+# a PreToolUse deny-hook that blocks AI tool calls from editing the attestation files
+# or pushing/merging to main. See .claude/hooks/security-deny.py.
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/**

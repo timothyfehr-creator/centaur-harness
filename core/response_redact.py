@@ -134,8 +134,8 @@ def _prose_strings(body: object) -> list[str]:
                 out.extend(_all_strings(block))    # a bare string in content[] is prose
             elif block.get("type") in KEPT_BLOCK_TYPES:
                 out.extend(_tool_use_prose(block))
-            else:                                  # any non-tool_use block: every string except the type tag
-                out.extend(_all_strings({k: v for k, v in block.items() if k != "type"}))
+            else:                                  # any non-tool_use block: EVERY string, INCLUDING a prose
+                out.extend(_all_strings(block))    # `type` value (a clean commit never has such a block)
     return out
 
 
@@ -163,11 +163,30 @@ def redact(wire_bytes: bytes) -> bytes:
     return json.dumps(kept, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
+class _DupKeyError(ValueError):
+    """Duplicate object keys: ``json.loads`` keeps only the last, so a parsed-view scan would never see prose
+    hidden in a shadowed duplicate (``{"content":[<prose>],"content":[<clean>]}``). We refuse to certify it."""
+
+
+def _no_dup_keys(pairs: list) -> dict:
+    keys = [k for k, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise _DupKeyError("duplicate object key")
+    return dict(pairs)
+
+
 def contains_prose(raw: bytes) -> list[str]:
     """The prose strings present in a committed artifact, if any (for the global no-prose gate). Empty list
-    means prose-free. ``utf-8-sig`` tolerates a leading BOM; non-JSON / non-response bytes -> empty."""
+    means prose-free. ``utf-8-sig`` tolerates a leading BOM; non-JSON / non-response bytes -> empty. Duplicate
+    object keys -> a fail-closed finding (the shadowed copy is dead bytes a parsed scan can't see)."""
     try:
-        body = json.loads(raw.decode("utf-8-sig"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return []
+    try:
+        body = json.loads(text, object_pairs_hook=_no_dup_keys)
+    except _DupKeyError:
+        return ["<duplicate JSON keys — cannot certify prose-free (possible dead-bytes smuggling)>"]
+    except json.JSONDecodeError:
         return []
     return _prose_strings(body)

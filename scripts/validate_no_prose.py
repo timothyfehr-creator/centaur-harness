@@ -35,8 +35,10 @@ EXEMPT_PREFIXES = (
     "tests/fixtures/agent_bytes/",   # hand-authored "model responses" the drive redacts before committing
     "tests/fixtures/no_prose/",      # this gate's own valid/invalid fixtures
 )
-# A response body is KB-scale; this cap only bounds the read of a pathological large committed file (Centaur
-# commits none). It is a RESOURCE guard, not a content filter -- it never decides prose-vs-clean.
+# A response body is KB-scale; this cap bounds the read of a pathological large committed file (Centaur
+# commits none). It is a RESOURCE guard: a file over the cap is not read into memory -- but a response-SHAPED
+# oversize file (JSON object/array) cannot be certified prose-free, so it FAILS CLOSED (a finding), never
+# skipped-as-clean; a large non-JSON asset (binary/dataset) is not a prose risk and is skipped.
 _MAX_SCAN_BYTES = 10_000_000
 
 
@@ -60,8 +62,23 @@ def scan(root: Path) -> list[tuple[str, str]]:
             continue
         path = root / rel
         try:
-            if path.stat().st_size > _MAX_SCAN_BYTES:   # resource guard only (a response body is KB-scale);
-                continue                                 # NOT a content filter -- see below.
+            size = path.stat().st_size
+        except OSError:
+            continue
+        if size > _MAX_SCAN_BYTES:
+            # Too large to read into memory. Peek the head (BOM-tolerant): a response-SHAPED oversize file
+            # cannot be certified prose-free -> FAIL CLOSED (a finding); a large non-JSON asset -> skip.
+            try:
+                with path.open("rb") as fh:
+                    head = fh.read(16).lstrip()
+            except OSError:
+                continue
+            if head[:3] == b"\xef\xbb\xbf":
+                head = head[3:].lstrip()
+            if head[:1] in (b"{", b"["):
+                findings.append((rel, f"<{size} bytes: too large to scan; refusing to certify prose-free>"))
+            continue
+        try:
             raw = path.read_bytes()
         except OSError:
             continue

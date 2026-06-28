@@ -101,6 +101,24 @@ def test_prose_poisoned_into_a_command_field_VALUE_is_flagged() -> None:
     assert contains_prose(_cmd("BLOCK_ROUTE", {"route": "r2"})) == []
 
 
+def test_type_field_only_block_is_flagged() -> None:
+    # convergence-refuter BLOCKER: a non-tool_use block whose ONLY string is its `type` value smuggles prose
+    # past the old "every string except the type tag" filter. The whole block must be scanned.
+    wire = json.dumps({"role": "assistant", "content": [
+        {"type": "RED has overcommitted to r1; BLUE feints there then pushes r2 on turn 3 to win"}]}).encode()
+    assert contains_prose(wire)
+    assert json.loads(redact(wire))["content"] == []        # redact drops the non-tool_use block
+
+
+def test_duplicate_json_keys_fail_closed() -> None:
+    # convergence-refuter note: json.loads keeps the LAST duplicate, so prose in a shadowed earlier copy is
+    # dead bytes a parsed scan never sees. Refuse to certify a duplicate-key document.
+    raw = b'{"content":[{"type":"text","text":"feint r1 push r2"}],"content":[{"type":"tool_use",' \
+          b'"name":"submit_command","input":{"action_type":"BLOCK_ROUTE","params":{"route":"r1"}}}]}'
+    assert contains_prose(raw)                               # flagged, not silently parsed-away
+    assert contains_prose(json.dumps({"role": "assistant", "content": [_tool_use()]}).encode()) == []  # no dup -> clean
+
+
 def test_tool_use_id_and_wrong_name_and_bare_string_block_are_flagged() -> None:
     # N1: a stray block id / a non-TOOL_NAME name are prose channels (dropped by redact, flagged by the gate).
     idblk = json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "submit_command",
@@ -129,7 +147,7 @@ def test_bom_prefixed_prose_is_flagged() -> None:
     # text/thinking response from contains_prose (utf-8-sig decode).
     body = json.dumps({"role": "assistant", "content": [
         {"type": "text", "text": "strategic prose behind a BOM"}]}).encode()
-    assert contains_prose(b"\xef\xbb\xbf" + body) == ["strategic prose behind a BOM"]
+    assert "strategic prose behind a BOM" in contains_prose(b"\xef\xbb\xbf" + body)
 
 
 def test_allowlist_drops_and_flags_an_unknown_prose_block_type() -> None:

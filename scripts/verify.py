@@ -88,11 +88,18 @@ PER_SCENARIO_GATES = ("validate_review_signoff.py", "validate_calibration.py")
 
 # Checks the harness genuinely does NOT yet run. Draft AND release report these explicitly:
 # neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff (WP8), the
-# calibration RECORD (WP9), and turn replay (WP-E1: the engine run-record gate) are now gated and run
-# in `release`. What remains is COMPUTING calibration (a backtest), which needs outcomes to score.
+# calibration RECORD (WP9), and turn replay (WP-E1) are gated in `release`. The OFFLINE agent substrate
+# (WP-A1a) is now gated too -- validate_agent_provenance (the H7 binding) + validate_agent_fog (the
+# differential no-leak check) over HAND-AUTHORED response bytes. What remains UNBUILT, named honestly so
+# the report never implies it passed: COMPUTING calibration, a LIVE model call, and the analysis layers.
 NOT_YET_IMPLEMENTED = (
     "calibration scoring (the harness records an external proper-scoring result; "
     "it does not compute one -- no engine)",
+    "a LIVE agent model call (WP-A1b): the offline substrate REPLAYS hand-authored response bytes; "
+    "no model is ever called -- the @live lane is unbuilt",
+    "the agent transcript / judge / ENSEMBLE analysis layers: design-frozen and INDEPENDENTLY NO-GO'd "
+    "(a decision-facing AI-playthrough transcript is false-validity) -- the offline substrate is a "
+    "MACHINE log only, never a forecast",
 )
 
 GATE_TIMEOUT_SECONDS = 120  # loose-by-design: ample headroom for a slow CI runner, not a tuned value

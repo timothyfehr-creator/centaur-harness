@@ -691,3 +691,21 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   WP-E2d decision) + `WP-E2d_SPEC.md` (verdict header). A decoupled **engineering-only** RNG-assurance fixture
   (a synthetic test resolver, no analytical claim) is the one possible future path; an analytical revisit needs
   a named tail-probability decision + a defensible prior for `p` — not "more seeds."
+- **WP-A1a (offline agent substrate) — BUILT.** The agent layer's first slice: two LLM players will eventually
+  PLAY the wargame, but A1a builds only the OFFLINE, zero-network, deterministic command pipeline driven by
+  **hand-authored response bytes** (no model is ever called). The one seam is the `commands` arg to
+  `turn_record.assemble`. Shipped, each a green-gated + adversarially-verified slice: a strict parse-or-reject
+  **extractor** (`core/command_extractor.py`); a turn-advancing **`agent_logistics`** resolver (delegates to the
+  toy resolver + a `TURN_ADVANCED` event); the run-ledger **`llm_steps` migration** (non-causal provenance) +
+  `schemas/llm_step.schema.md`; **`validate_agent_provenance.py`** — the H7 binding gate (re-extract from bytes,
+  semantic-digest + harness-bound-identity + coverage), MANDATORY in `release`; the offline **drive**
+  (`scripts/agent_offline_run.py`) + the first committed agent scenarios; **`validate_agent_fog.py`** — the
+  differential no-leak gate (a viewer's view is a function of public state + outcome, never the secret threshold
+  VALUE); the **tampered-binding** proof (a self-consistent tamper passes replay but fails provenance — the gate
+  is non-redundant) + `@heldout` Goodhart probes; and a **multi-turn campaign** (chain check: byte-identical head
+  handoff, monotone `as_of_turn`). Three committed agent scenarios (single-BLUE, two-player contested, 3-turn
+  campaign) bind under every gate; `release` composes provenance + fog. **The OFFLINE substrate is a MACHINE log,
+  never a forecast.** Explicitly UNBUILT (named in `verify.py`'s NOT_YET_IMPLEMENTED so the report never implies
+  it passed): a LIVE model call (WP-A1b), and the transcript / judge / ENSEMBLE analysis layers (design-frozen
+  and INDEPENDENTLY NO-GO'd — a decision-facing AI-playthrough transcript is false-validity). Disclosed residual:
+  a fully self-consistent fabrication binds green (the gates prove consistency, not byte authenticity).

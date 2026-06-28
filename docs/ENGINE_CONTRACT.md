@@ -145,3 +145,40 @@ secret); empty turn legal-and-committed; RED's failed block **not** observable t
 manifest, not bound into the vector). The engine WPs (WP-E0 → WP-E2a + the ECI hygiene fixes) landed
 **linearly on `main`** — the once-planned `engine-wp` worktree / single post-WP9 merge topology was not
 used.
+
+## Offline agent substrate (WP-A1a)
+
+The agent layer's ONE SEAM: an LLM player's only engine write is the `commands` argument to
+`turn_record.assemble`. The OFFLINE substrate exercises that seam with **hand-authored response bytes**
+standing in for a model — **zero network, no model call ever** — so the whole pipeline is deterministic
+and replayable.
+
+- **Extract** (`core/command_extractor.py`): raw provider bytes → exactly `{action_type, params}` or a
+  pinned rejection. Well-formedness ONLY (never legality, never identity). Strict: never take-first on
+  ambiguity, never repair. A rejection is a recorded **FORFEIT** → the slot resolves NO_OP (an empty
+  turn is legal).
+- **Bind** (the harness, not the model): `actor_id = calling_slot`, `command_id = f"{run_id}:{turn}:
+  {actor_id}"`, `turn = head.as_of_turn`. The model authors the SEMANTIC choice; the harness stamps the
+  IDENTITY.
+- **Referee**: `agent_logistics` (the turn-advancing contested-logistics resolver) adjudicates;
+  `validate_all` enforces actor-enum + role/action capability so a cross-role or unknown-actor command
+  is REJECTED, never accepted-then-inert.
+- **Provenance** (NON-CAUSAL): a flat `llm_step` per (turn, slot) in `run_ledger.llm_steps`, with the
+  raw bytes content-addressed under `run/llm/{sha}.json`. Absent from `transition_input_hash`, so it
+  cannot change replay.
+
+The three replay/binding tiers (all on recorded bytes — a model is never re-called):
+1. **record-replay + recomputation** — `validate_turn_replay` re-runs the engine on the recorded
+   `command_batch` → byte-identical record (+ the chain check across a campaign).
+2. **byte integrity** — `validate_agent_provenance` Tier-1: the content-addressed bytes re-hash to the
+   recorded `response_sha256`.
+3. **H7 binding** — `validate_agent_provenance` Tier-2 + H7a/H7b: re-extract from the bytes (at the
+   recorded `extractor_version`, or fail closed) and assert `canonical_digest(project_semantic(committed
+   command)) == that recompute`, plus the literal harness-bound identity asserts, plus COVERAGE (every
+   committed agent command has a backing step). A SELF-CONSISTENT tamper passes replay but fails here.
+
+`validate_agent_fog` adds the differential no-leak check (a viewer's projection is a function of public
+state + outcome, never of the secret threshold value). **Disclosed residual:** a fully self-consistent
+fabrication binds green — the gates prove internal consistency, not that the bytes authentically came
+from a model (authenticity is unprovable under current APIs; the prompt↔envelope binding re-render is
+deferred to the live lane WP-A1b).

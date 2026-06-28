@@ -84,6 +84,12 @@ jobs:
       - name: Turn-replay (engine run-record)
         run: python scripts/validate_turn_replay.py
 
+      - name: Agent provenance (the H7 binding, WP-A1a)
+        run: python scripts/validate_agent_provenance.py
+
+      - name: Agent fog no-leak (WP-A1a)
+        run: python scripts/validate_agent_fog.py
+
       - name: Release verification
         run: python scripts/verify.py --mode release
 

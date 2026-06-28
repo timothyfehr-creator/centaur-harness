@@ -79,6 +79,12 @@ CAPTURE_MODE_ENUM = ("LIVE", "HAND_AUTHORED_FIXTURE")
 PROVIDER_ENUM = ("anthropic",)
 SAMPLING_ENUM = ("PROVIDER_DEFAULT_NO_SEED",)
 FIXTURE_SENTINEL = "N/A_FIXTURE"   # model/model_version/served_model under HAND_AUTHORED_FIXTURE
+# LIVE-capture provenance (§1.8, §3.2 amend 7, §3.3). These ride only under capture_mode == LIVE.
+ANTHROPIC_API_VERSION = "2023-06-01"
+MODEL_ID_STABILITY_ENUM = ("PROVIDER_DOCUMENTED_PINNED_MODEL_ID_INFRA_MAY_CHANGE",)
+AUTHENTICITY_SENTINEL = "RUNNER_ATTESTED_NOT_PROVEN"   # the gates prove consistency, not byte authenticity
+LIVE_ONLY_FIELDS = ("provider_request_id", "anthropic_api_version", "model_id_stability", "authenticity")
+_REQ_ID_RE = re.compile(r"^req_[A-Za-z0-9]+$")
 # Reserved prompt_version(s) for the OFFLINE synthetic request envelope (_request_bytes): integrity-only,
 # pre-template. A step on one of these is bound Tier-1 (the committed request bytes re-hash to the recorded
 # sha — done above); no Tier-3 re-render. A registered TEMPLATE version triggers the re-render binding; any
@@ -90,7 +96,8 @@ INTEGRITY_ONLY_PROMPT_VERSIONS = ("v1",)
 ALLOWED_STEP = {"schema_version", "run_id", "turn", "recorded_turn", "calling_slot", "command_id",
                 "step_kind", "capture_mode", "provider", "model", "model_version", "served_model",
                 "sampling", "prompt_version", "extractor_version", "canon_version", "response_sha256",
-                "request_envelope_sha256", "extracted_command_digest", "reject_code", "as_of"}
+                "request_envelope_sha256", "extracted_command_digest", "reject_code", "as_of",
+                "provider_request_id", "anthropic_api_version", "model_id_stability", "authenticity"}
 REQUIRED_STR = ("schema_version", "run_id", "command_id", "calling_slot", "step_kind", "capture_mode",
                 "provider", "model", "model_version", "served_model", "sampling", "prompt_version",
                 "extractor_version", "canon_version", "response_sha256", "request_envelope_sha256", "as_of")
@@ -151,12 +158,37 @@ def _structural_problems(step: object, where: str) -> list[tuple[str, str, str]]
     for f in ("response_sha256", "request_envelope_sha256"):
         if not _SHA256_RE.fullmatch(step[f]):
             add("invalid-format", f"{f} must be 64 lowercase hex; got {step[f]!r}")
-    # HAND_AUTHORED_FIXTURE cannot claim a served model (honesty): the three model fields are pinned.
+    # capture_mode honesty: a FIXTURE cannot claim a served model + carries no LIVE provenance; a LIVE step
+    # MUST carry real model fields + the audit/disclosure scalars (§1.8/§3.2/§3.3) and bind to a real template.
     if step["capture_mode"] == "HAND_AUTHORED_FIXTURE":
         for f in ("model", "model_version", "served_model"):
             if step[f] != FIXTURE_SENTINEL:
                 add("fixture-model-claim",
                     f"{f} must be {FIXTURE_SENTINEL!r} under capture_mode HAND_AUTHORED_FIXTURE; got {step[f]!r}")
+        for f in LIVE_ONLY_FIELDS:                       # a fixture must not borrow LIVE provenance (no real call)
+            if step.get(f) is not None:
+                add("fixture-live-field", f"a HAND_AUTHORED_FIXTURE step must not carry the LIVE field {f!r}")
+    else:  # LIVE
+        for f in ("model", "model_version", "served_model"):
+            if step[f] == FIXTURE_SENTINEL:
+                add("live-model-claim", f"{f} must be a real model id under LIVE, not {FIXTURE_SENTINEL!r}")
+        if step["served_model"] != step["model"]:        # a served-model drift is EXCLUDED, never committed
+            add("served-model-drift",
+                f"served_model {step['served_model']!r} != requested model {step['model']!r}")
+        if not _is_nonempty_str(step.get("provider_request_id")):
+            add("missing-request-id", "provider_request_id (the req_... header) is required under LIVE")
+        elif not _REQ_ID_RE.match(step["provider_request_id"]):
+            add("invalid-format", f"provider_request_id {step['provider_request_id']!r} is not a req_... id")
+        if step.get("anthropic_api_version") != ANTHROPIC_API_VERSION:
+            add("invalid-enum", f"anthropic_api_version must be {ANTHROPIC_API_VERSION!r} under LIVE")
+        if step.get("model_id_stability") not in MODEL_ID_STABILITY_ENUM:
+            add("invalid-enum", f"model_id_stability must be one of {sorted(MODEL_ID_STABILITY_ENUM)}")
+        if step.get("authenticity") != AUTHENTICITY_SENTINEL:
+            add("invalid-enum", f"authenticity must be {AUTHENTICITY_SENTINEL!r} (the disclosed residual)")
+        # LIVE => a registered TEMPLATE prompt_version, never the offline integrity-only sentinel (review R-1).
+        if step["prompt_version"] in INTEGRITY_ONLY_PROMPT_VERSIONS:
+            add("live-integrity-only-pv",
+                "a LIVE step must bind a registered template prompt_version, never the integrity-only sentinel")
     # COMMAND <-> FORFEIT field presence: a COMMAND carries a digest + null reject_code; a FORFEIT the inverse.
     kind, digest, rc = step["step_kind"], step.get("extracted_command_digest"), step.get("reject_code")
     if kind == "COMMAND":
@@ -239,6 +271,16 @@ def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
 
     # re-run the strict extractor on the recorded RESPONSE bytes (Tier-2).
     raw = (llm_dir / f"{step['response_sha256']}.json").read_bytes()
+    # LIVE replay binding (§1.8): the committed (redacted) response body keeps its own `model` field, which
+    # must equal the recorded served_model == requested model -- binds the denormalized provenance to the bytes.
+    if step["capture_mode"] == "LIVE":
+        try:
+            body_model = json.loads(raw.decode("utf-8")).get("model")
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            body_model = None
+        if not (body_model == step["served_model"] == step["model"]):
+            add("live-model-binding-mismatch",
+                f"response body model {body_model!r} != served_model {step['served_model']!r}/model {step['model']!r}")
     res = extract_command(raw)
     if step["step_kind"] == "FORFEIT":
         if res.ok:

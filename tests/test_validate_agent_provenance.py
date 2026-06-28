@@ -137,6 +137,14 @@ def _expect_one(scn: Path, code: str) -> None:
     assert code in fs[0], f"expected {code}, got {fs[0]!r}"
 
 
+def _expect_code(scn: Path, code: str) -> None:
+    """A single FAULT may trip more than one finding (e.g. all three LIVE model fields); assert the expected
+    code is present + exit 1 (less strict than _expect_one, for multi-finding faults)."""
+    r = _run(scn)
+    assert r.returncode == 1, f"expected findings; stdout={r.stdout} stderr={r.stderr}"
+    assert any(code in f for f in _findings(r.stderr)), f"expected {code} in {_findings(r.stderr)}"
+
+
 def test_tampered_semantic_command(tmp_path: Path) -> None:
     scn, _ = _build(tmp_path)
     _mutate_record(scn, lambda rec: rec["command_batch"][0]["params"].__setitem__("route", "r2"))
@@ -336,3 +344,97 @@ def test_v1_offline_step_is_integrity_only_no_rerender(tmp_path: Path) -> None:
     scn, _ = _build(tmp_path)
     r = _run(scn)
     assert r.returncode == 0, r.stderr
+
+
+# --- LIVE-capture provenance (WP-A1b §1.8 / §3.2 / §3.3) --------------------------------------------
+
+_LIVE_FIELDS = {"provider_request_id": "req_abc123def456", "anthropic_api_version": "2023-06-01",
+                "model_id_stability": "PROVIDER_DOCUMENTED_PINNED_MODEL_ID_INFRA_MAY_CHANGE",
+                "authenticity": "RUNNER_ATTESTED_NOT_PROVEN"}
+
+
+def _build_live(tmp_path: Path, *, served: str = "claude-opus-4-8", body_model: str | None = None) -> tuple[Path, dict]:
+    """A binding LIVE single-turn scenario: capture_mode=LIVE, real model fields, the LIVE audit/disclosure
+    scalars, a TEMPLATE-rendered request (Tier-3), and a redacted response body whose own `model` field is
+    body_model (defaults to `served`, the honest case)."""
+    from response_redact import redact
+    scn = tmp_path / "scn"
+    (scn / "run" / "turns").mkdir(parents=True)
+    (scn / "run" / "llm").mkdir(parents=True)
+    start = _make_state()
+    wire = json.dumps({"role": "assistant", "model": body_model or served, "stop_reason": "tool_use",
+        "id": "msg_x", "usage": {"input_tokens": 50, "output_tokens": 12}, "content": [
+        {"type": "tool_use", "name": "submit_command",
+         "input": {"action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}}}]}).encode()
+    response = redact(wire)
+    res = extract_command(response)
+    assert res.ok
+    cmd = {"command_id": f"{RUN_ID}:0:BLUE", "turn": 0, "actor_id": "BLUE",
+           "action_type": res.command["action_type"], "params": res.command["params"]}
+    out = tr.assemble(turn=0, start_state=start, commands=[cmd], master_seed=0,
+                      runtime_fingerprint=FP, successor_slot="run/turns/0001.json", resolver=al)
+    assert out["status"] == "resolved"
+    tr.commit(out["turn_record"], str(scn / "run" / "turns" / "0000.json"))
+    resp_sha = hashlib.sha256(response).hexdigest()
+    (scn / "run" / "llm" / f"{resp_sha}.json").write_bytes(response)
+    view = project_turn_record("BLUE", {"turn": 0, "resulting_state": start, "event_batch": []})
+    request = canonical_request_bytes(A1B_PROMPT_VERSION, view)
+    req_sha = hashlib.sha256(request).hexdigest()
+    (scn / "run" / "llm" / f"{req_sha}.json").write_bytes(request)
+    step = {
+        "schema_version": "1.0", "run_id": RUN_ID, "turn": 0, "recorded_turn": 0, "calling_slot": "BLUE",
+        "command_id": f"{RUN_ID}:0:BLUE", "step_kind": "COMMAND", "capture_mode": "LIVE",
+        "provider": "anthropic", "model": served, "model_version": served, "served_model": served,
+        "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": A1B_PROMPT_VERSION,
+        "extractor_version": EXTRACTOR_VERSION, "canon_version": CANON_VERSION,
+        "response_sha256": resp_sha, "request_envelope_sha256": req_sha,
+        "extracted_command_digest": canonical_digest(project_semantic(res.command))["value"],
+        "reject_code": None, "as_of": "2026-06-28", **_LIVE_FIELDS,
+    }
+    _write_ledger(scn, [step])
+    return scn, step
+
+
+def test_live_step_binds(tmp_path: Path) -> None:
+    scn, _ = _build_live(tmp_path)
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr
+
+
+def test_live_model_claim_fixture_sentinel_rejected(tmp_path: Path) -> None:
+    scn, _ = _build_live(tmp_path, served="N/A_FIXTURE", body_model="N/A_FIXTURE")  # LIVE can't claim the fixture id
+    _expect_code(scn, "live-model-claim")
+
+
+def test_live_missing_request_id_rejected(tmp_path: Path) -> None:
+    scn, step = _build_live(tmp_path)
+    step.pop("provider_request_id")
+    _write_ledger(scn, [step])
+    _expect_code(scn, "missing-request-id")
+
+
+def test_live_served_model_drift_rejected(tmp_path: Path) -> None:
+    scn, step = _build_live(tmp_path)
+    step["served_model"] = "claude-sonnet-4-6"   # served != requested -> would be EXCLUDED, never committed
+    _write_ledger(scn, [step])
+    _expect_code(scn, "served-model-drift")
+
+
+def test_live_model_binding_to_bytes(tmp_path: Path) -> None:
+    # the committed response body's own model field must equal served_model/model (§1.8)
+    scn, _ = _build_live(tmp_path, served="claude-opus-4-8", body_model="claude-sonnet-4-6")
+    _expect_code(scn, "live-model-binding-mismatch")
+
+
+def test_live_requires_template_pv_not_v1(tmp_path: Path) -> None:
+    scn, step = _build_live(tmp_path)
+    step["prompt_version"] = "v1"   # the offline integrity-only sentinel is forbidden under LIVE (R-1)
+    _write_ledger(scn, [step])
+    _expect_code(scn, "live-integrity-only-pv")
+
+
+def test_fixture_must_not_carry_live_fields(tmp_path: Path) -> None:
+    scn, step = _build(tmp_path)   # a HAND_AUTHORED_FIXTURE step
+    step["provider_request_id"] = "req_borrowed"   # a fixture can't borrow LIVE provenance
+    _write_ledger(scn, [step])
+    _expect_code(scn, "fixture-live-field")

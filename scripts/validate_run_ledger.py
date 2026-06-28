@@ -110,12 +110,31 @@ def validate_structure(doc: dict, where: str) -> list[tuple[str, str, str]]:
         add("missing-field", "as_of_date is required and must be a non-empty string")
     elif not _valid_iso_date(aod):
         add("invalid-format", f"as_of_date {aod!r} must be an ISO-8601 date (YYYY-MM-DD)")
-    for placeholder in ("rng_seeds", "llm_steps"):
-        if placeholder in doc and doc[placeholder] is not None:
+    # rng_seeds stays must-null: the engine is DETERMINISTIC (no RNG draws to seed).
+    if doc.get("rng_seeds") is not None:
+        add("invalid-format",
+            f"rng_seeds must be null: the engine is DETERMINISTIC (no RNG draws); a stochastic resolver "
+            f"is a future REVIEWED WP, not an in-place change. got {doc['rng_seeds']!r}")
+    # llm_steps (WP-A1a): null (no agent step) OR a non-empty list of llm_step provenance mappings, each
+    # carrying a 64-hex response_sha256. The DEEP shape is owned by validate_agent_provenance.py; this is
+    # only a structural floor so a populated placeholder cannot be present-but-unvalidated.
+    steps = doc.get("llm_steps")
+    if steps is not None:
+        if not isinstance(steps, list) or not steps:
             add("invalid-format",
-                f"{placeholder} must be null: the engine is DETERMINISTIC (no RNG draws) and has no "
-                f"LLM-assisted step; populating these awaits a future REVIEWED WP (stochastic resolver / "
-                f"LLM tier), not an in-place change. got {doc[placeholder]!r}")
+                f"llm_steps must be null or a non-empty list of provenance entries, got {steps!r}")
+        else:
+            for j, step in enumerate(steps):
+                if not isinstance(step, dict):
+                    add("invalid-format", f"llm_steps[{j}] must be a mapping")
+                    continue
+                rs = step.get("response_sha256")
+                # isinstance(str) FIRST (mirrors the inputs[].sha256 floor): without it, str() would
+                # coerce a 64-digit int into a hex-matching string and fail OPEN.
+                if not (isinstance(rs, str) and _SHA256_RE.fullmatch(rs)):
+                    add("invalid-format",
+                        f"llm_steps[{j}] must carry a 64-hex string response_sha256 "
+                        "(deep shape validated by validate_agent_provenance.py)")
     for i, entry in enumerate(doc["inputs"]):
         tag = f"inputs[{i}]"
         if not isinstance(entry, dict):
@@ -162,6 +181,13 @@ def _write_ledger(ledger_path: Path, scenario_dir: Path, repo_root: Path,
         print("error: git unavailable; cannot record code_version. Refusing to write a "
               "ledger without provenance.", file=sys.stderr)
         return 2
+    # Preserve an existing populated llm_steps (WP-A1a non-causal provenance) so a lockfile-drift --write
+    # regen never WIPES it; rng_seeds stays null (the engine is deterministic).
+    prior_llm_steps = None
+    if ledger_path.is_file():
+        prior, _err = load_registry(ledger_path)
+        if isinstance(prior, dict):
+            prior_llm_steps = prior.get("llm_steps")
     # Build the dict in the intended top-level order; emit with a PINNED serializer so the
     # committed bytes are stable (sort_keys=False keeps order; width avoids hash line-wrap).
     ledger = {
@@ -173,7 +199,7 @@ def _write_ledger(ledger_path: Path, scenario_dir: Path, repo_root: Path,
         "inputs": [{"path": p.relative_to(repo_root).as_posix(), "sha256": _sha256(p)}
                    for p in inputs],
         "rng_seeds": None,
-        "llm_steps": None,
+        "llm_steps": prior_llm_steps,
     }
     ledger_path.write_text(
         yaml.safe_dump(ledger, sort_keys=False, default_flow_style=False,

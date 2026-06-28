@@ -104,7 +104,53 @@ _STRUCTURAL = {
     "ledger_bad_date": ("invalid-format", "as_of_date"),
     "ledger_missing_path": ("missing-field", "path"),
     "ledger_non_null_placeholder": ("invalid-format", "rng_seeds"),
+    "ledger_malformed_llm_steps": ("invalid-format", "response_sha256"),
 }
+
+
+def _valid_ledger_doc() -> dict:
+    return {
+        "schema_version": "1.0", "as_of_date": "2026-06-22", "code_version": "abc123",
+        "tool_version": "1.0", "generated_by": "test",
+        "inputs": [{"path": "factbase/claims.yaml", "sha256": "a" * 64}],
+        "rng_seeds": None, "llm_steps": None,
+    }
+
+
+def test_populated_llm_steps_structure_accepts() -> None:
+    # the WP-A1a migration: a null OR well-formed populated llm_steps passes the structural floor
+    doc = _valid_ledger_doc()
+    doc["llm_steps"] = [{"turn": 0, "calling_slot": "BLUE", "response_sha256": "b" * 64}]
+    assert vrl.validate_structure(doc, "x") == []
+
+
+def test_response_sha256_must_be_a_string_not_a_coercible_int() -> None:
+    # fail-closed: a 64-digit int must NOT slip through (str() coercion would have matched the hex regex)
+    doc = _valid_ledger_doc()
+    doc["llm_steps"] = [{"turn": 0, "response_sha256": int("1" * 64)}]
+    probs = vrl.validate_structure(doc, "x")
+    assert len(probs) == 1 and probs[0][0] == "invalid-format" and "response_sha256" in probs[0][2]
+
+
+def test_populated_rng_seeds_still_rejected() -> None:
+    doc = _valid_ledger_doc()
+    doc["rng_seeds"] = [1, 2, 3]
+    probs = vrl.validate_structure(doc, "x")
+    assert len(probs) == 1 and probs[0][0] == "invalid-format" and "rng_seeds" in probs[0][2]
+
+
+def test_write_preserves_existing_llm_steps(tmp_path: Path) -> None:
+    # a lockfile-drift --write regen must NOT wipe a populated llm_steps (carry-through)
+    repo, scn = _mini_repo(tmp_path, git=True)
+    ledger = scn / "run_ledger.yaml"
+    assert _run(str(ledger), "--scenario-dir", str(scn), "--write").returncode == 0
+    doc = yaml.safe_load(ledger.read_text())
+    steps = [{"turn": 0, "calling_slot": "BLUE", "response_sha256": "c" * 64}]
+    doc["llm_steps"] = steps
+    ledger.write_text(yaml.safe_dump(doc, sort_keys=False, width=4096), encoding="utf-8")
+    assert _run(str(ledger), "--scenario-dir", str(scn), "--write").returncode == 0
+    assert yaml.safe_load(ledger.read_text())["llm_steps"] == steps  # preserved, not nulled
+    assert _run(str(ledger), "--scenario-dir", str(scn)).returncode == 0  # and still verifies clean
 
 
 @pytest.mark.parametrize("name,code,token", [(n, c, t) for n, (c, t) in sorted(_STRUCTURAL.items())])

@@ -19,7 +19,7 @@ generated_by: "validate_run_ledger.py --write"
 inputs:                           # one {path, sha256} per declared input, sorted by path
   - {path: "<repo-root POSIX path>", sha256: "<64 lowercase hex>"}
 rng_seeds: null                   # null: the engine is DETERMINISTIC (no RNG draws) — see Fields
-llm_steps: null                   # null: no LLM-assisted step in the pipeline — see Fields
+llm_steps: null                   # null, OR a list of llm_step provenance entries (WP-A1a) — see Fields
 ```
 
 ## Fields
@@ -34,7 +34,7 @@ llm_steps: null                   # null: no LLM-assisted step in the pipeline �
 | `inputs[].path` | yes | — | non-empty repo-root POSIX path |
 | `inputs[].sha256` | yes | as-of/content | `^[0-9a-f]{64}$` (raw-bytes sha256) |
 | `rng_seeds` | — | RNG seeds | must be `null` — the engine is DETERMINISTIC (no RNG draws); a stochastic resolver is a future REVIEWED WP, not an in-place change |
-| `llm_steps` | — | model/version/prompt/temperature | must be `null` — no LLM-assisted step in the pipeline; an LLM tier is a future REVIEWED WP |
+| `llm_steps` | — | model/version/prompt/temperature | `null` (no agent step) OR a non-empty list of `llm_step` provenance entries (WP-A1a), each carrying a 64-hex `response_sha256`. Structural floor only; deep shape + the H7 binding are owned by `validate_agent_provenance.py`. See [llm_step.schema.md](llm_step.schema.md). NON-CAUSAL (absent from `transition_input_hash`). |
 
 ## Declared inputs (the reproducibility surface)
 

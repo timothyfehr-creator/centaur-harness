@@ -1,0 +1,19 @@
+{
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Interdicting r1."
+    },
+    {
+      "type": "tool_use",
+      "name": "submit_command",
+      "input": {
+        "action_type": "BLOCK_ROUTE",
+        "params": {
+          "route": "r1"
+        }
+      }
+    }
+  ]
+}

@@ -66,17 +66,21 @@ def scan(root: Path) -> list[tuple[str, str]]:
         except OSError:
             continue
         if size > _MAX_SCAN_BYTES:
-            # Too large to read into memory. Peek the head (BOM-tolerant): a response-SHAPED oversize file
-            # cannot be certified prose-free -> FAIL CLOSED (a finding); a large non-JSON asset -> skip.
+            # Too large to read into memory. Peek a generous head (BOM- + whitespace-tolerant): a file we
+            # cannot positively classify as a non-JSON asset FAILS CLOSED (a finding). Only a clearly
+            # non-JSON asset -- a non-empty head whose first non-space byte is not '{'/'[' -- is skipped;
+            # a response-shaped OR all-whitespace(-prefixed) head cannot be certified, so it is a finding.
             try:
                 with path.open("rb") as fh:
-                    head = fh.read(16).lstrip()
+                    head = fh.read(4096)
             except OSError:
                 continue
             if head[:3] == b"\xef\xbb\xbf":
-                head = head[3:].lstrip()
-            if head[:1] in (b"{", b"["):
-                findings.append((rel, f"<{size} bytes: too large to scan; refusing to certify prose-free>"))
+                head = head[3:]
+            head = head.lstrip()
+            if head and head[:1] not in (b"{", b"["):
+                continue   # a clearly non-JSON large asset (binary/dataset) -> not a prose risk
+            findings.append((rel, f"<{size} bytes: too large to scan; refusing to certify prose-free>"))
             continue
         try:
             raw = path.read_bytes()

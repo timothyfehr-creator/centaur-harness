@@ -87,10 +87,11 @@ def test_oversize_response_shaped_file_fails_closed(tmp_path: Path) -> None:
     # not be skipped-as-clean; a large NON-JSON asset is not a prose risk and is skipped.
     body = json.dumps({"role": "assistant", "content": [{"type": "text", "text": "feint r1 then push r2"}]})
     pad = body.encode() + b"\n" + b" " * (vnp._MAX_SCAN_BYTES + 1024)   # response-shaped, oversize
+    wsp = b" " * 64 + body.encode() + b" " * (vnp._MAX_SCAN_BYTES + 1024)   # >16B whitespace prefix (the residual)
     asset = b"\x00\x01\x02" + b"\xff" * (vnp._MAX_SCAN_BYTES + 1024)    # large binary (not JSON-shaped)
-    repo = _git_repo(tmp_path, {"run/raw/big.json": pad, "assets/blob.bin": asset})
+    repo = _git_repo(tmp_path, {"run/raw/big.json": pad, "run/raw/wsp.json": wsp, "assets/blob.bin": asset})
     flagged = {f[0] for f in vnp.scan(repo)}
-    assert flagged == {"run/raw/big.json"}                  # oversize response-shaped -> finding; binary -> skip
+    assert flagged == {"run/raw/big.json", "run/raw/wsp.json"}   # both oversize JSON -> finding; binary -> skip
 
 
 def test_non_response_json_is_not_flagged(tmp_path: Path) -> None:

@@ -320,6 +320,15 @@ def test_tier3_registered_but_unapproved_fails_closed(tmp_path: Path, monkeypatc
     assert rc == 2 and "APPROVED" in payload
 
 
+def test_tier3_malformed_record_fails_closed_not_traceback(tmp_path: Path) -> None:
+    # robustness (slice-4 review R-2): a committed record the re-render cannot read (here: start_state
+    # stripped) must fail CLOSED (exit 2) with a clean message on the template path -- not a raw traceback.
+    scn, _ = _build_tier3(tmp_path)
+    _mutate_record(scn, lambda rec: rec.pop("start_state", None))
+    r = _run(scn)
+    assert r.returncode == 2 and "fail closed" in r.stderr and "Traceback" not in r.stderr
+
+
 def test_v1_offline_step_is_integrity_only_no_rerender(tmp_path: Path) -> None:
     # the reserved "v1" sentinel stays Tier-1: _build's request is a NON-template body ({"model":"x",...});
     # if the gate wrongly tried to re-render it as a template it would fail, so a green result proves no

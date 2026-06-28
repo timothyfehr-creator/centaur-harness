@@ -185,12 +185,20 @@ def _envelope_binding(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
     rec_path = scenario_dir / "run" / "turns" / f"{step['turn']:04d}.json"
     if not rec_path.is_file():
         return 1, ("turn-record-missing", where, f"run/turns/{rec_path.name} absent for the envelope binding")
-    rec = json.loads(rec_path.read_text(encoding="utf-8"))
     # The decision head is the single-turn T=0 head: the player decided on the PRE-turn state (start_state)
     # with no events yet. Re-render that slot's fog projection and bind it (the EXISTING projector + template).
-    decision_head = {"turn": step["turn"], "resulting_state": rec["start_state"], "event_batch": []}
-    view = project_turn_record(step["calling_slot"], decision_head)
-    if hashlib.sha256(canonical_request_bytes(pv, view)).hexdigest() != step["request_envelope_sha256"]:
+    # A malformed/unparseable record (missing start_state, bad entities) means we CANNOT re-render -> fail
+    # CLOSED (exit 2) with a clean message, matching the gate's other "cannot reproduce" paths -- never a raw
+    # traceback (which would still exit non-zero, but inconsistently with the v1 path's clean finding).
+    try:
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        decision_head = {"turn": step["turn"], "resulting_state": rec["start_state"], "event_batch": []}
+        view = project_turn_record(step["calling_slot"], decision_head)
+        rerendered = hashlib.sha256(canonical_request_bytes(pv, view)).hexdigest()
+    except (KeyError, ValueError, TypeError) as exc:   # ValueError covers JSONDecodeError + CanonError
+        return 2, f"{where}: cannot re-render the request envelope from the committed record " \
+                  f"({type(exc).__name__}: {exc}) — fail closed"
+    if rerendered != step["request_envelope_sha256"]:
         return 1, ("request-envelope-binding-mismatch", where,
                    "re-rendered request envelope sha != recorded request_envelope_sha256 (Tier-3 template binding)")
     return 0, None

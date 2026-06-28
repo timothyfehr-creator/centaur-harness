@@ -81,6 +81,41 @@ def test_command_input_extra_key_is_flagged() -> None:
     assert contains_prose(json.dumps({"role": "assistant", "content": [_tool_use()]}).encode()) == []
 
 
+def _cmd(action_type: str, params: dict) -> bytes:
+    return json.dumps({"role": "assistant", "content": [
+        {"type": "tool_use", "name": "submit_command",
+         "input": {"action_type": action_type, "params": params}}]}).encode()
+
+
+def test_prose_poisoned_into_a_command_field_VALUE_is_flagged() -> None:
+    # 3rd-review BLOCKER: prose written AS a command field value (the model fills route/action_type) forfeits
+    # at the extractor but the bytes are still committed -- contains_prose must mirror PARAM_SCHEMA by VALUE,
+    # not skip the field by key name.
+    strat = "RED is overcommitted on r1; the real supply goes r2 next turn to win"
+    assert contains_prose(_cmd("DISPATCH_SUPPLY", {"quantity": 30, "route": f"r1 — {strat}"}))   # poisoned route
+    assert contains_prose(_cmd(f"DISPATCH_SUPPLY {strat}", {"quantity": 30, "route": "r1"}))      # poisoned action_type
+    assert contains_prose(_cmd("DISPATCH_SUPPLY", {"quantity": 30, "route": {"h": strat}}))       # route as a dict
+    assert contains_prose(_cmd("DISPATCH_SUPPLY", {"quantity": {"n": strat}, "route": "r1"}))     # quantity as a dict
+    # ...while the genuinely valid command (route in the enum, quantity an int) is NOT flagged:
+    assert contains_prose(_cmd("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"})) == []
+    assert contains_prose(_cmd("BLOCK_ROUTE", {"route": "r2"})) == []
+
+
+def test_tool_use_id_and_wrong_name_and_bare_string_block_are_flagged() -> None:
+    # N1: a stray block id / a non-TOOL_NAME name are prose channels (dropped by redact, flagged by the gate).
+    idblk = json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "submit_command",
+        "id": "feint r1 then win r2", "input": {"action_type": "BLOCK_ROUTE", "params": {"route": "r1"}}}]}).encode()
+    assert contains_prose(idblk) == ["feint r1 then win r2"]
+    assert "id" not in json.loads(redact(idblk))["content"][0]            # redact drops the id channel
+    badname = json.dumps({"role": "assistant", "content": [{"type": "tool_use",
+        "name": "submit_command but actually feint", "input": {"action_type": "BLOCK_ROUTE", "params": {"route": "r1"}}}]}).encode()
+    assert contains_prose(badname)
+    # N2: a bare-string element inside content[] (a hand-crafted dump) is prose; redact strips it.
+    bare = json.dumps({"role": "assistant", "content": ["RED feints r1, real push r2"]}).encode()
+    assert contains_prose(bare) == ["RED feints r1, real push r2"]
+    assert json.loads(redact(bare))["content"] == []
+
+
 def test_wrapper_and_array_nested_prose_is_flagged() -> None:
     # landing-review BLOCKER (b): a response body nested under a key, or inside a JSON array, is still scanned.
     text_block = {"type": "text", "text": "BLUE will feint r1 then win on r2"}

@@ -24,10 +24,12 @@ def test_ensemble_layer_stays_no_go() -> None:
     assert "machine log only, never a forecast" in _NYI
 
 
-def test_live_call_itself_is_still_declared_unbuilt() -> None:
-    # A1b built the OFFLINE machinery, NOT the live call. The report must still say no model is called.
-    assert "no model is ever called" in _NYI
-    assert "@live lane" in _NYI or "live agent model call" in _NYI
+def test_live_lane_reported_out_of_gate_not_certified() -> None:
+    # The @live lane now EXISTS but is non-deterministic, so the report must say it is OUT of the green gate
+    # and that the GATE never re-calls a model (replay-scoped) -- never that a live call is gated/certified.
+    assert "@live" in _NYI
+    assert "out of the green gate" in _NYI
+    assert "never re-called in the gate" in _NYI
 
 
 def test_no_yet_unimplemented_entry_claims_it_passed() -> None:

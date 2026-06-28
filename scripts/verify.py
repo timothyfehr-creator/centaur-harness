@@ -92,19 +92,20 @@ PER_SCENARIO_GATES = ("validate_review_signoff.py", "validate_calibration.py")
 # neither may imply they passed (CONSTITUTION §3). Refuter review + human signoff (WP8), the
 # calibration RECORD (WP9), and turn replay (WP-E1) are gated in `release`. The OFFLINE agent substrate
 # (WP-A1a) is now gated too -- validate_agent_provenance (the H7 binding) + validate_agent_fog (the
-# differential no-leak check) over HAND-AUTHORED response bytes. WP-A1b added the OFFLINE machinery FOR a
-# future live call -- the prompt-template registry + the Tier-3 request-envelope binding + redact-at-source
-# + the global no-prose gate + the network-import determinism gate -- all gated. What remains UNBUILT,
-# named honestly so the report never implies it passed: COMPUTING calibration, the live CALL, the analysis.
+# differential no-leak check). WP-A1b added the offline binding machinery (template registry, Tier-3 binding,
+# redact-at-source prose gate, network-import determinism gate) AND the @live capture lane itself -- which is
+# non-deterministic and therefore OUT of the green gate (the gate only certifies that committed captures
+# REPLAY consistently). What remains UNBUILT / out-of-gate, named honestly so the report never implies it
+# passed: COMPUTING calibration, the non-deterministic @live lane, and the NO-GO'd analysis layers.
 NOT_YET_IMPLEMENTED = (
     "calibration scoring (the harness records an external proper-scoring result; "
     "it does not compute one -- no engine)",
-    "the LIVE agent model CALL itself (WP-A1b @live lane): the offline binding machinery is built + gated "
-    "(template registry, Tier-3 request-envelope binding, redact-at-source prose gate, network-import "
-    "determinism gate), but no network client, spend kill-switch, or Slice-0 probe exists -- the substrate "
-    "still only REPLAYS hand-authored response bytes; no model is ever called",
+    "the @live capture lane (WP-A1b: core/live_client.py + scripts/agent_live_capture.py) EXISTS but is "
+    "non-deterministic and OUT of the green gate -- CI/pytest only REPLAY committed bytes, so a model is "
+    "never re-called IN THE GATE (a committed CAPTURE_ARTIFACT records one real call). Still unbuilt: live "
+    "retry/forfeit-recovery (WP-A2), two-player live GAMES, and multi-turn live campaigns",
     "the agent transcript / judge / ENSEMBLE analysis layers: design-frozen and INDEPENDENTLY NO-GO'd "
-    "(a decision-facing AI-playthrough transcript is false-validity) -- the offline substrate is a "
+    "(a decision-facing AI-playthrough transcript is false-validity) -- a captured game is a "
     "MACHINE log only, never a forecast",
 )
 

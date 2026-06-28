@@ -1,0 +1,78 @@
+schema_version: '1.0'
+as_of_date: '2026-06-28'
+code_version: 86d8b1bd5ba0177421dfe0943eb08b711d7833a1
+tool_version: '1.0'
+generated_by: validate_run_ledger.py --write
+inputs:
+- path: examples/contested_logistics_agents_live/initial_state.yaml
+  sha256: 03712cd2e4912c0d17b42aef3ec7acc8e6fe6fd35ed41084dfc92b7c60c954d4
+- path: examples/contested_logistics_agents_live/scenario.yaml
+  sha256: 48e1307ec3a2dda0da8e0cd1ab2faa184bf12ef10fe288c61beabe5a0bb73d51
+- path: examples/contested_logistics_agents_live/state/private/adjudicator.yaml
+  sha256: 4cce42f2a76504deed96c319b7e33d15508a08e43bc6d1919506735e9032f520
+- path: examples/contested_logistics_agents_live/state/public.yaml
+  sha256: d2369336cefc08f457ad33837b0aa77f9c6e92baba1740eefa03bef2678ce608
+- path: factbase/assumptions.yaml
+  sha256: 2934091a97bb2586a45cee34b934519d9ff2e93facb757e2908a7e77a7f5fcc4
+- path: factbase/claims.yaml
+  sha256: 26da6f47508567a688fdad915078e61e3db0b10dbadd88f9acdac411861e3cf7
+- path: factbase/events.yaml
+  sha256: 16c295527086f755b78b40044adadf6e85828baee92d24f940dee8e44fb32fb6
+- path: factbase/sources.yaml
+  sha256: bd162b5956ce63ef56a3c5f02a8bd6e1303ad12b632757a05a5a0a70ae0d3caa
+- path: knowledge/country_books/ukraine_logistics.yaml
+  sha256: 9fa4e875dc66ff6e5219d671a47ee0547e19110fa24ff2365db272d8d10b1b93
+- path: knowledge/institution_books/nato_jflc.yaml
+  sha256: 464609f16ebe1468352de480b969cdcb3601cb93de648aaf1bdab16732c7b0c3
+rng_seeds: null
+llm_steps:
+- schema_version: '1.0'
+  run_id: contested-live-001
+  turn: 0
+  recorded_turn: 0
+  calling_slot: BLUE
+  command_id: contested-live-001:0:BLUE
+  step_kind: COMMAND
+  capture_mode: LIVE
+  provider: anthropic
+  model: claude-opus-4-8
+  model_version: claude-opus-4-8
+  served_model: claude-opus-4-8
+  sampling: PROVIDER_DEFAULT_NO_SEED
+  prompt_version: ptmpl-8a6e10b1240e09ca
+  extractor_version: '2'
+  canon_version: canon-v1
+  response_sha256: fbdbc4a6351aa5b23a6a07bb36d39553584916380b214a36efa484d72284a6bb
+  request_envelope_sha256: 4f1ac3eb3127815fc967f63da7dd92633e6a8f2384b0b705a4a4948ac4270fa3
+  extracted_command_digest: 6627850679a8b1a24da89b9370cfa2a8e54320f12bdce21d1ebd7e81279966fc
+  reject_code: null
+  as_of: '2026-06-28'
+  provider_request_id: req_011CcW594DVPb8U6Lu2U5cSb
+  anthropic_api_version: '2023-06-01'
+  model_id_stability: PROVIDER_DOCUMENTED_PINNED_MODEL_ID_INFRA_MAY_CHANGE
+  authenticity: RUNNER_ATTESTED_NOT_PROVEN
+- schema_version: '1.0'
+  run_id: contested-live-001
+  turn: 0
+  recorded_turn: 0
+  calling_slot: RED
+  command_id: contested-live-001:0:RED
+  step_kind: COMMAND
+  capture_mode: LIVE
+  provider: anthropic
+  model: claude-opus-4-8
+  model_version: claude-opus-4-8
+  served_model: claude-opus-4-8
+  sampling: PROVIDER_DEFAULT_NO_SEED
+  prompt_version: ptmpl-8a6e10b1240e09ca
+  extractor_version: '2'
+  canon_version: canon-v1
+  response_sha256: 4ef8249e693545ce8015feaca0794bbcafc0cbbc392696bf7c9fc85d93ad0629
+  request_envelope_sha256: 1cf6dba29750e0d8e054bc1eeeee647ebf7098de14f98b5b00e78ae3168ba99e
+  extracted_command_digest: a9ddbd6ae7985b9e42089eeef0d385418d886d4063e0bbb75732254cb6b98900
+  reject_code: null
+  as_of: '2026-06-28'
+  provider_request_id: req_011CcW59Cv7ZmLw6rYMB2Fq1
+  anthropic_api_version: '2023-06-01'
+  model_id_stability: PROVIDER_DOCUMENTED_PINNED_MODEL_ID_INFRA_MAY_CHANGE
+  authenticity: RUNNER_ATTESTED_NOT_PROVEN

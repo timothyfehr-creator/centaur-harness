@@ -28,3 +28,6 @@ known-first-party = ["core", "scripts"]
 # files don't each need a sys.path.insert. testpaths keeps `pytest` scoped to the suite.
 pythonpath = ["scripts", "core"]
 testpaths = ["tests"]
+markers = [
+    "heldout: adversarial binding probes NOT used during gate development (the Goodhart split; run at the end)",
+]

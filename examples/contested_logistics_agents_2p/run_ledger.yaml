@@ -1,6 +1,6 @@
 schema_version: '1.0'
-as_of_date: '2026-06-27'
-code_version: 5f8a5eee6cd9fe63c72959172516ba35997c2759
+as_of_date: '2026-06-28'
+code_version: db2ebfa5789d6ea0399ea583cc3389f72ca55b94
 tool_version: '1.0'
 generated_by: validate_run_ledger.py --write
 inputs:
@@ -42,7 +42,7 @@ llm_steps:
   prompt_version: v1
   extractor_version: '2'
   canon_version: canon-v1
-  response_sha256: e1ec8db7950330534890f834e5b3b47b74bb9274bb036928e09380211d4ecb4d
+  response_sha256: 1b222d4c48dffaba0201e7c8253b07b727c7e699c4e435585c56552e099dfa1a
   request_envelope_sha256: 6ac95cc234f98488c2cf51860fc0db9b81331904ccf120f8e5529228946dc7e1
   extracted_command_digest: ba84428f649ba08530e2120e8a8855a5af7ae2e87b45980b8be746c37b9fca72
   reject_code: null
@@ -63,7 +63,7 @@ llm_steps:
   prompt_version: v1
   extractor_version: '2'
   canon_version: canon-v1
-  response_sha256: 6437ede9973c8089b4455d77388066b4e927ea5c3a148a8bc73ca9989b73d465
+  response_sha256: bd843253060248d55e55147e94a6a31d2070b1f58c01c89838fe2b15d4532883
   request_envelope_sha256: abf909f9fcf47fccacc642f0152fa5bf891338f688ff12cddf3588467dff0421
   extracted_command_digest: a9ddbd6ae7985b9e42089eeef0d385418d886d4063e0bbb75732254cb6b98900
   reject_code: null

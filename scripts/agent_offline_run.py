@@ -27,6 +27,7 @@ import agent_logistics as al  # noqa: E402
 import turn_record as tr  # noqa: E402
 from canon import CANON_VERSION, canonical_digest  # noqa: E402
 from command_extractor import EXTRACTOR_VERSION, extract_command, project_semantic  # noqa: E402
+from response_redact import redact  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCENARIO = REPO_ROOT / "examples" / "contested_logistics_agents"
@@ -84,7 +85,7 @@ def drive_turn(start_state: dict, byte_by_slot: dict, *, run_id: str, turn: int,
     for slot in ("BLUE", "RED"):                      # canonical order; the engine re-sorts anyway
         if slot not in byte_by_slot:
             continue
-        response = byte_by_slot[slot]
+        response = redact(byte_by_slot[slot])   # WP-A1b: strip prose at SOURCE before hashing/committing
         request = _request_bytes(slot, turn, prompt_version)
         artifacts[hashlib.sha256(response).hexdigest()] = response
         artifacts[hashlib.sha256(request).hexdigest()] = request

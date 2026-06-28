@@ -1,0 +1,1 @@
+{"content":[{"input":{"action_type":"BLOCK_ROUTE","params":{"route":"r1"}},"name":"submit_command","type":"tool_use"}],"role":"assistant"}

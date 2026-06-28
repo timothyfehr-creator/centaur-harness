@@ -1,0 +1,1 @@
+{"content":[{"input":{"action_type":"DISPATCH_SUPPLY","params":{"quantity":30,"route":"r1"}},"name":"submit_command","type":"tool_use"}],"role":"assistant"}

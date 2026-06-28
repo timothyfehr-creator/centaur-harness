@@ -191,6 +191,10 @@ TURN_SPEC = {
 WORLD_VS_GAME_LABELS = (
     "REAL_WORLD_BASELINE", "ASSUMPTION", "MODEL_OUTPUT",
     "GAMED_FUTURE", "ANALYST_JUDGMENT", "ILLUSTRATIVE",
+    # WP-A1b: a single non-deterministic LIVE capture demonstrating the live lane mechanically works -- NOT a
+    # model, NOT a sample, NOT analysis. A DISTINCT deflationary label (never the shared ILLUSTRATIVE, which
+    # would confer undeserved membership in the calibrated-model club).
+    "CAPTURE_ARTIFACT",
 )
 
 

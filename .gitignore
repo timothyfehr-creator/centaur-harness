@@ -33,6 +33,13 @@ secrets.*
 .aws/
 .ssh/
 
+# WP-A1b live lane: the run-local spend ledger + any live RAW wire bytes (which carry model prose; the real
+# raw-wire dir lives OUTSIDE the repo tree, this is belt-and-suspenders). COMMITTED response bytes are REDACTED.
+*.local.json
+run/**/*.local.json
+live_raw/
+**/live_raw/
+
 # Test fixtures intentionally contain fake key-/secret-shaped files; keep them
 # tracked despite the secret patterns above.
 !tests/fixtures/**

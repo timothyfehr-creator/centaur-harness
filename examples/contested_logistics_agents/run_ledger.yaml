@@ -40,7 +40,7 @@ llm_steps:
   served_model: N/A_FIXTURE
   sampling: PROVIDER_DEFAULT_NO_SEED
   prompt_version: v1
-  extractor_version: '1'
+  extractor_version: '2'
   canon_version: canon-v1
   response_sha256: e1ec8db7950330534890f834e5b3b47b74bb9274bb036928e09380211d4ecb4d
   request_envelope_sha256: 6ac95cc234f98488c2cf51860fc0db9b81331904ccf120f8e5529228946dc7e1

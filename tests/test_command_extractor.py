@@ -30,6 +30,10 @@ INVALID_CASES = {
     "params_not_mapping.json": "semantic-field-invalid",
     "action_not_string.json": "semantic-field-invalid",
     "non_canon_float.json": "non-canon-command",
+    "unknown_action.json": "unknown-action",            # NUKE — no closed schema (WP-A1b amend 1)
+    "prose_in_params.json": "params-schema-mismatch",   # a rationale key smuggled into params
+    "quantity_not_int.json": "params-schema-mismatch",  # wrong scalar type
+    "prose_in_route.json": "params-schema-mismatch",    # free-form prose in the route enum field
 }
 
 
@@ -37,7 +41,16 @@ def _bytes(rel: str) -> bytes:
     return (FIX / rel).read_bytes()
 
 
-@pytest.mark.parametrize("name", ["dispatch_r1.json", "block_r1.json", "wellformed_illegal_action.json"])
+import json  # noqa: E402
+
+
+def _resp(action: str, params: dict) -> bytes:
+    return json.dumps({"role": "assistant", "content": [
+        {"type": "tool_use", "name": "submit_command",
+         "input": {"action_type": action, "params": params}}]}).encode()
+
+
+@pytest.mark.parametrize("name", ["dispatch_r1.json", "block_r1.json"])
 def test_valid_fixtures_extract_to_semantic_pair_only(name: str) -> None:
     r = extract_command(_bytes(f"valid/{name}"))
     assert r.ok, r.reject_detail
@@ -47,10 +60,12 @@ def test_valid_fixtures_extract_to_semantic_pair_only(name: str) -> None:
     assert isinstance(r.command["params"], dict)
 
 
-def test_extraction_is_not_legality() -> None:
-    # a well-formed but illegal action extracts cleanly; legality is validate_all's job, not the extractor's
-    r = extract_command(_bytes("valid/wellformed_illegal_action.json"))
-    assert r.ok and r.command == {"action_type": "NUKE", "params": {}}
+def test_extraction_is_not_value_RANGE_legality() -> None:
+    # the [1,30] quantity RANGE stays validate_all's job: an out-of-range quantity still EXTRACTS cleanly
+    # (an int is shape-valid). But an unknown route (not in the enum) is a SHAPE reject here (prose closure).
+    assert extract_command(_resp("DISPATCH_SUPPLY", {"quantity": 999, "route": "r1"})).ok
+    r = extract_command(_resp("DISPATCH_SUPPLY", {"quantity": 30, "route": "r9"}))
+    assert not r.ok and r.reject_code == "params-schema-mismatch"
 
 
 @pytest.mark.parametrize("name,code", list(INVALID_CASES.items()), ids=list(INVALID_CASES))

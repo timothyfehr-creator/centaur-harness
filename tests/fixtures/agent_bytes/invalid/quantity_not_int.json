@@ -1,0 +1,16 @@
+{
+  "role": "assistant",
+  "content": [
+    {
+      "type": "tool_use",
+      "name": "submit_command",
+      "input": {
+        "action_type": "DISPATCH_SUPPLY",
+        "params": {
+          "quantity": "30",
+          "route": "r1"
+        }
+      }
+    }
+  ]
+}

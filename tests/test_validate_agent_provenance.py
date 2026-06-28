@@ -202,7 +202,7 @@ def test_command_step_with_reject_code(tmp_path: Path) -> None:
 
 def test_stale_extractor_version_fails_closed(tmp_path: Path) -> None:
     scn, step = _build(tmp_path)
-    step["extractor_version"] = "2"  # a version this build cannot reproduce
+    step["extractor_version"] = "99"  # a version this build cannot reproduce
     _write_ledger(scn, [step])
     r = _run(scn)
     assert r.returncode == 2 and "extractor_version" in r.stderr

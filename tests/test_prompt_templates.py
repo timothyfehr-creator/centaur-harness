@@ -1,0 +1,114 @@
+"""Tests for core/prompt_templates.py (WP-A1b §2.2 — the pure template registry, purity, sentinel scan)."""
+from __future__ import annotations
+
+import copy
+
+import prompt_templates as pt
+from canon import canonical_bytes
+from engine_projection import project_turn_record
+
+PV = pt.A1B_PROMPT_VERSION
+
+
+def _full_state(*, threshold: int, blue_origin: int = 100) -> dict:
+    """A contested-logistics full state with a SECRET block_threshold in a ROUTE_SECRET entity."""
+    return {"schema_version": "1.0", "state": {"as_of_turn": 0, "entities": [
+        {"id": "blue_supply", "type": "FORCE", "fields": {
+            "origin": {"value": blue_origin, "unit": "units"}, "in_transit": {"value": 0, "unit": "units"},
+            "delivered": {"value": 0, "unit": "units"}, "loss_sink": {"value": 0, "unit": "units"}}},
+        {"id": "route:r1", "type": "ROUTE", "fields": {
+            "capacity": {"value": 50, "unit": "units"}, "blockable": {"value": True, "unit": "bool"}}},
+        {"id": "route_secret:r1", "type": "ROUTE_SECRET", "fields": {
+            "subject_route": {"value": "r1", "unit": "id"},
+            "block_threshold": {"value": threshold, "unit": "d100"}}}]}}
+
+
+def _fog_view(*, threshold: int, blue_origin: int = 100) -> dict:
+    tr = {"turn": 0, "resulting_state": _full_state(threshold=threshold, blue_origin=blue_origin),
+          "event_batch": []}
+    return project_turn_record("BLUE", tr)
+
+
+# --- determinism / no clock|nonce -------------------------------------------------------------------
+
+def test_render_is_deterministic_no_clock_or_nonce() -> None:
+    view = _fog_view(threshold=73)
+    a = pt.canonical_request_bytes(PV, view)
+    b = pt.canonical_request_bytes(PV, view)
+    assert a == b and a == canonical_bytes(pt.render_request_envelope(PV, view))
+
+
+def test_envelope_shape_is_the_a1b_contract() -> None:
+    env = pt.render_request_envelope(PV, _fog_view(threshold=73))
+    assert env["model"] == "claude-opus-4-8" and env["max_tokens"] == 1024
+    assert env["tool_choice"]["type"] == "tool" and env["tool_choice"]["name"] == "submit_command"
+    assert [t["name"] for t in env["tools"]] == ["submit_command"]
+    assert "thinking" not in env and "temperature" not in env and "top_p" not in env  # amend 8 + un-spellable
+    assert env["messages"][0]["role"] == "user"
+
+
+# --- content-pinned version (Fork B) ----------------------------------------------------------------
+
+def test_prompt_version_is_content_pinned() -> None:
+    assert set(pt.APPROVED_PROMPT_VERSIONS) <= set(pt.PROMPT_TEMPLATES)   # approved => registered
+    assert PV.startswith("ptmpl-")
+    edited = copy.deepcopy(pt.PROMPT_TEMPLATES[PV])
+    edited["system"] = edited["system"] + " (extra clause)"
+    assert pt.prompt_version_of(edited) != PV          # any byte change moves the version
+
+
+def test_unregistered_version_refuses_to_render() -> None:
+    import pytest
+    with pytest.raises(KeyError):
+        pt.render_request_envelope("ptmpl-deadbeefdeadbeef", _fog_view(threshold=73))
+
+
+# --- the differential-PURITY invariant (§2.2 leg 3 — "a leaky template binds green") ----------------
+
+def test_fixed_part_is_invariant_across_secret_and_public_variation() -> None:
+    # vary the SECRET (block_threshold): the whole request is byte-identical (fog excludes the secret)...
+    full_a = pt.canonical_request_bytes(PV, _fog_view(threshold=1))
+    full_b = pt.canonical_request_bytes(PV, _fog_view(threshold=99))
+    assert full_a == full_b, "secret leaked into the request"
+    # ...and across a MATERIALLY DIFFERENT public view, the FIXED part (system+tools+pins) is unchanged,
+    # proving the fixed part is a pure function of prompt_version alone (no view/secret access).
+    fixed_1 = canonical_bytes(pt.fixed_part(pt.render_request_envelope(PV, _fog_view(threshold=5, blue_origin=100))))
+    fixed_2 = canonical_bytes(pt.fixed_part(pt.render_request_envelope(PV, _fog_view(threshold=5, blue_origin=7))))
+    assert fixed_1 == fixed_2
+
+
+# --- the secret-sentinel request scan (amendment 5) -------------------------------------------------
+
+def _sentinel_state() -> dict:
+    """A hostile full state with high-entropy sentinels across EVERY hidden surface (§6.5)."""
+    s = _full_state(threshold=0)
+    secret = s["state"]["entities"][2]["fields"]
+    secret["block_threshold"]["value"] = "SENTINELthreshold7Q2"   # the threshold VALUE
+    secret["subject_route"]["value"] = "SENTINELsubjroute8K4"     # the hidden subject route
+    s["state"]["entities"][2]["id"] = "route_secret:SENTINELhidid9Z1"  # a hidden entity id
+    s["state"]["scenario_label"] = "SENTINELlabel3X8"             # a scenario label
+    return s
+
+
+def test_no_hidden_sentinel_reaches_the_request() -> None:
+    view = project_turn_record("BLUE", {"turn": 0, "resulting_state": _sentinel_state(), "event_batch": []})
+    sentinels = ["SENTINELthreshold7Q2", "SENTINELsubjroute8K4", "SENTINELhidid9Z1", "SENTINELlabel3X8"]
+    assert pt.request_contains_any(PV, view, sentinels) == []   # none reach the wire
+
+
+def test_sentinel_scan_has_teeth_on_a_leaky_template() -> None:
+    # A deliberately LEAKY template (a secret sentinel baked into its FIXED system prose). It is a valid
+    # registered template that self-binds green -- which is exactly why the binding alone is insufficient
+    # and the sentinel scan / purity invariant is the load-bearing leg (§2.5). The scan must CATCH it.
+    leaked = "SENTINELthreshold7Q2"
+    leaky_spec = pt._spec(system=pt._SYSTEM_PROSE + f" The block threshold is {leaked}.",
+                          tool=pt._SUBMIT_COMMAND_TOOL)
+    leaky_pv = pt.prompt_version_of(leaky_spec)
+    pt.PROMPT_TEMPLATES[leaky_pv] = leaky_spec
+    try:
+        view = _fog_view(threshold=0)
+        assert pt.request_contains_any(leaky_pv, view, [leaked]) == [leaked]   # the scan finds the leak
+        # ...and it self-binds: re-rendering is byte-identical (proving "leaky template binds green").
+        assert pt.canonical_request_bytes(leaky_pv, view) == pt.canonical_request_bytes(leaky_pv, view)
+    finally:
+        del pt.PROMPT_TEMPLATES[leaky_pv]   # never leave the leaky template registered

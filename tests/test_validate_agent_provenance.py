@@ -222,3 +222,10 @@ def test_uncovered_command_has_no_backing_step(tmp_path: Path) -> None:
         {"command_id": f"{RUN_ID}:0:RED", "turn": 0, "actor_id": "RED",
          "action_type": "BLOCK_ROUTE", "params": {"route": "r1"}}))
     _expect_one(scn, "uncovered-command")
+
+
+def test_duplicate_step_for_one_slot_is_rejected(tmp_path: Path) -> None:
+    # cardinality: a padded log (two COMMAND steps for the same (turn, slot)) must be rejected
+    scn, step = _build(tmp_path)
+    _write_ledger(scn, [step, dict(step)])
+    _expect_one(scn, "duplicate-step")

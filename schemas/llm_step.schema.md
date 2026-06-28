@@ -6,9 +6,11 @@ preimage (the engine never reads it), so populating `llm_steps` cannot change re
 turn-replay gate needs zero edits. It is the audit trail that binds the model's recorded SEMANTIC choice
 to the committed command (see `validate_agent_provenance.py`, the H7 binding).
 
-The raw byte artifacts are content-addressed under the scenario's `run/llm/{sha}.json` (response and
-request envelope) and `run/forfeits/` (a recorded forfeit), each pinned as a declared input in the
-ledger. Every `llm_step` field is therefore a SCALAR (the only container is the `llm_steps` list itself).
+The raw byte artifacts (the response, including a forfeit's, and the request envelope) are content-
+addressed under the scenario's `run/llm/{sha}.json`. Every `llm_step` field is a SCALAR (the only
+container is the `llm_steps` list itself). (A separate, human-readable `run/forfeits/` audit record per
+forfeit is a deferred follow-up; today a forfeit is fully reconstructible from its `response_sha256`
+bytes + `reject_code`, which the gate re-derives.)
 
 ## Example (a HAND_AUTHORED_FIXTURE COMMAND step)
 

@@ -245,6 +245,19 @@ def _judge_scenario(scenario_dir: Path) -> tuple[int, object]:
         if rc == 2:
             return 2, bproblems            # a version this build can't reproduce taints the gate
         all_problems.extend(bproblems)
+    # CARDINALITY: at most ONE step per (turn, calling_slot). Rejects a PADDED log (two COMMAND steps
+    # binding the same command) or a CONTRADICTORY FORFEIT+COMMAND pair for one slot -- a provenance log
+    # must be a function, not a multiset. (A FORFEIT for a slot that DID commit a command is separately
+    # caught by COVERAGE: the command has no backing COMMAND step -> uncovered-command.)
+    if not all_problems:
+        seen: set = set()
+        for i, step in enumerate(steps):
+            key = (step["turn"], step["calling_slot"])
+            if key in seen:
+                all_problems.append(("duplicate-step", f"{_display(ledger_path)}#llm_steps[{i}]",
+                    f"a second llm_step for (turn {step['turn']}, slot {step['calling_slot']!r}); "
+                    "at most one step per (turn, slot)"))
+            seen.add(key)
     # COVERAGE (the converse binding): in a scenario WITH provenance, every committed agent command must
     # have a backing COMMAND step -- else a FABRICATED command with no step would ride through unaudited
     # (the step->command binding alone does not catch a command->no-step gap). Only runs once provenance is

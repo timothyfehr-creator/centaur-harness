@@ -710,9 +710,9 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   and INDEPENDENTLY NO-GO'd — a decision-facing AI-playthrough transcript is false-validity). Disclosed residual:
   a fully self-consistent fabrication binds green (the gates prove consistency, not byte authenticity).
 - **WP-A1b (offline machinery FOR a live call) — BUILT; the live CALL is deferred.** Externally adjudicated
-  GO-WITH-CONTRACT (cross-vendor, 10 binding amendments) before the build. A1b lands everything a single future
-  live model call needs, fully offline + green-gated, but makes **no call** (no network client, no spend, no
-  Slice-0 probe — the substrate still only replays hand-authored bytes; no model is ever called). Shipped, each
+  GO-WITH-CONTRACT (cross-vendor, 10 binding amendments) before the build. A1b lands the offline MACHINERY a
+  future live model call needs, fully offline + green-gated, but makes **no call** (no network client, no spend,
+  no Slice-0 probe — the substrate still only replays hand-authored bytes; no model is ever called). Shipped, each
   a green-gated slice with the highest-risk two adversarially verified: (1) a **closed-params extractor**
   (`EXTRACTOR_VERSION="2"` — closed per-action schema, no free-form/rationale field expressible); (2)
   **redact-at-source** (`core/response_redact.py` — an ALLOWLIST keeping only `tool_use` blocks before hashing)
@@ -726,6 +726,7 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   **network-import determinism gate** (`validate_no_network_imports.py`, RELEASE-wired — static AST scan, no
   network import in any green module) + a runtime `sys.modules` guard. The binding is **one leg of a three-
   legged AND** (binding ∘ fog no-leak ∘ template purity); alone it is not a no-leak proof — a leaky-but-
-  registered template binds green, which the purity invariant catches. The ensemble/transcript/judge layers
+  registered template binds green, which the audited allowlist + the purity invariant catch. The
+  ensemble/transcript/judge layers
   stay INDEPENDENTLY NO-GO'd (a `verify.py`-reporting guard test now pins that verbatim). Disclosed residual
   unchanged: a fully self-consistent fabricated capture binds green (consistency, not authenticity).

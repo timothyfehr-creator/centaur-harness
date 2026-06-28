@@ -3,10 +3,15 @@
 
 The external review: gitignore is "a speed bump, not a control" (``git add -f`` exists), and a prose gate
 scoped to ``run/llm/*.json`` leaves adjacent manholes (a raw dump, probe, or debug capture committed under
-``run/raw/``, ``logs/``, ``tmp/``, a stray ``debug.json``). So the prose quarantine is enforced GLOBALLY:
-NO committed (git-tracked) file anywhere may contain a provider response ``content[]`` block of type
-``text``/``thinking``/``redacted_thinking`` with a non-empty string payload. Committed response bytes are
-redacted at source (``core/response_redact.py``); the full wire bytes live run-local + gitignored.
+``run/raw/``, ``logs/``, ``tmp/``, a stray ``debug.json``). So the prose quarantine is enforced GLOBALLY: no
+committed (git-tracked) file anywhere may carry MODEL-RESPONSE prose. "Response prose" is defined by
+``core/response_redact.contains_prose`` and the scope is exactly what the redactor emits — a committed
+response body (found at the top level, nested under a key, or inside a JSON array; BOM-tolerant) may contain
+ONLY skeletal ``tool_use`` command blocks; any string in a non-``tool_use`` block, a ``tool_use`` SIBLING
+field, or a ``tool_use`` ``input`` outside the command enum tokens is prose. (It does NOT police free prose
+in some OTHER shape — a markdown transcript, a ``{"reasoning": "..."}`` field — those are the separately
+VETOED forbidden artifacts, by convention, not this gate's job.) Committed response bytes are redacted at
+source (``core/response_redact.py``); the full wire bytes live run-local + gitignored.
 
 A small EXEMPTION list covers the deliberate prose-bearing TEST fixtures (a fixture WITH prose is needed to
 prove the redactor strips it) — exactly as ``secret_scan.py`` exempts its own secret fixtures.
@@ -63,7 +68,12 @@ def scan(root: Path) -> list[tuple[str, str]]:
         # No key-byte pre-filter: ``"content"``/``"type"`` can be \u-escaped (the JSON still parses as a
         # response with prose), which a literal-byte filter skips -- a fail-OPEN against "ANY committed file".
         # contains_prose json.loads-es safely and returns [] for any non-response file, so just call it.
-        if raw.lstrip()[:1] != b"{":   # a response body is a JSON object; this is escape-proof (brace, not keys)
+        # Tolerate a leading UTF-8 BOM (PowerShell/Windows/loggers emit one) before the brace check + a
+        # JSON ARRAY of response bodies -- both parse as prose-bearing responses; skipping them fails OPEN.
+        head = raw.lstrip()
+        if head[:3] == b"\xef\xbb\xbf":
+            head = head[3:].lstrip()
+        if head[:1] not in (b"{", b"["):   # a response body (or an array/wrapper of them) is JSON; escape-proof
             continue
         for prose in contains_prose(raw):
             findings.append((rel, prose[:60]))
@@ -84,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         print("  committed artifacts must be prose-free (redact at source; keep wire bytes run-local).",
               file=sys.stderr)
         return 1
-    print("no-prose OK (no model prose in any committed file)")
+    print("no-prose OK (no model-response prose in any committed file)")
     return 0
 
 

@@ -88,11 +88,13 @@ FIXED_INSTRUCTION_PREFIX = (
 )
 
 
-def _spec(*, system: str, tool: dict) -> dict:
-    """One template spec. ``system``/``tool`` are the audited, byte-pinned, secret-free fixed parts."""
+def _spec(*, system: str, tool: dict, user_prefix: str = FIXED_INSTRUCTION_PREFIX) -> dict:
+    """One template spec. ``system``/``tool``/``user_prefix`` are the audited, byte-pinned, secret-free fixed
+    parts; ``user_prefix`` is the fixed user-instruction prefix the fog view is appended to (§2.2)."""
     return {
         "system": system,
         "tool": tool,
+        "user_prefix": user_prefix,
         "model": _MODEL,
         "max_tokens": _MAX_TOKENS,
         "anthropic_version": _ANTHROPIC_VERSION,
@@ -102,11 +104,15 @@ def _spec(*, system: str, tool: dict) -> dict:
 
 
 def prompt_version_of(spec: dict) -> str:
-    """The content-hash version id (Fork B): any change to a pinned field or the render logic moves it."""
+    """The content-hash version id (Fork B): any change to a pinned field or the render logic moves it.
+    Covers the ENTIRE fixed request including the user-instruction PREFIX (amendment 4 — the §2 gap the
+    external reviewer flagged: a prefix edit must move the version + re-enter the audited allowlist, not ride
+    an approved version by RENDER_VERSION convention alone)."""
     payload = {
-        "system": spec["system"], "tool": spec["tool"], "model": spec["model"],
-        "anthropic_version": spec["anthropic_version"], "max_tokens": spec["max_tokens"],
-        "tool_choice": spec["tool_choice"], "render_version": spec["render_version"],
+        "system": spec["system"], "tool": spec["tool"], "user_prefix": spec["user_prefix"],
+        "model": spec["model"], "anthropic_version": spec["anthropic_version"],
+        "max_tokens": spec["max_tokens"], "tool_choice": spec["tool_choice"],
+        "render_version": spec["render_version"],
     }
     return "ptmpl-" + canonical_digest(payload)["value"][:16]
 
@@ -121,9 +127,10 @@ PROMPT_TEMPLATES: dict[str, dict] = {A1B_PROMPT_VERSION: _A1B_SPEC}
 APPROVED_PROMPT_VERSIONS: tuple[str, ...] = (A1B_PROMPT_VERSION,)
 
 
-def _render_user(fog_view: dict) -> str:
-    """The user content = fixed prefix + the canonical bytes of the PUBLIC fog view (the only variable part)."""
-    return FIXED_INSTRUCTION_PREFIX + canonical_bytes(fog_view).decode("utf-8")
+def _render_user(user_prefix: str, fog_view: dict) -> str:
+    """The user content = the template's fixed prefix + the canonical bytes of the PUBLIC fog view (the only
+    variable part). The prefix is part of the content-pinned spec, so a prefix edit moves prompt_version."""
+    return user_prefix + canonical_bytes(fog_view).decode("utf-8")
 
 
 def render_request_envelope(prompt_version: str, fog_view: dict) -> dict:
@@ -139,7 +146,7 @@ def render_request_envelope(prompt_version: str, fog_view: dict) -> dict:
         "system": spec["system"],
         "tools": [spec["tool"]],
         "tool_choice": spec["tool_choice"],
-        "messages": [{"role": "user", "content": _render_user(fog_view)}],
+        "messages": [{"role": "user", "content": _render_user(spec["user_prefix"], fog_view)}],
     }
 
 

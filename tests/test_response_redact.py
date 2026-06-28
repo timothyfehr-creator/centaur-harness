@@ -51,6 +51,52 @@ def test_redact_passes_non_json_through() -> None:
     assert redact(b"not json") == b"not json"
 
 
+def _tool_use(*, extra: dict | None = None, input_extra: dict | None = None) -> dict:
+    block = {"type": "tool_use", "name": "submit_command",
+             "input": {"action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}}}
+    if extra:
+        block.update(extra)
+    if input_extra:
+        block["input"].update(input_extra)
+    return block
+
+
+def test_tool_use_sibling_prose_is_dropped_and_flagged() -> None:
+    # landing-review BLOCKER (a): a model-authored SIBLING field alongside input must be dropped by redact
+    # AND flagged by contains_prose -- the extractor reads only input and would never police a sibling.
+    wire = json.dumps({"role": "assistant", "content": [
+        _tool_use(extra={"scratch": "RED is overcommitted on r1; feint there then route r2 to win"})]}).encode()
+    assert contains_prose(wire)                                   # the sibling prose is flagged
+    redacted = json.loads(redact(wire))
+    assert set(redacted["content"][0]) == {"type", "name", "input"}   # projected to skeleton (scratch dropped)
+    assert contains_prose(redact(wire)) == []
+
+
+def test_command_input_extra_key_is_flagged() -> None:
+    # input-interior prose: a free-form field inside input (a malformed/forfeit tool call) is flagged; the
+    # enum tokens action_type + route + the int quantity are NOT (they are structured command data).
+    wire = json.dumps({"role": "assistant", "content": [
+        _tool_use(input_extra={"rationale": "I will feint on r1 to bait the block"})]}).encode()
+    assert contains_prose(wire) == ["I will feint on r1 to bait the block"]
+    assert contains_prose(json.dumps({"role": "assistant", "content": [_tool_use()]}).encode()) == []
+
+
+def test_wrapper_and_array_nested_prose_is_flagged() -> None:
+    # landing-review BLOCKER (b): a response body nested under a key, or inside a JSON array, is still scanned.
+    text_block = {"type": "text", "text": "BLUE will feint r1 then win on r2"}
+    nested = json.dumps({"meta": 1, "response": {"role": "assistant", "content": [text_block]}}).encode()
+    arr = json.dumps([{"role": "assistant", "content": [text_block]}]).encode()
+    assert contains_prose(nested) and contains_prose(arr)
+
+
+def test_bom_prefixed_prose_is_flagged() -> None:
+    # landing-review BLOCKER (c): a leading UTF-8 BOM (PowerShell/Windows/loggers) must not hide a real
+    # text/thinking response from contains_prose (utf-8-sig decode).
+    body = json.dumps({"role": "assistant", "content": [
+        {"type": "text", "text": "strategic prose behind a BOM"}]}).encode()
+    assert contains_prose(b"\xef\xbb\xbf" + body) == ["strategic prose behind a BOM"]
+
+
 def test_allowlist_drops_and_flags_an_unknown_prose_block_type() -> None:
     # regression (slice-2 review BLOCKER 1): a NON-text/thinking block carrying prose (e.g. server_tool_use,
     # or any future block type) must be dropped by redact AND flagged by contains_prose -- the two share one

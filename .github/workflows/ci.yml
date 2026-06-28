@@ -90,6 +90,14 @@ jobs:
       - name: Agent fog no-leak (WP-A1a)
         run: python scripts/validate_agent_fog.py
 
+      - name: Determinism boundary — no Anthropic key set during the gate run (WP-A1b §4.3, the real backstop)
+        run: |
+          if [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+            echo "ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN must be UNSET during the gate run (no live call in CI)." >&2
+            exit 1
+          fi
+          echo "no Anthropic credential present — green gate is offline."
+
       - name: No model prose in committed artifacts (WP-A1b)
         run: python scripts/validate_no_prose.py
 

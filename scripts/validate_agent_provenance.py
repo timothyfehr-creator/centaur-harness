@@ -21,7 +21,14 @@ committed command, and that the command's IDENTITY was bound by the HARNESS, not
      authorized template ∘ authorized fog view). An unknown / registered-but-unapproved version fails closed
      (exit 2). The OFFLINE synthetic envelope uses the reserved INTEGRITY_ONLY version (Tier-1 re-hash only).
      The binding is one leg of a THREE-LEGGED AND (binding ∘ fog no-leak ∘ template purity); alone it is NOT
-     a no-leak proof — a leaky template binds green, which the purity invariant (prompt_templates) catches.
+     a no-leak proof — a leaky template binds green, which the audited allowlist + the purity invariant
+     (prompt_templates) catch. BOUNDARY (amendment 6 / §2.5, disclosed): the binding binds the recorded
+     CLIENT REQUEST BODY = render(prompt_version, fog_view) — CANONICAL content, not the provider's wire
+     bytes; it EXCLUDES the api-key + TLS; provider-side tool scaffolding (Anthropic injects an automatic
+     tool-use system prompt) is OUTSIDE the client request, assumed non-secret-bearing, NOT proven; and it
+     holds only under no provider-side prompt caching carrying cross-turn state / no gateway-or-proxy context
+     injection / no SDK-default system augmentation. It is tamper-evidence relative to a TRUSTED capture
+     pipeline, not a defense against an adversary who controls capture (the authenticity residual).
 
 STRUCTURE is the boundary (like validate_calibration_feasibility): unknown keys rejected at every level,
 every field scalar, every enum pinned — so a tampered/identity-bearing step cannot ride along. A

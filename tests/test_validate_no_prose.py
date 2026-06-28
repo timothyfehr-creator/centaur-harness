@@ -61,6 +61,27 @@ def test_scan_catches_unicode_escaped_key_prose(tmp_path: Path) -> None:
     assert len(findings) == 1 and findings[0][0] == "run/raw/sneaky.json"   # ...but the scan still catches it
 
 
+def test_scan_catches_bom_prefixed_and_array_wrapped_prose(tmp_path: Path) -> None:
+    # landing-review BLOCKER (b)+(c): a BOM-prefixed response and a JSON-array-wrapped response both carry
+    # committed prose; the gate must catch both (the brace pre-filter tolerates a BOM + a leading '[').
+    body = json.dumps({"role": "assistant", "content": [{"type": "text", "text": "feint r1 then win on r2"}]})
+    repo = _git_repo(tmp_path, {
+        "run/raw/bom.json": b"\xef\xbb\xbf" + body.encode(),
+        "run/raw/arr.json": ("[" + body + "]").encode(),
+        "ok.py": "x = 1\n"})
+    flagged = {f[0] for f in vnp.scan(repo)}
+    assert flagged == {"run/raw/bom.json", "run/raw/arr.json"}
+
+
+def test_scan_catches_tool_use_sibling_prose(tmp_path: Path) -> None:
+    # landing-review BLOCKER (a): a committed tool_use block with a prose sibling must be caught.
+    crafted = json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "submit_command",
+        "input": {"action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}},
+        "scratch": "RED is overcommitted; feint r1 then route r2"}]}).encode()
+    repo = _git_repo(tmp_path, {"run/raw/sib.json": crafted})
+    assert len(vnp.scan(repo)) == 1
+
+
 def test_non_response_json_is_not_flagged(tmp_path: Path) -> None:
     # a config/data JSON that happens to be valid JSON but is not a response body must not false-positive
     repo = _git_repo(tmp_path, {"data.json": json.dumps({"content": "just a string field"}).encode()})

@@ -190,11 +190,13 @@ WP-A1b builds, fully offline and green-gated, everything a future single live mo
 hand-authored bytes; no model is ever called. What landed:
 
 - **Prose-free at the SOURCE** (`core/response_redact.py`): a model response's committed bytes are an
-  ALLOWLIST — only `tool_use` blocks + allowlisted top-level keys survive; every `text`/`thinking`/other
+  ALLOWLIST — only `tool_use` blocks survive, each PROJECTED to its `{type,id,name,input}` skeleton (a
+  model-authored sibling field is dropped), plus allowlisted top-level keys; every `text`/`thinking`/other
   prose-bearing block is dropped *before hashing*. The full wire bytes (which hold the strategic prose) are
-  never committed. `scripts/validate_no_prose.py` (RELEASE-wired) scans **every committed file** and fails
-  closed on any non-`tool_use` block carrying a string — closing the WP-A0 transcript disqualifier at the
-  source, not by convention.
+  never committed. `scripts/validate_no_prose.py` (RELEASE-wired) scans **every committed file** — at the top
+  level, nested under a key, inside a JSON array, or behind a BOM — and fails closed on prose in any
+  non-`tool_use` block, a `tool_use` sibling field, or a `tool_use` `input` outside the command enum tokens
+  — closing the WP-A0 transcript disqualifier at the source, not by convention.
 - **Closed-params extractor** (`EXTRACTOR_VERSION = "2"`): `submit_command.input` is a closed per-action
   schema (`DISPATCH_SUPPLY {quantity:int, route:enum}`, `BLOCK_ROUTE {route:enum}`) — no free-form/rationale
   field is expressible, so the command channel cannot smuggle prose.
@@ -208,7 +210,15 @@ hand-authored bytes; no model is ever called. What landed:
   registered-but-unapproved version. The offline synthetic envelope keeps the reserved `INTEGRITY_ONLY`
   version (Tier-1 re-hash only). **The binding is one leg of a THREE-LEGGED AND** (binding ∘ fog no-leak ∘
   template purity); alone it is *not* a no-leak proof — a leaky-but-registered template binds green, which
-  the purity invariant catches.
+  **the audited allowlist + the purity invariant** catch (a registered-but-unapproved leak fails the
+  allowlist; a state-derived leak fails the differential/sentinel scan; the render signature excludes secret
+  args, so a *parameterized* leak is structurally impossible; a hardcoded constant in an approved template is
+  caught only by human audit of the version change — disclosed as structural-not-proven). **Binding boundary
+  (amendment 6):** it binds the recorded **client request body** = `render(prompt_version, fog_view)`
+  (canonical content, not provider wire bytes); excludes the api-key + TLS; provider-side tool scaffolding
+  (Anthropic's auto tool-use system prompt) is outside the client request, assumed non-secret-bearing, *not
+  proven*; and it holds only under no provider-side prompt caching / no gateway-or-proxy injection / no
+  SDK-default system augmentation — it is tamper-evidence relative to a *trusted capture pipeline*.
 - **Determinism boundary** (`scripts/validate_no_network_imports.py`, RELEASE-wired): a static AST scan
   fails closed if any `core/`/`scripts/` module imports a network library (static or literal-dynamic); the
   only exception is the by-path `@live` allowlist (absent today). Complemented by a runtime `sys.modules`

@@ -52,9 +52,10 @@ def test_envelope_shape_is_the_a1b_contract() -> None:
 def test_prompt_version_is_content_pinned() -> None:
     assert set(pt.APPROVED_PROMPT_VERSIONS) <= set(pt.PROMPT_TEMPLATES)   # approved => registered
     assert PV.startswith("ptmpl-")
-    edited = copy.deepcopy(pt.PROMPT_TEMPLATES[PV])
-    edited["system"] = edited["system"] + " (extra clause)"
-    assert pt.prompt_version_of(edited) != PV          # any byte change moves the version
+    for field in ("system", "user_prefix"):            # the fixed system prose AND the user-instruction prefix
+        edited = copy.deepcopy(pt.PROMPT_TEMPLATES[PV])
+        edited[field] = edited[field] + " (extra clause)"
+        assert pt.prompt_version_of(edited) != PV, f"editing {field} must move the version (amendment 4)"
 
 
 def test_unregistered_version_refuses_to_render() -> None:
@@ -99,18 +100,27 @@ def test_no_hidden_sentinel_reaches_the_request() -> None:
 
 
 def test_sentinel_scan_has_teeth_on_a_leaky_template() -> None:
-    # A deliberately LEAKY template (a secret sentinel baked into its FIXED system prose). It is a valid
-    # registered template that self-binds green -- which is exactly why the binding alone is insufficient
-    # and the sentinel scan / purity invariant is the load-bearing leg (§2.5). The scan must CATCH it.
+    # A deliberately LEAKY template (a secret sentinel baked into a FIXED part). It is a valid registered
+    # template that self-binds green -- which is exactly why the binding alone is insufficient and the
+    # sentinel scan is a load-bearing leg (§2.5). The scan must CATCH the leak on EVERY fixed surface the
+    # spec covers: system prose, the tool schema, AND the user-instruction prefix (§6.5).
     leaked = "SENTINELthreshold7Q2"
-    leaky_spec = pt._spec(system=pt._SYSTEM_PROSE + f" The block threshold is {leaked}.",
-                          tool=pt._SUBMIT_COMMAND_TOOL)
-    leaky_pv = pt.prompt_version_of(leaky_spec)
-    pt.PROMPT_TEMPLATES[leaky_pv] = leaky_spec
-    try:
-        view = _fog_view(threshold=0)
-        assert pt.request_contains_any(leaky_pv, view, [leaked]) == [leaked]   # the scan finds the leak
-        # ...and it self-binds: re-rendering is byte-identical (proving "leaky template binds green").
-        assert pt.canonical_request_bytes(leaky_pv, view) == pt.canonical_request_bytes(leaky_pv, view)
-    finally:
-        del pt.PROMPT_TEMPLATES[leaky_pv]   # never leave the leaky template registered
+    import copy as _copy
+    leaky_tool = _copy.deepcopy(pt._SUBMIT_COMMAND_TOOL)
+    leaky_tool["description"] = leaky_tool["description"] + f" (threshold {leaked})"
+    surfaces = {
+        "system": pt._spec(system=pt._SYSTEM_PROSE + f" The block threshold is {leaked}.", tool=pt._SUBMIT_COMMAND_TOOL),
+        "tools": pt._spec(system=pt._SYSTEM_PROSE, tool=leaky_tool),
+        "user_prefix": pt._spec(system=pt._SYSTEM_PROSE, tool=pt._SUBMIT_COMMAND_TOOL,
+                                user_prefix=pt.FIXED_INSTRUCTION_PREFIX + f"(threshold {leaked})\n"),
+    }
+    view = _fog_view(threshold=0)
+    for surface, leaky_spec in surfaces.items():
+        leaky_pv = pt.prompt_version_of(leaky_spec)
+        pt.PROMPT_TEMPLATES[leaky_pv] = leaky_spec
+        try:
+            assert pt.request_contains_any(leaky_pv, view, [leaked]) == [leaked], f"leak via {surface} missed"
+            # ...and it self-binds: re-rendering is byte-identical (proving "leaky template binds green").
+            assert pt.canonical_request_bytes(leaky_pv, view) == pt.canonical_request_bytes(leaky_pv, view)
+        finally:
+            del pt.PROMPT_TEMPLATES[leaky_pv]   # never leave a leaky template registered

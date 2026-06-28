@@ -709,3 +709,23 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   it passed): a LIVE model call (WP-A1b), and the transcript / judge / ENSEMBLE analysis layers (design-frozen
   and INDEPENDENTLY NO-GO'd — a decision-facing AI-playthrough transcript is false-validity). Disclosed residual:
   a fully self-consistent fabrication binds green (the gates prove consistency, not byte authenticity).
+- **WP-A1b (offline machinery FOR a live call) — BUILT; the live CALL is deferred.** Externally adjudicated
+  GO-WITH-CONTRACT (cross-vendor, 10 binding amendments) before the build. A1b lands everything a single future
+  live model call needs, fully offline + green-gated, but makes **no call** (no network client, no spend, no
+  Slice-0 probe — the substrate still only replays hand-authored bytes; no model is ever called). Shipped, each
+  a green-gated slice with the highest-risk two adversarially verified: (1) a **closed-params extractor**
+  (`EXTRACTOR_VERSION="2"` — closed per-action schema, no free-form/rationale field expressible); (2)
+  **redact-at-source** (`core/response_redact.py` — an ALLOWLIST keeping only `tool_use` blocks before hashing)
+  + a **global no-prose gate** (`validate_no_prose.py`, RELEASE-wired — every committed file, escape-proof) +
+  the one-time prose re-baseline of the three example scenarios, closing the WP-A0 transcript disqualifier at
+  the source; (3) the pure **prompt-template registry** (`core/prompt_templates.py`) with the **differential-
+  purity invariant** + the **secret-sentinel scan** (proving the request's fixed parts are a pure function of
+  `prompt_version`, secret-free); (4) the **Tier-3 request-envelope binding** in `validate_agent_provenance`
+  (re-render a registered+approved template over the committed decision head's fog view, bind by sha256 —
+  catching a self-consistent request tamper Tier-1 cannot; fail closed on unknown/unapproved versions); (5) the
+  **network-import determinism gate** (`validate_no_network_imports.py`, RELEASE-wired — static AST scan, no
+  network import in any green module) + a runtime `sys.modules` guard. The binding is **one leg of a three-
+  legged AND** (binding ∘ fog no-leak ∘ template purity); alone it is not a no-leak proof — a leaky-but-
+  registered template binds green, which the purity invariant catches. The ensemble/transcript/judge layers
+  stay INDEPENDENTLY NO-GO'd (a `verify.py`-reporting guard test now pins that verbatim). Disclosed residual
+  unchanged: a fully self-consistent fabricated capture binds green (consistency, not authenticity).

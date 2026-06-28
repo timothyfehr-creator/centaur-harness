@@ -90,6 +90,12 @@ jobs:
       - name: Agent fog no-leak (WP-A1a)
         run: python scripts/validate_agent_fog.py
 
+      - name: No model prose in committed artifacts (WP-A1b)
+        run: python scripts/validate_no_prose.py
+
+      - name: No network imports in green modules (WP-A1b determinism boundary)
+        run: python scripts/validate_no_network_imports.py
+
       - name: Release verification
         run: python scripts/verify.py --mode release
 

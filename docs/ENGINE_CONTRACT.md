@@ -182,3 +182,40 @@ state + outcome, never of the secret threshold value). **Disclosed residual:** a
 fabrication binds green — the gates prove internal consistency, not that the bytes authentically came
 from a model (authenticity is unprovable under current APIs; the prompt↔envelope binding re-render is
 deferred to the live lane WP-A1b).
+
+## Offline machinery for a live call (WP-A1b) — built + gated; the live CALL is deferred
+
+WP-A1b builds, fully offline and green-gated, everything a future single live model call needs — but does
+**not** make the call (no network client, no spend, no Slice-0 probe). The substrate still only replays
+hand-authored bytes; no model is ever called. What landed:
+
+- **Prose-free at the SOURCE** (`core/response_redact.py`): a model response's committed bytes are an
+  ALLOWLIST — only `tool_use` blocks + allowlisted top-level keys survive; every `text`/`thinking`/other
+  prose-bearing block is dropped *before hashing*. The full wire bytes (which hold the strategic prose) are
+  never committed. `scripts/validate_no_prose.py` (RELEASE-wired) scans **every committed file** and fails
+  closed on any non-`tool_use` block carrying a string — closing the WP-A0 transcript disqualifier at the
+  source, not by convention.
+- **Closed-params extractor** (`EXTRACTOR_VERSION = "2"`): `submit_command.input` is a closed per-action
+  schema (`DISPATCH_SUPPLY {quantity:int, route:enum}`, `BLOCK_ROUTE {route:enum}`) — no free-form/rationale
+  field is expressible, so the command channel cannot smuggle prose.
+- **Template registry** (`core/prompt_templates.py`): the versioned, content-pinned request render shared by
+  the (deferred) live producer and the binding gate. PURE — no clock/nonce/network/float. Two structural
+  honesty checks: the **differential-purity invariant** (vary the secret → the fixed system+tools bytes are
+  unchanged) and a **secret-sentinel scan** (no hidden-surface value reaches the request bytes).
+- **Tier-3 request-envelope binding** (`validate_agent_provenance`): a step rendered from a registered +
+  **approved** template is re-rendered from the committed decision head's fog view and bound by sha256 —
+  catching a self-consistent request tamper Tier-1 cannot. Dispatch fails closed on an unknown /
+  registered-but-unapproved version. The offline synthetic envelope keeps the reserved `INTEGRITY_ONLY`
+  version (Tier-1 re-hash only). **The binding is one leg of a THREE-LEGGED AND** (binding ∘ fog no-leak ∘
+  template purity); alone it is *not* a no-leak proof — a leaky-but-registered template binds green, which
+  the purity invariant catches.
+- **Determinism boundary** (`scripts/validate_no_network_imports.py`, RELEASE-wired): a static AST scan
+  fails closed if any `core/`/`scripts/` module imports a network library (static or literal-dynamic); the
+  only exception is the by-path `@live` allowlist (absent today). Complemented by a runtime `sys.modules`
+  guard test.
+
+**Authenticity residual (unchanged, disclosed):** the gates prove internal CONSISTENCY, not byte
+AUTHENTICITY — a fully self-consistent fabricated capture binds green. A captured live game would be a
+`CAPTURE_ARTIFACT` (a deflationary label, not the shared `ILLUSTRATIVE`), single-turn, memoryless, n=1,
+never decision-facing. The ensemble/transcript/judge layers stay **INDEPENDENTLY NO-GO'd** (guarded by
+`tests/test_verify_reporting_guard.py`).

@@ -26,6 +26,8 @@ import agent_logistics as al  # noqa: E402
 import turn_record as tr  # noqa: E402
 from canon import CANON_VERSION, canonical_digest  # noqa: E402
 from command_extractor import EXTRACTOR_VERSION, extract_command, project_semantic  # noqa: E402
+from engine_projection import project_turn_record  # noqa: E402
+from prompt_templates import A1B_PROMPT_VERSION, canonical_request_bytes  # noqa: E402
 
 FP = {"engine_source_hash": "test", "python": "test", "pyyaml_version": "test",
       "serializer_version": "1", "persistence_profile": "test"}
@@ -42,6 +44,14 @@ def _make_state(as_of_turn: int = 0) -> dict:
         {"id": "route_secret:r1", "type": "ROUTE_SECRET", "fields": {
             "subject_route": {"value": "r1", "unit": "id"},
             "block_threshold": {"value": 73, "unit": "d100"}}}]}}
+
+
+def _make_state_with_origin(origin: int) -> dict:
+    """_make_state with a different PUBLIC blue origin (a FORCE field that survives projection), so the fog
+    view -- and thus the rendered request -- differs. Used to forge a self-consistent request tamper."""
+    s = _make_state()
+    s["state"]["entities"][0]["fields"]["origin"]["value"] = origin
+    return s
 
 
 def _build(tmp_path: Path) -> tuple[Path, dict]:
@@ -229,3 +239,91 @@ def test_duplicate_step_for_one_slot_is_rejected(tmp_path: Path) -> None:
     scn, step = _build(tmp_path)
     _write_ledger(scn, [step, dict(step)])
     _expect_one(scn, "duplicate-step")
+
+
+# --- Tier-3 request-envelope binding (WP-A1b §2.3-2.4) -----------------------------------------------
+
+def _build_tier3(tmp_path: Path, *, prompt_version: str = A1B_PROMPT_VERSION) -> tuple[Path, dict]:
+    """A binding single-turn scenario whose request envelope is the TEMPLATE render (Tier-3) from BLUE's
+    decision-head fog view -- i.e. exactly what the (deferred) live producer will commit. Mirrors _build
+    but swaps the offline synthetic request for canonical_request_bytes(prompt_version, view)."""
+    scn = tmp_path / "scn"
+    (scn / "run" / "turns").mkdir(parents=True)
+    (scn / "run" / "llm").mkdir(parents=True)
+    start = _make_state()
+    response = (AGENT_BYTES / "valid" / "dispatch_r1.json").read_bytes()
+    res = extract_command(response)
+    assert res.ok
+    cmd = {"command_id": f"{RUN_ID}:0:BLUE", "turn": 0, "actor_id": "BLUE",
+           "action_type": res.command["action_type"], "params": res.command["params"]}
+    out = tr.assemble(turn=0, start_state=start, commands=[cmd], master_seed=0,
+                      runtime_fingerprint=FP, successor_slot="run/turns/0001.json", resolver=al)
+    assert out["status"] == "resolved"
+    tr.commit(out["turn_record"], str(scn / "run" / "turns" / "0000.json"))
+    resp_sha = hashlib.sha256(response).hexdigest()
+    (scn / "run" / "llm" / f"{resp_sha}.json").write_bytes(response)
+    view = project_turn_record("BLUE", {"turn": 0, "resulting_state": start, "event_batch": []})
+    request = canonical_request_bytes(prompt_version, view)
+    req_sha = hashlib.sha256(request).hexdigest()
+    (scn / "run" / "llm" / f"{req_sha}.json").write_bytes(request)
+    step = {
+        "schema_version": "1.0", "run_id": RUN_ID, "turn": 0, "recorded_turn": 0,
+        "calling_slot": "BLUE", "command_id": f"{RUN_ID}:0:BLUE", "step_kind": "COMMAND",
+        "capture_mode": "HAND_AUTHORED_FIXTURE", "provider": "anthropic",
+        "model": "N/A_FIXTURE", "model_version": "N/A_FIXTURE", "served_model": "N/A_FIXTURE",
+        "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": prompt_version,
+        "extractor_version": EXTRACTOR_VERSION, "canon_version": CANON_VERSION,
+        "response_sha256": resp_sha, "request_envelope_sha256": req_sha,
+        "extracted_command_digest": canonical_digest(project_semantic(res.command))["value"],
+        "reject_code": None, "as_of": "2026-06-27",
+    }
+    _write_ledger(scn, [step])
+    return scn, step
+
+
+def test_tier3_template_request_binds(tmp_path: Path) -> None:
+    scn, _ = _build_tier3(tmp_path)
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr
+
+
+def test_tier3_self_consistent_request_tamper_is_caught(tmp_path: Path) -> None:
+    # the load-bearing proof Tier-3 adds over Tier-1: a request whose bytes RE-HASH fine but are NOT the
+    # render of the authorized template over the authorized fog view. We swap in a DIFFERENT (self-consistent)
+    # envelope -- the template applied to a different public state -- and point the step at its sha.
+    scn, step = _build_tier3(tmp_path)
+    other_view = project_turn_record("BLUE", {"turn": 0,
+        "resulting_state": _make_state_with_origin(7), "event_batch": []})
+    tampered = canonical_request_bytes(A1B_PROMPT_VERSION, other_view)
+    tampered_sha = hashlib.sha256(tampered).hexdigest()
+    (scn / "run" / "llm" / f"{tampered_sha}.json").write_bytes(tampered)   # bytes <-> sha self-consistent
+    step["request_envelope_sha256"] = tampered_sha
+    _write_ledger(scn, [step])
+    _expect_one(scn, "request-envelope-binding-mismatch")   # Tier-1 re-hash passes; Tier-3 re-render catches it
+
+
+def test_tier3_unknown_prompt_version_fails_closed(tmp_path: Path) -> None:
+    scn, step = _build_tier3(tmp_path)
+    step["prompt_version"] = "ptmpl-0000000000000000"   # not registered, not the integrity-only sentinel
+    _write_ledger(scn, [step])
+    r = _run(scn)
+    assert r.returncode == 2 and "fail closed" in r.stderr
+
+
+def test_tier3_registered_but_unapproved_fails_closed(tmp_path: Path, monkeypatch) -> None:
+    # "registered != audited" (§2.2 leg 1): pretend A1B is registered but NOT on the approved allowlist;
+    # the binding must fail closed (exit 2), proving a merely-registered template is insufficient.
+    import validate_agent_provenance as vap
+    scn, step = _build_tier3(tmp_path)
+    monkeypatch.setattr(vap, "APPROVED_PROMPT_VERSIONS", ())
+    rc, payload = vap._envelope_binding(step, scn, "where")
+    assert rc == 2 and "APPROVED" in payload
+
+
+def test_v1_offline_step_is_integrity_only_no_rerender(tmp_path: Path) -> None:
+    # the reserved "v1" sentinel stays Tier-1: _build's request is a NON-template body ({"model":"x",...});
+    # if the gate wrongly tried to re-render it as a template it would fail, so a green result proves no
+    # re-render is attempted for the offline synthetic envelope.
+    scn, _ = _build(tmp_path)
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr

@@ -15,6 +15,13 @@ committed command, and that the command's IDENTITY was bound by the HARNESS, not
   H7b (identity binding, three LITERAL asserts against harness-derived values): committed.actor_id ==
      calling_slot; committed.command_id == f"{run_id}:{turn}:{actor_id}"; committed.turn ==
      start_state.as_of_turn == turn_record.turn.
+  Tier-3 (request-envelope binding, WP-A1b §2.3-2.4): for a step rendered from a REGISTERED + APPROVED
+     prompt-template, RE-RENDER the request from the committed decision head's fog view and bind it by
+     sha256 — catching a self-consistent request tamper (bytes re-hash fine but are not the render of the
+     authorized template ∘ authorized fog view). An unknown / registered-but-unapproved version fails closed
+     (exit 2). The OFFLINE synthetic envelope uses the reserved INTEGRITY_ONLY version (Tier-1 re-hash only).
+     The binding is one leg of a THREE-LEGGED AND (binding ∘ fog no-leak ∘ template purity); alone it is NOT
+     a no-leak proof — a leaky template binds green, which the purity invariant (prompt_templates) catches.
 
 STRUCTURE is the boundary (like validate_calibration_feasibility): unknown keys rejected at every level,
 every field scalar, every enum pinned — so a tampered/identity-bearing step cannot ride along. A
@@ -34,6 +41,7 @@ scenario/ledger, or a recorded extractor/canon version this build cannot reprodu
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -48,6 +56,12 @@ from command_extractor import (  # noqa: E402
     extract_command,
     project_semantic,
 )
+from engine_projection import project_turn_record  # noqa: E402
+from prompt_templates import (  # noqa: E402
+    APPROVED_PROMPT_VERSIONS,
+    PROMPT_TEMPLATES,
+    canonical_request_bytes,
+)
 from validate_claims import load_registry  # noqa: E402
 from validate_run_ledger import _sha256  # noqa: E402
 from validate_schemas import REPO_ROOT, _display, _is_nonempty_str  # noqa: E402
@@ -58,6 +72,11 @@ CAPTURE_MODE_ENUM = ("LIVE", "HAND_AUTHORED_FIXTURE")
 PROVIDER_ENUM = ("anthropic",)
 SAMPLING_ENUM = ("PROVIDER_DEFAULT_NO_SEED",)
 FIXTURE_SENTINEL = "N/A_FIXTURE"   # model/model_version/served_model under HAND_AUTHORED_FIXTURE
+# Reserved prompt_version(s) for the OFFLINE synthetic request envelope (_request_bytes): integrity-only,
+# pre-template. A step on one of these is bound Tier-1 (the committed request bytes re-hash to the recorded
+# sha — done above); no Tier-3 re-render. A registered TEMPLATE version triggers the re-render binding; any
+# OTHER prompt_version is unknown -> fail closed (exit 2). (§2.3-2.4)
+INTEGRITY_ONLY_PROMPT_VERSIONS = ("v1",)
 
 # Unknown-key + scalar-only boundary: every llm_step field is a SCALAR (the only container is the
 # llm_steps list itself), so a nested object cannot smuggle an un-vetted field past the gate.
@@ -146,6 +165,37 @@ def _structural_problems(step: object, where: str) -> list[tuple[str, str, str]]
     return problems
 
 
+def _envelope_binding(step: dict, scenario_dir: Path, where: str) -> tuple[int, object]:
+    """Tier-3 request-envelope BINDING (§2.3-2.4), dispatched on prompt_version. Returns (rc, payload):
+      rc 2 -> a fail-closed reason string (unknown / registered-but-unapproved version);
+      rc 1 -> a single (code, where, msg) problem (the re-render did not match the recorded sha);
+      rc 0 -> bound (template re-render matched) or integrity-only (no re-render owed).
+    A REGISTERED+APPROVED template version is re-rendered from the committed decision head's fog view and
+    bound by sha256 -- catching a self-consistent request tamper (bytes re-hash fine, but are NOT the render
+    of the authorized template applied to the authorized fog view). The reserved INTEGRITY_ONLY versions are
+    Tier-1 only (re-hash, done by the caller). Any other version is unknown -> fail closed."""
+    pv = step["prompt_version"]
+    if pv in INTEGRITY_ONLY_PROMPT_VERSIONS:
+        return 0, None                                  # offline synthetic envelope: Tier-1 re-hash only
+    if pv not in PROMPT_TEMPLATES:
+        return 2, f"{where}: prompt_version {pv!r} is neither a registered template nor the reserved " \
+                  f"integrity-only sentinel {INTEGRITY_ONLY_PROMPT_VERSIONS} — fail closed"
+    if pv not in APPROVED_PROMPT_VERSIONS:              # registered != audited (§2.2 leg 1)
+        return 2, f"{where}: prompt_version {pv!r} is registered but NOT on APPROVED_PROMPT_VERSIONS (unaudited)"
+    rec_path = scenario_dir / "run" / "turns" / f"{step['turn']:04d}.json"
+    if not rec_path.is_file():
+        return 1, ("turn-record-missing", where, f"run/turns/{rec_path.name} absent for the envelope binding")
+    rec = json.loads(rec_path.read_text(encoding="utf-8"))
+    # The decision head is the single-turn T=0 head: the player decided on the PRE-turn state (start_state)
+    # with no events yet. Re-render that slot's fog projection and bind it (the EXISTING projector + template).
+    decision_head = {"turn": step["turn"], "resulting_state": rec["start_state"], "event_batch": []}
+    view = project_turn_record(step["calling_slot"], decision_head)
+    if hashlib.sha256(canonical_request_bytes(pv, view)).hexdigest() != step["request_envelope_sha256"]:
+        return 1, ("request-envelope-binding-mismatch", where,
+                   "re-rendered request envelope sha != recorded request_envelope_sha256 (Tier-3 template binding)")
+    return 0, None
+
+
 def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, list]:
     """Tier-1 byte integrity + Tier-2 extractor dispatch + H7a/H7b binding for ONE structurally-valid step.
     Returns (rc, problems): rc 2 fail-closed (a version this build cannot reproduce), else (0/1, problems)."""
@@ -181,6 +231,11 @@ def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
         elif res.reject_code != step["reject_code"]:
             add("forfeit-code-mismatch",
                 f"recompute reject_code {res.reject_code!r} != recorded {step['reject_code']!r}")
+        erc, epay = _envelope_binding(step, scenario_dir, where)   # Tier-3 (a forfeit still rendered a request)
+        if erc == 2:
+            return 2, epay
+        if epay:
+            problems.append(epay)
         return (1 if problems else 0), problems
     # COMMAND
     if not res.ok:
@@ -219,6 +274,11 @@ def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
         add("turn-mismatch",
             f"command.turn/{cmd.get('turn')} step.turn/{step['turn']} record.turn/{rec.get('turn')} "
             f"start.as_of_turn/{as_of} must all be equal")
+    erc, epay = _envelope_binding(step, scenario_dir, where)   # Tier-3 request-envelope binding (§2.3-2.4)
+    if erc == 2:
+        return 2, epay
+    if epay:
+        problems.append(epay)
     return (1 if problems else 0), problems
 
 

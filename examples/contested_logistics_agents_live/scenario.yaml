@@ -1,0 +1,50 @@
+schema_version: "1.0"
+title: "Contested logistics (LIVE capture — CAPTURE_ARTIFACT)"
+label: CAPTURE_ARTIFACT       # a single non-deterministic live capture, NOT a model/sample/analysis (WP-A1b §3.4)
+as_of_date: "2026-06-28"
+description: >
+  CAPTURE_ARTIFACT, not a forecast. This scenario records ONE live, non-deterministic capture in which Opus
+  4.8 played BLUE and RED of a single contested-logistics turn; the deterministic engine refereed. Its ONLY
+  purpose is to demonstrate the LIVE capture lane mechanically works end-to-end (render -> call -> redact ->
+  extract -> harness-bound identity -> assemble -> commit + provenance), and that the committed (redacted)
+  bytes replay byte-identically through the offline gates with the model never re-called. It is a MACHINE
+  LOG, not a transcript, a forecast, or analysis.
+
+  MEMORYLESS DISCLOSURE: Each player is a memoryless one-shot reasoner; it sees only the current-turn fog
+  projection and no prior turn, message, or its own past reasoning. This is weaker than a remembering
+  adversary and must not be presented as a continuous strategist.
+
+  AUTHENTICITY RESIDUAL: capture_mode LIVE is an attestation by the runner, not a proof. A fabricated capture
+  is byte-indistinguishable to a third party and would bind green — the gates prove internal CONSISTENCY, not
+  byte AUTHENTICITY. provider_request_id raises the cost of an undetectable fabrication; it does not convert
+  consistency into authenticity.
+
+  SAMPLE SIZE: n equals 1. This is a single capture, not a sample; nothing here is a frequency, a
+  probability, or evidence about the real world. Every constant is ASSUMED and ILLUSTRATIVE.
+
+branches:
+  - id: delivered
+    title: "Supply delivered"
+    probability: 0.50
+    signposts:
+      - "BLUE dispatches supply on a route RED does not successfully block"
+      - "The adjudicated roll fails to meet the hidden block threshold"
+      - "Supply is recorded as delivered in the committed turn record"
+    falsifiers:
+      - "Dispatched supply is recorded as lost rather than delivered"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.
+
+  - id: lost
+    title: "Supply lost to a successful block"
+    probability: 0.50
+    signposts:
+      - "BLUE dispatches on r1 and RED blocks r1 the same turn"
+      - "The adjudicated roll meets the hidden block threshold"
+      - "Supply is recorded as lost in the committed turn record"
+    falsifiers:
+      - "Dispatched supply is recorded as delivered rather than lost"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.

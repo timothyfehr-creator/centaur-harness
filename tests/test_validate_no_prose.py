@@ -50,6 +50,17 @@ def test_exempt_fixtures_are_not_flagged(tmp_path: Path) -> None:
     assert vnp.scan(repo) == []
 
 
+def test_scan_catches_unicode_escaped_key_prose(tmp_path: Path) -> None:
+    # regression (slice-2 review BLOCKER 2): \u-escaped keys (content / type) parse as a response
+    # with prose but defeat a literal-byte pre-filter. The escape-proof brace check must still scan it.
+    crafted = ('{"\\u0063ontent":[{"\\u0074ype":"text","text":"BLUE will feint r1 then win on r2."}],'
+               '"role":"assistant"}').encode()
+    assert b'"content"' not in crafted and b'"type"' not in crafted   # the literal key bytes are absent...
+    repo = _git_repo(tmp_path, {"run/raw/sneaky.json": crafted})
+    findings = vnp.scan(repo)
+    assert len(findings) == 1 and findings[0][0] == "run/raw/sneaky.json"   # ...but the scan still catches it
+
+
 def test_non_response_json_is_not_flagged(tmp_path: Path) -> None:
     # a config/data JSON that happens to be valid JSON but is not a response body must not false-positive
     repo = _git_repo(tmp_path, {"data.json": json.dumps({"content": "just a string field"}).encode()})

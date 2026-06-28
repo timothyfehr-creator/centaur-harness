@@ -49,3 +49,17 @@ def test_redact_is_deterministic_and_idempotent() -> None:
 
 def test_redact_passes_non_json_through() -> None:
     assert redact(b"not json") == b"not json"
+
+
+def test_allowlist_drops_and_flags_an_unknown_prose_block_type() -> None:
+    # regression (slice-2 review BLOCKER 1): a NON-text/thinking block carrying prose (e.g. server_tool_use,
+    # or any future block type) must be dropped by redact AND flagged by contains_prose -- the two share one
+    # allowlist (keep only tool_use), so no block type passes one leg but not the other.
+    wire = json.dumps({"role": "assistant", "content": [
+        {"type": "server_tool_use", "text": "RED is overcommitted on r1; feint there then route r2 to win."},
+        {"type": "tool_use", "name": "submit_command",
+         "input": {"action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}}}]}).encode()
+    assert contains_prose(wire)                              # the gate flags the non-tool_use prose...
+    redacted = json.loads(redact(wire))
+    assert [b.get("type") for b in redacted["content"]] == ["tool_use"]   # ...and redact drops it
+    assert contains_prose(redact(wire)) == []

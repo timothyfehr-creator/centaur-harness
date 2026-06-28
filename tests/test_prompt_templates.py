@@ -85,7 +85,9 @@ def _sentinel_state() -> dict:
     secret = s["state"]["entities"][2]["fields"]
     secret["block_threshold"]["value"] = "SENTINELthreshold7Q2"   # the threshold VALUE
     secret["subject_route"]["value"] = "SENTINELsubjroute8K4"     # the hidden subject route
-    s["state"]["entities"][2]["id"] = "route_secret:SENTINELhidid9Z1"  # a hidden entity id
+    # the realistic ROUTE_SECRET id prefix "route_secret:" trips secret_scan's generic keyword rule on this
+    # deliberate fake sentinel; pragma it (the scanner's documented test-fixture escape hatch).
+    s["state"]["entities"][2]["id"] = "route_secret:SENTINELhidid9Z1"  # pragma: allowlist secret
     s["state"]["scenario_label"] = "SENTINELlabel3X8"             # a scenario label
     return s
 

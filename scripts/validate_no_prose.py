@@ -30,6 +30,9 @@ EXEMPT_PREFIXES = (
     "tests/fixtures/agent_bytes/",   # hand-authored "model responses" the drive redacts before committing
     "tests/fixtures/no_prose/",      # this gate's own valid/invalid fixtures
 )
+# A response body is KB-scale; this cap only bounds the read of a pathological large committed file (Centaur
+# commits none). It is a RESOURCE guard, not a content filter -- it never decides prose-vs-clean.
+_MAX_SCAN_BYTES = 10_000_000
 
 
 def _tracked_files(root: Path) -> list[str] | None:
@@ -52,10 +55,15 @@ def scan(root: Path) -> list[tuple[str, str]]:
             continue
         path = root / rel
         try:
+            if path.stat().st_size > _MAX_SCAN_BYTES:   # resource guard only (a response body is KB-scale);
+                continue                                 # NOT a content filter -- see below.
             raw = path.read_bytes()
         except OSError:
             continue
-        if b'"type"' not in raw or b'content' not in raw:   # cheap pre-filter (most files can't match)
+        # No key-byte pre-filter: ``"content"``/``"type"`` can be \u-escaped (the JSON still parses as a
+        # response with prose), which a literal-byte filter skips -- a fail-OPEN against "ANY committed file".
+        # contains_prose json.loads-es safely and returns [] for any non-response file, so just call it.
+        if raw.lstrip()[:1] != b"{":   # a response body is a JSON object; this is escape-proof (brace, not keys)
             continue
         for prose in contains_prose(raw):
             findings.append((rel, prose[:60]))

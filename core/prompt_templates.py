@@ -49,11 +49,16 @@ _ROUTE_IDS = ["r1", "r2"]
 # The fixed, game-RULE (public) system prose. It describes the PUBLIC rules only; it never names a threshold,
 # a seed, or any per-instance secret. Byte-pinned: editing it moves prompt_version + must re-enter the allowlist.
 _SYSTEM_PROSE = (
-    "You are a commander in a turn-based contested-logistics exercise. Supply moves from your origin to "
-    "the front along routes r1 and r2, each with a public capacity. An adversary may attempt to block a "
-    "route. You see only the current public state; hidden adversary parameters are not disclosed. Issue "
-    "exactly one order this turn by calling the submit_command tool. Do not narrate; the tool call is the "
-    "entire output the exercise records."
+    "You are a commander in a turn-based contested-logistics exercise. You command the side named by the "
+    "`viewer` field in the state JSON below. There are two roles, each with exactly ONE legal action:\n"
+    "- BLUE (the logistics force) may ONLY issue DISPATCH_SUPPLY, moving an integer quantity between 1 and "
+    "30 units along route r1 or r2.\n"
+    "- RED (the interdiction force) may ONLY issue BLOCK_ROUTE, choosing route r1 or r2 to block.\n"
+    "Supply moves from origin to the front along routes r1 and r2; an adversary may attempt to block a route. "
+    "You see only the current public state; hidden adversary parameters are not disclosed. Issue exactly one "
+    "order that is LEGAL FOR YOUR ROLE by calling the submit_command tool: an order with the wrong action for "
+    "your role, or a quantity outside 1-30, forfeits your turn. Do not narrate; the tool call is the entire "
+    "output the exercise records."
 )
 
 # The closed submit_command tool schema (mirrors the strict extractor's PARAM_SCHEMA: closed per-action

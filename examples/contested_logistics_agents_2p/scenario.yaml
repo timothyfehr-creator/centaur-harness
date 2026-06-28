@@ -1,0 +1,38 @@
+schema_version: "1.0"
+title: "Contested logistics (offline agent substrate, two-player contested)"
+label: ILLUSTRATIVE          # NOT a real-world claim; fully synthetic placeholder (Constitution §4-5)
+as_of_date: "2026-06-27"
+description: >
+  ILLUSTRATIVE, fully synthetic scenario exercising the OFFLINE AGENT SUBSTRATE: a player's command is
+  extracted from HAND-AUTHORED response bytes (no model is ever called) and refereed by the deterministic
+  engine. Its ONLY purpose is to demonstrate the command-extraction / harness-bound-identity / provenance
+  / replay machinery is honest — it is a MACHINE LOG, not a transcript, a forecast, or analysis. Every
+  constant is ASSUMED; the branch probabilities are placeholders, not analytic estimates, and assert no
+  external fact. This is a contract-validation fixture, not a forecast.
+
+branches:
+  - id: delivered
+    title: "Supply delivered"
+    probability: 0.60
+    signposts:
+      - "BLUE dispatches supply on an unblocked route"
+      - "RED's block targets a different route, or no block is attempted"
+      - "The adjudicated roll fails to meet the hidden block threshold"
+    falsifiers:
+      - "Dispatched supply is recorded as lost rather than delivered"
+    rationale: >
+      Placeholder rationale: 0.60 is a synthetic modal outcome for the abstract slice. Not
+      source-backed; ILLUSTRATIVE only.
+
+  - id: lost
+    title: "Supply lost to a successful block"
+    probability: 0.40
+    signposts:
+      - "BLUE dispatches supply on the blockable route r1"
+      - "RED blocks r1 the same turn"
+      - "The adjudicated roll meets the hidden block threshold"
+    falsifiers:
+      - "Dispatched supply is recorded as delivered rather than lost"
+    rationale: >
+      Placeholder rationale: 0.40 is the synthetic alternative outcome. Not source-backed;
+      ILLUSTRATIVE only.

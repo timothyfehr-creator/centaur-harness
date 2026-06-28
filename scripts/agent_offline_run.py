@@ -30,6 +30,7 @@ from command_extractor import EXTRACTOR_VERSION, extract_command, project_semant
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCENARIO = REPO_ROOT / "examples" / "contested_logistics_agents"
+SCENARIO_2P = REPO_ROOT / "examples" / "contested_logistics_agents_2p"
 
 # The standard contested-logistics turn-0 typed state (mirrors examples/contested_logistics_abstract).
 INITIAL_STATE = {"schema_version": "1.0", "state": {"as_of_turn": 0, "entities": [
@@ -130,14 +131,23 @@ def write_ledger_with_steps(scenario_dir: Path, all_steps: list) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agent_offline_run.py",
-                                     description="(Re)generate the offline agent example (single BLUE turn).")
-    parser.add_argument("--scenario-dir", default=str(SCENARIO))
-    parser.add_argument("--run-id", default="contested-agents-001")
+                                     description="(Re)generate an offline agent example (single turn).")
+    parser.add_argument("--two-player", action="store_true",
+                        help="drive a CONTESTED BLUE-dispatch + RED-block turn (a drawn terminal)")
+    parser.add_argument("--scenario-dir", default=None)
+    parser.add_argument("--run-id", default=None)
     args = parser.parse_args(argv)
-    scn = Path(args.scenario_dir).resolve()
     bytes_dir = REPO_ROOT / "tests" / "fixtures" / "agent_bytes" / "valid"
-    driven = drive_turn(INITIAL_STATE, {"BLUE": (bytes_dir / "dispatch_r1.json").read_bytes()},
-                        run_id=args.run_id, turn=0)
+    if args.two_player:
+        scn = Path(args.scenario_dir).resolve() if args.scenario_dir else SCENARIO_2P
+        run_id = args.run_id or "contested-2p-001"
+        byte_by_slot = {"BLUE": (bytes_dir / "dispatch_r1.json").read_bytes(),
+                        "RED": (bytes_dir / "block_r1.json").read_bytes()}
+    else:
+        scn = Path(args.scenario_dir).resolve() if args.scenario_dir else SCENARIO
+        run_id = args.run_id or "contested-agents-001"
+        byte_by_slot = {"BLUE": (bytes_dir / "dispatch_r1.json").read_bytes()}
+    driven = drive_turn(INITIAL_STATE, byte_by_slot, run_id=run_id, turn=0)
     commit_turn(scn, driven)
     rc = write_ledger_with_steps(scn, driven["llm_steps"])
     if rc != 0:

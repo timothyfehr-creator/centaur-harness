@@ -77,6 +77,7 @@ RELEASE_GATES = (
     ("engine state", "validate_engine_state.py"),
     ("ruleset", "validate_ruleset.py"),
     ("turn replay", "validate_turn_replay.py"),
+    ("agent provenance", "validate_agent_provenance.py"),
 )
 
 # These gates default to the Ukraine scenario when invoked bare, so `release` must run them ONCE PER

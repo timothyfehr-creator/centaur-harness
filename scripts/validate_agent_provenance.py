@@ -157,9 +157,12 @@ def _retry_shape_problems(step: dict, where: str) -> list[tuple[str, str, str]]:
             codes = REJECT_CODES if kind == "FORFEIT" else LEGALITY_REJECT_CODES
             if p.get("reject_code") not in codes:
                 out.append(("invalid-enum", w, f"a {kind} prior reject_code must be one of {sorted(codes)}"))
-        pc = p.get("correction")
-        if pc is not None and pc not in CORRECTION_CODES:
-            out.append(("invalid-enum", w, f"prior correction must be null or a CORRECTION_CODES value; got {pc!r}"))
+        if "correction" not in p:                         # REQUIRED (null for attempt 0) so _retry_problems'
+            out.append(("missing-field", w, "a prior_attempts entry must carry a correction "  # chain check
+                        "(null on the first attempt)"))                                        # never KeyErrors
+        elif p["correction"] is not None and p["correction"] not in CORRECTION_CODES:
+            out.append(("invalid-enum", w,
+                        f"prior correction must be null or a CORRECTION_CODES value; got {p['correction']!r}"))
     return out
 
 
@@ -451,7 +454,8 @@ def _retry_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, li
         attempt's reject code, and the decisive step's correction == the last prior's reject code;
     (2) EACH prior attempt's committed bytes re-extract to a GENUINE reject of the recorded kind+code -- so a
         fabricated retry, or a LEGAL attempt smuggled in as a discarded prior (hiding a legal move), is caught;
-    (3) each prior's request envelope binds (re-rendered WITH its correction).
+    (3) each prior's response AND request bytes are byte-verified (Tier-1 re-hash, parity with the decisive
+        step), and for a template prompt_version the request is re-rendered WITH its correction (Tier-3).
     Returns (rc, problems): rc 2 fail-closed if a prior's prompt_version is unreproducible by this build."""
     problems: list[tuple[str, str, str]] = []
 
@@ -491,8 +495,11 @@ def _retry_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, li
         if _sha256(rpath) != p["response_sha256"]:
             add("prior-response-tampered", f"sha256(run/llm/{rpath.name}) != recorded response_sha256", w)
             continue
-        if not (llm_dir / f"{p['request_envelope_sha256']}.json").is_file():
-            add("prior-artifact-missing", f"prior request bytes {p['request_envelope_sha256']}.json not committed", w)
+        qpath = llm_dir / f"{p['request_envelope_sha256']}.json"   # the prior's request bytes get the SAME
+        if not qpath.is_file():                                     # Tier-1 content re-hash as the response +
+            add("prior-artifact-missing", f"prior request bytes {qpath.name} not committed", w)   # the decisive step
+        elif _sha256(qpath) != p["request_envelope_sha256"]:
+            add("prior-request-tampered", f"sha256(run/llm/{qpath.name}) != recorded request_envelope_sha256", w)
         res = extract_command(rpath.read_bytes())
         if p["attempt_kind"] == "FORFEIT":
             if res.ok:

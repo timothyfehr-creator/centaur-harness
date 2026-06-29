@@ -1,9 +1,9 @@
 """Token-denominated spend guard (WP-A1b §4.1) — PURE: no network, no clock, no float.
 
-The real bound on a live capture is ``--max-calls`` + ``max_tokens``; this is the PROACTIVE pre-call check
-(refuse BEFORE a call that could breach the cap, not after) + a labeled, sourced cost pin for reporting. It
-lives in a green module so the safety arithmetic is unit-tested, even though the @live capture script that
-calls it is out of the green gate.
+The real bound on a live capture is the call ceiling (``slots * (1 + --max-retries)`` per turn) + a token cap
+/ per-game ``$`` cap; this is the PROACTIVE pre-call check (refuse BEFORE a call that could breach the cap, not
+after) + a labeled, sourced cost pin for reporting. It lives in a green module so the safety arithmetic is
+unit-tested, even though the @live capture script that calls it is out of the green gate.
 
 The proactive check matters: ``max_tokens`` bounds only OUTPUT, and Opus's 1M context means a pathological
 prompt is large INPUT in one call. So the per-call ceiling counts ``count_tokens(input) + max_tokens`` and

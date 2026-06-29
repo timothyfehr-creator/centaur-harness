@@ -615,6 +615,37 @@ def test_retry_tampered_prior_bytes_is_caught(tmp_path: Path) -> None:
     _expect_code(scn, "prior-response-tampered")
 
 
+def test_retry_tampered_prior_request_bytes_is_caught(tmp_path: Path) -> None:
+    # parity with the decisive step: a prior's REQUEST bytes get the same Tier-1 content re-hash as its response
+    scn, step = _build_retry(tmp_path)
+    artifact = scn / "run" / "llm" / f"{step['prior_attempts'][0]['request_envelope_sha256']}.json"
+    artifact.write_bytes(artifact.read_bytes() + b" ")   # request content changed, recorded sha unchanged
+    _expect_code(scn, "prior-request-tampered")
+
+
+def test_retry_prior_missing_correction_key_fails_clean(tmp_path: Path) -> None:
+    # a prior must CARRY a correction (null on attempt 0); a missing key is a clean finding, never a traceback
+    scn, step = _build_retry(tmp_path)
+    del step["prior_attempts"][0]["correction"]
+    _write_ledger(scn, [step])
+    r = _run(scn)
+    assert r.returncode == 1 and "Traceback" not in r.stderr
+    assert any("missing-field" in f for f in _findings(r.stderr))
+
+
+def test_bind_request_envelope_threads_correction(tmp_path: Path) -> None:
+    # the LIVE binding leg the offline (v1) retry fixtures don't exercise: a TEMPLATE request rendered WITH a
+    # correction binds iff re-rendered with the SAME correction (so a retry's request can't be swapped).
+    import validate_agent_provenance as vap
+    scn, _ = _build_tier3(tmp_path)   # commits run/turns/0000.json carrying start_state
+    view = project_turn_record("BLUE", {"turn": 0, "resulting_state": _make_state(), "event_batch": []})
+    target = hashlib.sha256(canonical_request_bytes(A1B_PROMPT_VERSION, view, "insufficient-supply")).hexdigest()
+    rc, pay = vap._bind_request_envelope(A1B_PROMPT_VERSION, 0, "BLUE", "insufficient-supply", target, scn, "w")
+    assert rc == 0 and pay is None                                   # honest: same correction -> binds
+    rc2, pay2 = vap._bind_request_envelope(A1B_PROMPT_VERSION, 0, "BLUE", None, target, scn, "w")
+    assert rc2 == 1 and "request-envelope-binding-mismatch" in pay2[0]   # wrong correction -> caught
+
+
 def test_retry_prior_missing_bytes_is_caught(tmp_path: Path) -> None:
     scn, step = _build_retry(tmp_path)
     (scn / "run" / "llm" / f"{step['prior_attempts'][0]['response_sha256']}.json").unlink()

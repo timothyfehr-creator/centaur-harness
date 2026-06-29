@@ -115,8 +115,9 @@ def test_no_hidden_sentinel_reaches_the_request() -> None:
                  "SENTINELr2thresh5N3"]
     for pv in pt.APPROVED_PROMPT_VERSIONS:                        # no hidden value reaches ANY approved template
         assert pt.request_contains_any(pv, view, sentinels) == []
-        # ...and the RETRY correction path is just as secret-free (the clause names only the public code)
-        for code in ("insufficient-supply", "out-of-range", "role-action-mismatch"):
+        # ...and the RETRY correction path is just as secret-free for EVERY correction code (the clause names
+        # only the public reject code, never the hidden threshold).
+        for code in pt.CORRECTION_CODES:
             assert pt.request_contains_any(pv, view, sentinels, correction=code) == []
 
 

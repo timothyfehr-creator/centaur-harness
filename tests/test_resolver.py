@@ -152,6 +152,16 @@ def test_r2_contest_uses_r2_threshold_not_r1() -> None:
     assert seq(r)[-1] == ("SUPPLY_DELIVERED", "r2", 30)   # r2's threshold 50, NOT r1's 73 (which would LOSE)
 
 
+def test_command_legality_code_is_secret_independent() -> None:
+    # the retry no-leak guarantee structurally depends on this: command_legality produces the CORRECTION code
+    # shown to the model, so it must NEVER depend on a hidden threshold. Vary BOTH secrets across the d100 range;
+    # the legality verdict for a fixed command is unchanged (a correction can't encode a secret).
+    cmd = {"actor_id": "BLUE", "action_type": "DISPATCH_SUPPLY", "params": {"quantity": 50, "route": "r2"}}
+    verdicts = {rsv.command_legality(cmd, make_state(threshold=t1, r2_threshold=t2))
+                for t1 in (0, 50, 99) for t2 in (0, 50, 99)}
+    assert verdicts == {"out-of-range"}        # one public code, independent of either hidden threshold
+
+
 def test_malformed_route_secret_is_loud_not_silently_unblockable() -> None:
     # a PRESENT but corrupt route_secret:r1 (block_threshold value missing) must NOT silently become
     # un-blockable (fail-open) -- it propagates loudly. Only an ABSENT route_secret is treated as un-blockable.

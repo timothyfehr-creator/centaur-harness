@@ -68,17 +68,76 @@ FP = {"engine_source_hash": "offline-fixture", "python": "fixture", "pyyaml_vers
       "serializer_version": "1", "persistence_profile": "fixture"}
 
 
-def _request_bytes(slot: str, turn: int, prompt_version: str) -> bytes:
+def _request_bytes(slot: str, turn: int, prompt_version: str, correction: str | None = None) -> bytes:
     """A minimal synthetic request envelope (integrity-only offline; the prompt<->envelope binding
-    re-render is WP-A1b). Deterministic so the hash is stable."""
-    return json.dumps({"prompt_version": prompt_version, "calling_slot": slot, "turn": turn},
-                      sort_keys=True, separators=(",", ":")).encode("utf-8")
+    re-render is WP-A1b). Deterministic so the hash is stable. ``correction`` (a retry's reject code) is
+    added only when set, so a non-retry attempt's bytes are byte-identical to the pre-retry producer."""
+    body: dict = {"prompt_version": prompt_version, "calling_slot": slot, "turn": turn}
+    if correction is not None:
+        body["correction"] = correction
+    return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def classify_attempt(slot: str, turn: int, run_id: str, start_state: dict, response: bytes,
+                     request: bytes) -> dict:
+    """Extract + classify ONE attempt's (already-redacted) bytes into a disposition. Shared by the offline
+    and live drives. Returns {kind, command, digest, reject, response, request} where kind is
+    COMMAND | FORFEIT | ILLEGAL_FORFEIT (the same three-way the step builder pins)."""
+    res = extract_command(response)
+    if not res.ok:                                        # not well-formed -> FORFEIT
+        return {"kind": "FORFEIT", "command": None, "digest": None, "reject": res.reject_code,
+                "response": response, "request": request}
+    cmd = {"command_id": f"{run_id}:{turn}:{slot}", "turn": turn, "actor_id": slot,
+           "action_type": res.command["action_type"], "params": res.command["params"]}
+    digest = canonical_digest(project_semantic(res.command))["value"]
+    legality = al.command_legality(cmd, start_state)      # the engine's verdict on the HARNESS-BOUND command
+    if legality is None:                                  # legal -> COMMAND
+        return {"kind": "COMMAND", "command": cmd, "digest": digest, "reject": None,
+                "response": response, "request": request}
+    return {"kind": "ILLEGAL_FORFEIT", "command": None, "digest": digest, "reject": legality,  # well-formed but illegal
+            "response": response, "request": request}
+
+
+def run_slot_attempts(slot: str, turn: int, run_id: str, start_state: dict, fetch, max_retries: int) -> dict | None:
+    """The SHARED retry loop for one slot (network-free; any network lives inside ``fetch``).
+    ``fetch(attempt_idx, correction) -> (redacted_response_bytes, request_bytes) | None`` -- None means no
+    attempt is available (offline list exhausted, or the live spend cap was hit). Each rejected order is
+    re-asked with ``correction = its reject code`` up to ``max_retries`` times; the loop STOPS at the first
+    legal command. Returns {decisive, priors} where decisive = the first COMMAND attempt (else the last
+    attempt) and priors = the rejected attempts before it; or None if the slot produced no attempt at all."""
+    made: list = []
+    correction: str | None = None
+    for idx in range(max_retries + 1):
+        rv = fetch(idx, correction)
+        if rv is None:
+            break
+        response, request = rv
+        a = classify_attempt(slot, turn, run_id, start_state, response, request)
+        a["correction"] = correction
+        made.append(a)
+        if a["kind"] == "COMMAND":
+            break
+        correction = a["reject"]                          # hand the public reason back on the next attempt
+    if not made:
+        return None
+    dec_idx = next((i for i, a in enumerate(made) if a["kind"] == "COMMAND"), len(made) - 1)
+    return {"decisive": made[dec_idx], "priors": made[:dec_idx]}
+
+
+def _prior_attempt(a: dict) -> dict:
+    """A rejected prior attempt's NON-binding (but gate-verified) audit record (see schemas/llm_step.schema.md)."""
+    return {"response_sha256": hashlib.sha256(a["response"]).hexdigest(),
+            "request_envelope_sha256": hashlib.sha256(a["request"]).hexdigest(),
+            "attempt_kind": a["kind"], "reject_code": a["reject"], "correction": a["correction"]}
 
 
 def _llm_step(slot: str, turn: int, run_id: str, response: bytes, request: bytes,
-              extracted_digest: str | None, reject_code: str | None, prompt_version: str) -> dict:
-    """One flat all-scalar llm_step (HAND_AUTHORED_FIXTURE; see schemas/llm_step.schema.md)."""
-    return {
+              extracted_digest: str | None, reject_code: str | None, prompt_version: str,
+              *, correction: str | None = None, prior_attempts: list | None = None) -> dict:
+    """One llm_step (HAND_AUTHORED_FIXTURE; see schemas/llm_step.schema.md). ``correction`` /
+    ``prior_attempts`` (WP-A2 retry) are OMITTED when absent, so a no-retry step is byte-identical to the
+    pre-retry producer and every committed scenario binds unchanged."""
+    step = {
         "schema_version": "1.0", "run_id": run_id, "turn": turn, "recorded_turn": turn,
         "calling_slot": slot, "command_id": f"{run_id}:{turn}:{slot}",
         # disposition by (digest, reject_code): COMMAND (legal), FORFEIT (no well-formed command),
@@ -94,35 +153,49 @@ def _llm_step(slot: str, turn: int, run_id: str, response: bytes, request: bytes
         "extracted_command_digest": extracted_digest, "reject_code": reject_code,
         "as_of": "2026-06-27",
     }
+    if correction is not None:           # this attempt was a retry prompted by a prior reject (a public code)
+        step["correction"] = correction
+    if prior_attempts:                   # the rejected attempts before the decisive one (non-binding, gate-verified)
+        step["prior_attempts"] = prior_attempts
+    return step
 
 
 def drive_turn(start_state: dict, byte_by_slot: dict, *, run_id: str, turn: int,
                prompt_version: str = "v1") -> dict:
     """Drive ONE turn from per-slot response bytes. PURE (no I/O). Returns {turn_record, llm_steps,
-    artifacts}: artifacts maps sha256 -> raw bytes (response + request, content-addressed)."""
+    artifacts}: artifacts maps sha256 -> raw bytes (response + request, content-addressed).
+
+    Each slot's value is EITHER a single bytes (one attempt, no retry -- byte-identical to the pre-retry
+    producer) OR a LIST of attempt bytes (WP-A2 retry: attempt 0, then corrected retries). The shared retry
+    loop stops at the first legal command; the DECISIVE attempt binds the llm_step, the rejected priors
+    become its (gate-verified) ``prior_attempts``."""
     commands: list = []
     steps: list = []
     artifacts: dict = {}
     for slot in ("BLUE", "RED"):                      # canonical order; the engine re-sorts anyway
         if slot not in byte_by_slot:
             continue
-        response = redact(byte_by_slot[slot])   # WP-A1b: strip prose at SOURCE before hashing/committing
-        request = _request_bytes(slot, turn, prompt_version)
-        artifacts[hashlib.sha256(response).hexdigest()] = response
-        artifacts[hashlib.sha256(request).hexdigest()] = request
-        res = extract_command(response)
-        if res.ok:
-            cmd = {"command_id": f"{run_id}:{turn}:{slot}", "turn": turn, "actor_id": slot,
-                   "action_type": res.command["action_type"], "params": res.command["params"]}
-            digest = canonical_digest(project_semantic(res.command))["value"]
-            legality = al.command_legality(cmd, start_state)   # the engine's verdict on the HARNESS-BOUND command
-            if legality is None:                           # legal -> COMMAND (enters the batch)
-                commands.append(cmd)
-                steps.append(_llm_step(slot, turn, run_id, response, request, digest, None, prompt_version))
-            else:                                          # well-formed but engine-illegal -> ILLEGAL_FORFEIT (NO_OP)
-                steps.append(_llm_step(slot, turn, run_id, response, request, digest, legality, prompt_version))
-        else:                                          # not well-formed -> FORFEIT -> NO_OP (no command in the batch)
-            steps.append(_llm_step(slot, turn, run_id, response, request, None, res.reject_code, prompt_version))
+        raw = byte_by_slot[slot]
+        attempts = [raw] if isinstance(raw, (bytes, bytearray)) else list(raw)   # single blob == a 1-attempt slot
+
+        def fetch(idx: int, correction: str | None, _attempts=attempts, _slot=slot):
+            if idx >= len(_attempts):
+                return None
+            # redact at SOURCE before hashing/committing (WP-A1b); the request carries the retry correction
+            return (redact(_attempts[idx]), _request_bytes(_slot, turn, prompt_version, correction))
+
+        res = run_slot_attempts(slot, turn, run_id, start_state, fetch, max_retries=len(attempts) - 1)
+        if res is None:
+            continue
+        dec, priors = res["decisive"], res["priors"]
+        for a in (dec, *priors):                      # content-address EVERY attempt's response + request
+            artifacts[hashlib.sha256(a["response"]).hexdigest()] = a["response"]
+            artifacts[hashlib.sha256(a["request"]).hexdigest()] = a["request"]
+        if dec["command"] is not None:
+            commands.append(dec["command"])
+        steps.append(_llm_step(slot, turn, run_id, dec["response"], dec["request"], dec["digest"],
+                               dec["reject"], prompt_version, correction=dec["correction"],
+                               prior_attempts=[_prior_attempt(a) for a in priors]))
     out = tr.assemble(turn=turn, start_state=start_state, commands=commands, master_seed=0,
                       runtime_fingerprint=FP, successor_slot=f"run/turns/{turn + 1:04d}.json", resolver=al)
     if out["status"] != "resolved":

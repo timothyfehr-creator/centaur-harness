@@ -91,6 +91,61 @@ def test_drive_turn_wrong_role_forfeits() -> None:
     assert step["step_kind"] == "ILLEGAL_FORFEIT" and step["reject_code"] == "role-action-mismatch"
 
 
+# --- WP-A2 live retry (offline coverage): a per-slot byte SEQUENCE drives the shared retry loop ---------
+
+def test_retry_illegal_then_corrected_legal_is_a_command_with_one_prior() -> None:
+    # attempt 0 dispatches 50 (out-of-range) -> corrected -> attempt 1 dispatches 30 (legal). The DECISIVE
+    # attempt is a COMMAND (enters the batch); the rejected attempt 0 is one gate-verified prior.
+    attempts = [_tool_use("DISPATCH_SUPPLY", {"quantity": 50, "route": "r1"}),
+                _tool_use("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"})]
+    out = drive.drive_turn(drive.INITIAL_STATE, {"BLUE": attempts}, run_id="t", turn=0)
+    assert [c["actor_id"] for c in out["turn_record"]["command_batch"]] == ["BLUE"]   # the legal order applied
+    step = out["llm_steps"][0]
+    assert step["step_kind"] == "COMMAND" and step["correction"] == "out-of-range"    # decisive attempt was the retry
+    assert len(step["prior_attempts"]) == 1
+    p = step["prior_attempts"][0]
+    assert p["attempt_kind"] == "ILLEGAL_FORFEIT" and p["reject_code"] == "out-of-range" and p["correction"] is None
+    assert p["response_sha256"] in out["artifacts"] and len(out["artifacts"]) == 4    # both attempts' bytes committed
+
+
+def test_retry_insufficient_supply_corrected_to_a_legal_dispatch() -> None:
+    # the natural live trigger: BLUE over-dispatches near exhaustion (origin 5, dispatch 30) -> corrected with
+    # `insufficient-supply` -> dispatches its remaining 5 -> RECOVERS the turn instead of forfeiting.
+    import copy
+    low = copy.deepcopy(drive.INITIAL_STATE)
+    low["state"]["entities"][0]["fields"]["origin"]["value"] = 5
+    attempts = [_tool_use("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"}),
+                _tool_use("DISPATCH_SUPPLY", {"quantity": 5, "route": "r1"})]
+    out = drive.drive_turn(low, {"BLUE": attempts}, run_id="t", turn=0)
+    step = out["llm_steps"][0]
+    assert step["step_kind"] == "COMMAND" and step["correction"] == "insufficient-supply"
+    assert out["turn_record"]["command_batch"][0]["params"]["quantity"] == 5
+    assert step["prior_attempts"][0]["reject_code"] == "insufficient-supply"
+
+
+def test_retry_budget_exhausted_forfeits_with_a_consistent_correction_chain() -> None:
+    # three illegal attempts (budget 2 exhausted) -> the DECISIVE attempt is the final forfeit; the first two
+    # are priors; the correction chain is consistent (each retry carries the previous reject code).
+    bad = _tool_use("DISPATCH_SUPPLY", {"quantity": 50, "route": "r1"})   # out-of-range
+    out = drive.drive_turn(drive.INITIAL_STATE, {"BLUE": [bad, bad, bad]}, run_id="t", turn=0)
+    assert out["turn_record"]["command_batch"] == []            # forfeited, turn still resolves
+    step = out["llm_steps"][0]
+    assert step["step_kind"] == "ILLEGAL_FORFEIT" and step["reject_code"] == "out-of-range"
+    assert step["correction"] == "out-of-range" and len(step["prior_attempts"]) == 2
+    assert step["prior_attempts"][0]["correction"] is None                # attempt 0 had no correction
+    assert step["prior_attempts"][1]["correction"] == "out-of-range"       # attempt 1 carried the prior reject
+
+
+def test_no_retry_single_bytes_has_no_retry_fields() -> None:
+    # the common case: a single-blob slot produces a step with NEITHER correction NOR prior_attempts ->
+    # byte-identical to the pre-retry producer (so every committed scenario binds unchanged).
+    out = drive.drive_turn(drive.INITIAL_STATE,
+                           {"BLUE": (BYTES / "valid" / "dispatch_r1.json").read_bytes()},
+                           run_id="t", turn=0)
+    step = out["llm_steps"][0]
+    assert "correction" not in step and "prior_attempts" not in step
+
+
 def test_commit_turn_writes_record_and_bytes(tmp_path: Path) -> None:
     out = drive.drive_turn(drive.INITIAL_STATE,
                            {"BLUE": (BYTES / "valid" / "dispatch_r1.json").read_bytes()},

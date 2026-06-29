@@ -60,7 +60,9 @@ def _live_step(slot: str, run_id: str, served_model: str, request_id: str, respo
     """One LIVE llm_step (matches validate_agent_provenance's LIVE checks)."""
     return {
         "schema_version": "1.0", "run_id": run_id, "turn": 0, "recorded_turn": 0, "calling_slot": slot,
-        "command_id": f"{run_id}:0:{slot}", "step_kind": "COMMAND" if reject_code is None else "FORFEIT",
+        "command_id": f"{run_id}:0:{slot}",
+        "step_kind": ("COMMAND" if digest is not None and reject_code is None
+                      else "ILLEGAL_FORFEIT" if digest is not None else "FORFEIT"),
         "capture_mode": "LIVE", "provider": "anthropic",
         "model": MODEL, "model_version": served_model, "served_model": served_model,
         "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": A1B_PROMPT_VERSION,
@@ -127,11 +129,18 @@ def capture(slots: list[str], *, run_id: str, raw_wire_dir: Path, max_calls: int
         artifacts[hashlib.sha256(request).hexdigest()] = request
         res = extract_command(response)
         if res.ok:
-            commands.append({"command_id": f"{run_id}:0:{slot}", "turn": 0, "actor_id": slot,
-                             "action_type": res.command["action_type"], "params": res.command["params"]})
+            cmd = {"command_id": f"{run_id}:0:{slot}", "turn": 0, "actor_id": slot,
+                   "action_type": res.command["action_type"], "params": res.command["params"]}
             digest = canonical_digest(project_semantic(res.command))["value"]
-            steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
-                                    response, request, digest, None))
+            legality = al.command_legality(cmd, INITIAL_STATE)   # the engine's verdict on the bound command
+            if legality is None:                          # legal -> COMMAND
+                commands.append(cmd)
+                steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
+                                        response, request, digest, None))
+            else:                                          # well-formed but engine-illegal -> ILLEGAL_FORFEIT (NO_OP)
+                steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
+                                        response, request, digest, legality))
+                print(f"  [{slot}] ILLEGAL_FORFEIT: {legality}", file=sys.stderr)
         else:  # a 200 OK that is not exactly one well-formed command -> recorded FORFEIT (NO_OP), bytes committed.
             steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
                                     response, request, None, res.reject_code))

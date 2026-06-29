@@ -58,6 +58,15 @@ def test_prompt_version_is_content_pinned() -> None:
         assert pt.prompt_version_of(edited) != PV, f"editing {field} must move the version (amendment 4)"
 
 
+def test_frozen_v1_pins_the_historical_capture_version() -> None:
+    # the committed FIRST live capture was rendered with the frozen-v1 prompt; pin its version in pytest so a
+    # silent edit of _SYSTEM_PROSE_V1_FROZEN is caught here, not only by the release-time provenance sweep (M1 R1).
+    assert pt._A1B_PROMPT_VERSION_V1 == "ptmpl-8a6e10b1240e09ca"
+    assert pt._A1B_PROMPT_VERSION_V1 in pt.PROMPT_TEMPLATES
+    assert pt._A1B_PROMPT_VERSION_V1 in pt.APPROVED_PROMPT_VERSIONS
+    assert pt.A1B_PROMPT_VERSION != pt._A1B_PROMPT_VERSION_V1          # current (with the supply rule) is distinct
+
+
 def test_unregistered_version_refuses_to_render() -> None:
     import pytest
     with pytest.raises(KeyError):

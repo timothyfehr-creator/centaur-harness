@@ -2,9 +2,12 @@
 verbatim, so a later edit cannot quietly upgrade a single non-deterministic capture into a forecast."""
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
-LIVE = Path(__file__).resolve().parent.parent / "examples" / "contested_logistics_agents_live"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LIVE = REPO_ROOT / "examples" / "contested_logistics_agents_live"
 
 # Verbatim phrases that must survive in the committed disclosure (README + scenario.yaml).
 _REQUIRED = (
@@ -36,3 +39,16 @@ def test_live_scenario_is_not_in_the_attestation_tier() -> None:
         pytest.skip("live capture scenario not present")
     for forbidden in ("signoff.yaml", "review.yaml", "calibration.yaml", "calibration_feasibility.yaml"):
         assert not (LIVE / forbidden).exists(), f"a CAPTURE_ARTIFACT must not carry {forbidden}"
+
+
+def test_committed_live_capture_binds_under_provenance() -> None:
+    # M1 R1: the committed first live capture (rendered with the frozen-v1 template) must still BIND -- pinned
+    # in pytest so a silent break/deletion is caught here, not only by the release-time provenance sweep.
+    if not LIVE.is_dir():
+        import pytest
+        pytest.skip("live capture scenario not present")
+    gate = REPO_ROOT / "scripts" / "validate_agent_provenance.py"
+    r = subprocess.run([sys.executable, str(gate), "--scenario-dir", str(LIVE)],
+                       cwd=REPO_ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert "2 step(s) bound" in r.stdout

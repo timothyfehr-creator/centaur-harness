@@ -1,0 +1,53 @@
+schema_version: "1.0"
+title: "Contested logistics — BOTH roads blockable, multi-turn two-player LIVE game (CAPTURE_ARTIFACT)"
+label: CAPTURE_ARTIFACT       # a single non-deterministic live game, NOT a model/sample/analysis
+as_of_date: "2026-06-29"
+description: >
+  CAPTURE_ARTIFACT, not a forecast. This records ONE live, non-deterministic multi-turn game in which Opus
+  4.8 played BOTH sides (BLUE and RED) of a contested-logistics game over several turns. Unlike the earlier
+  game where route r2 was a free un-blockable escape (so RED was idle), here BOTH roads are blockable — each
+  carries its own hidden threshold known only to the adjudicator — so every turn is a genuine guessing duel:
+  BLUE bets on a road, RED bets on which road to block, and a block bites only when RED guesses BLUE's road
+  AND the adjudicator's d100 falls under that road's threshold. Its ONLY purpose is to demonstrate the
+  both-roads-blockable lane mechanically works end-to-end and replays byte-identically with the model never
+  re-called. It is a MACHINE LOG, not a transcript, a forecast, or analysis.
+
+  MEMORYLESS DISCLOSURE: Each player is a memoryless one-shot reasoner; on every turn it is called fresh and
+  sees only the current-turn fog projection — no prior turn, no message history, and no memory of its own
+  past moves. This is weaker than a remembering adversary and must not be presented as a continuous
+  strategist.
+
+  AUTHENTICITY RESIDUAL: capture_mode LIVE is an attestation by the runner, not a proof. A fabricated capture
+  is byte-indistinguishable to a third party and would bind green — the gates prove internal CONSISTENCY, not
+  byte AUTHENTICITY.
+
+  SAMPLE SIZE: n equals 1. This is a single game, not a sample; nothing here is a frequency, a probability,
+  or evidence about the real world. It is NEVER to be aggregated with other games into a distribution. Every
+  constant (both hidden thresholds, BLUE's supply) is ASSUMED and ILLUSTRATIVE.
+
+branches:
+  - id: blue_evades
+    title: "BLUE routes around RED's blocks across turns"
+    probability: 0.50
+    signposts:
+      - "BLUE picks the road RED did not block on most turns"
+      - "Most turns end in SUPPLY_DELIVERED"
+      - "BLUE manages its origin supply without over-dispatching into a forfeit"
+    falsifiers:
+      - "A majority of turns end in SUPPLY_LOST"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.
+
+  - id: red_interdicts
+    title: "RED interdicts a meaningful share of supply (now possible on either road)"
+    probability: 0.50
+    signposts:
+      - "RED blocks the road BLUE used on multiple turns"
+      - "Several turns end in SUPPLY_LOST"
+      - "BLUE's delivered total lags its dispatched total"
+    falsifiers:
+      - "No turn ends in SUPPLY_LOST"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.

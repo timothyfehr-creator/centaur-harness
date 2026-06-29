@@ -1,0 +1,12 @@
+# ILLUSTRATIVE initial-state registry for the both-roads-blockable engine slice — every item is a
+# SYNTHETIC placeholder, NOT a real-world assertion. No item is labeled REAL_WORLD_BASELINE, so no claim
+# resolution is exercised here (consistent with scenario.yaml, which is ILLUSTRATIVE).
+schema_version: "1.0"
+as_of_date: "2026-06-29"
+items:
+  - id: state-001
+    statement: "BLUE holds 100 abstract supply units at origin (synthetic, ASSUMED)."
+    label: ASSUMPTION
+  - id: state-002
+    statement: "Two abstract routes r1 and r2 connect origin to destination; BOTH are blockable, each with its own hidden threshold (synthetic — the 'RED matters' game, no free route)."
+    label: ILLUSTRATIVE

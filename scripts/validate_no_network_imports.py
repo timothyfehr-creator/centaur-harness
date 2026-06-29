@@ -35,8 +35,9 @@ NETWORK_MODULES = (
     "anthropic", "httpx", "requests", "urllib3", "aiohttp", "socket",
     "urllib.request", "http.client", "live_client", "core.live_client",
 )
-# The @live lane — the sole network-permitted modules, exempt BY PATH (repo-relative). Deferred / absent today.
-LIVE_ALLOWLIST = frozenset({"core/live_client.py", "scripts/agent_live_capture.py"})
+# The @live lane — the sole network-permitted modules, exempt BY PATH (repo-relative).
+LIVE_ALLOWLIST = frozenset({"core/live_client.py", "scripts/agent_live_capture.py",
+                            "scripts/agent_live_campaign.py"})
 
 
 def _denylisted(dotted: str) -> str | None:

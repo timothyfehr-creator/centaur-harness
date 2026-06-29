@@ -56,11 +56,12 @@ def _decision_view(slot: str) -> dict:
 
 
 def _live_step(slot: str, run_id: str, served_model: str, request_id: str, response: bytes, request: bytes,
-               digest: str | None, reject_code: str | None) -> dict:
-    """One LIVE llm_step (matches validate_agent_provenance's LIVE checks)."""
+               digest: str | None, reject_code: str | None, turn: int = 0) -> dict:
+    """One LIVE llm_step (matches validate_agent_provenance's LIVE checks). turn defaults to 0 for the
+    single-turn capture; the multi-turn campaign passes the actual turn (shared step builder, one source)."""
     return {
-        "schema_version": "1.0", "run_id": run_id, "turn": 0, "recorded_turn": 0, "calling_slot": slot,
-        "command_id": f"{run_id}:0:{slot}",
+        "schema_version": "1.0", "run_id": run_id, "turn": turn, "recorded_turn": turn, "calling_slot": slot,
+        "command_id": f"{run_id}:{turn}:{slot}",
         "step_kind": ("COMMAND" if digest is not None and reject_code is None
                       else "ILLEGAL_FORFEIT" if digest is not None else "FORFEIT"),
         "capture_mode": "LIVE", "provider": "anthropic",

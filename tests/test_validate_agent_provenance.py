@@ -535,3 +535,95 @@ def test_illegal_forfeit_bytes_must_extract_a_command(tmp_path: Path) -> None:
                                                            "input": {}}]}).encode()
     scn, _ = _build_illegal_forfeit(tmp_path, response=no_cmd, digest="a" * 64)
     _expect_code(scn, "spurious-illegal-forfeit")
+
+
+# --- WP-A2 live retry: the decisive attempt binds; rejected prior_attempts are gate-VERIFIED ----------
+
+def _tool_use(action_type: str, params: dict) -> bytes:
+    return json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "submit_command",
+        "input": {"action_type": action_type, "params": params}}]}).encode()
+
+
+def _build_retry(tmp_path: Path, attempts: list | None = None) -> tuple[Path, dict]:
+    """A binding retry scenario built by the REAL drive: by default attempt 0 dispatches 50 (out-of-range)
+    -> corrected -> attempt 1 dispatches 30 (legal). The decisive COMMAND step carries one prior_attempt."""
+    import agent_offline_run as drive
+    scn = tmp_path / "scn"
+    if attempts is None:
+        attempts = [_tool_use("DISPATCH_SUPPLY", {"quantity": 50, "route": "r1"}),
+                    _tool_use("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"})]
+    out = drive.drive_turn(drive.INITIAL_STATE, {"BLUE": attempts}, run_id=RUN_ID, turn=0)
+    drive.commit_turn(scn, out)
+    _write_ledger(scn, out["llm_steps"])
+    return scn, out["llm_steps"][0]
+
+
+def test_retry_scenario_binds(tmp_path: Path) -> None:
+    scn, step = _build_retry(tmp_path)
+    assert step["step_kind"] == "COMMAND" and len(step["prior_attempts"]) == 1
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr
+
+
+def test_retry_budget_exhausted_forfeit_with_priors_binds(tmp_path: Path) -> None:
+    bad = _tool_use("DISPATCH_SUPPLY", {"quantity": 50, "route": "r1"})   # 3 x out-of-range -> forfeit
+    scn, step = _build_retry(tmp_path, attempts=[bad, bad, bad])
+    assert step["step_kind"] == "ILLEGAL_FORFEIT" and len(step["prior_attempts"]) == 2
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr
+
+
+def test_retry_prior_hiding_a_legal_move_is_caught(tmp_path: Path) -> None:
+    # the load-bearing honesty property: a prior that CLAIMS a reject but whose bytes actually extract a LEGAL
+    # command (smuggling a discarded legal move into the audit trail) is rejected -- the gate re-extracts + re-
+    # checks legality, never trusts the stored attempt_kind/reject_code.
+    from response_redact import redact
+    scn, step = _build_retry(tmp_path)
+    legal = redact(_tool_use("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"}))
+    legal_sha = hashlib.sha256(legal).hexdigest()
+    (scn / "run" / "llm" / f"{legal_sha}.json").write_bytes(legal)
+    step["prior_attempts"][0]["response_sha256"] = legal_sha   # the prior's bytes now extract a LEGAL command
+    _write_ledger(scn, [step])
+    _expect_code(scn, "prior-legal-not-rejected")
+
+
+def test_retry_prior_wrong_reject_code_is_caught(tmp_path: Path) -> None:
+    scn, step = _build_retry(tmp_path)
+    step["prior_attempts"][0]["reject_code"] = "unknown-route"   # the real reject is out-of-range
+    _write_ledger(scn, [step])
+    _expect_code(scn, "prior-illegal-code-mismatch")
+
+
+def test_retry_broken_correction_chain_is_caught(tmp_path: Path) -> None:
+    scn, step = _build_retry(tmp_path)
+    step["prior_attempts"][0]["correction"] = "out-of-range"   # attempt 0 must carry NO correction
+    _write_ledger(scn, [step])
+    _expect_code(scn, "retry-correction-chain")
+
+
+def test_retry_decisive_correction_must_match_last_prior(tmp_path: Path) -> None:
+    scn, step = _build_retry(tmp_path)
+    step["correction"] = "unknown-route"   # decisive correction must equal the last prior's reject_code
+    _write_ledger(scn, [step])
+    _expect_code(scn, "retry-correction-chain")
+
+
+def test_retry_tampered_prior_bytes_is_caught(tmp_path: Path) -> None:
+    scn, step = _build_retry(tmp_path)
+    artifact = scn / "run" / "llm" / f"{step['prior_attempts'][0]['response_sha256']}.json"
+    artifact.write_bytes(artifact.read_bytes() + b" ")   # bytes changed, recorded sha unchanged
+    _expect_code(scn, "prior-response-tampered")
+
+
+def test_retry_prior_missing_bytes_is_caught(tmp_path: Path) -> None:
+    scn, step = _build_retry(tmp_path)
+    (scn / "run" / "llm" / f"{step['prior_attempts'][0]['response_sha256']}.json").unlink()
+    _expect_code(scn, "prior-artifact-missing")
+
+
+def test_correction_without_prior_is_caught(tmp_path: Path) -> None:
+    # a step claiming a correction but with NO prior_attempts (a correction implies a prior reject)
+    scn, step = _build(tmp_path)
+    step["correction"] = "out-of-range"
+    _write_ledger(scn, [step])
+    _expect_code(scn, "retry-correction-without-prior")

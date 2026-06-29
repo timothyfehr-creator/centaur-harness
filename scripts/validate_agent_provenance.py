@@ -66,6 +66,7 @@ from command_extractor import (  # noqa: E402
 from engine_projection import project_turn_record  # noqa: E402
 from prompt_templates import (  # noqa: E402
     APPROVED_PROMPT_VERSIONS,
+    CORRECTION_CODES,
     PROMPT_TEMPLATES,
     canonical_request_bytes,
 )
@@ -92,13 +93,17 @@ _REQ_ID_RE = re.compile(r"^req_[A-Za-z0-9]+$")
 # OTHER prompt_version is unknown -> fail closed (exit 2). (§2.3-2.4)
 INTEGRITY_ONLY_PROMPT_VERSIONS = ("v1",)
 
-# Unknown-key + scalar-only boundary: every llm_step field is a SCALAR (the only container is the
-# llm_steps list itself), so a nested object cannot smuggle an un-vetted field past the gate.
+# Unknown-key + scalar-only boundary: every llm_step field is a SCALAR EXCEPT the one vetted container
+# `prior_attempts` (the WP-A2 retry audit trail, shape-checked explicitly below), so a nested object cannot
+# smuggle an un-vetted field past the gate. `correction` is a scalar (a reject code or null).
 ALLOWED_STEP = {"schema_version", "run_id", "turn", "recorded_turn", "calling_slot", "command_id",
                 "step_kind", "capture_mode", "provider", "model", "model_version", "served_model",
                 "sampling", "prompt_version", "extractor_version", "canon_version", "response_sha256",
                 "request_envelope_sha256", "extracted_command_digest", "reject_code", "as_of",
-                "provider_request_id", "anthropic_api_version", "model_id_stability", "authenticity"}
+                "provider_request_id", "anthropic_api_version", "model_id_stability", "authenticity",
+                "correction", "prior_attempts"}
+# The vetted shape of one prior_attempts entry (a rejected attempt before the decisive one).
+ALLOWED_PRIOR = {"response_sha256", "request_envelope_sha256", "attempt_kind", "reject_code", "correction"}
 REQUIRED_STR = ("schema_version", "run_id", "command_id", "calling_slot", "step_kind", "capture_mode",
                 "provider", "model", "model_version", "served_model", "sampling", "prompt_version",
                 "extractor_version", "canon_version", "response_sha256", "request_envelope_sha256", "as_of")
@@ -118,9 +123,50 @@ def _report(problems: list[tuple[str, str, str]]) -> int:
     return 1
 
 
+def _retry_shape_problems(step: dict, where: str) -> list[tuple[str, str, str]]:
+    """Structural floor of the OPTIONAL WP-A2 retry fields: `correction` (a CORRECTION_CODES value or
+    null/absent) and `prior_attempts` (a list of vetted reject records, each shape-checked). The DEEP
+    re-verification (each prior genuinely rejects; the correction chain; the request binding) is in
+    _retry_problems; this only checks shape so a malformed retry field is caught single-fault."""
+    out: list[tuple[str, str, str]] = []
+    corr = step.get("correction")
+    if corr is not None and corr not in CORRECTION_CODES:
+        out.append(("invalid-enum", where, f"correction must be null or a CORRECTION_CODES value; got {corr!r}"))
+    priors = step.get("prior_attempts")
+    if priors is None:
+        return out
+    if not isinstance(priors, list):
+        return out + [("wrong-type", where, f"prior_attempts must be a list; got {type(priors).__name__}")]
+    for i, p in enumerate(priors):
+        w = f"{where}.prior_attempts[{i}]"
+        if not isinstance(p, dict):
+            out.append(("wrong-type", w, "a prior_attempts entry must be a mapping"))
+            continue
+        for k, v in p.items():
+            if k not in ALLOWED_PRIOR:
+                out.append(("unknown-key", w, f"{k!r} is not an allowed prior_attempts key"))
+            elif not isinstance(v, _SCALAR):
+                out.append(("non-scalar-value", w, f"{k!r} must be a scalar"))
+        for f in ("response_sha256", "request_envelope_sha256"):
+            if not (isinstance(p.get(f), str) and _SHA256_RE.fullmatch(p.get(f) or "")):
+                out.append(("invalid-format", w, f"{f} must be 64 lowercase hex"))
+        kind = p.get("attempt_kind")
+        if kind not in ("FORFEIT", "ILLEGAL_FORFEIT"):
+            out.append(("invalid-enum", w, f"attempt_kind must be FORFEIT|ILLEGAL_FORFEIT; got {kind!r}"))
+        else:
+            codes = REJECT_CODES if kind == "FORFEIT" else LEGALITY_REJECT_CODES
+            if p.get("reject_code") not in codes:
+                out.append(("invalid-enum", w, f"a {kind} prior reject_code must be one of {sorted(codes)}"))
+        pc = p.get("correction")
+        if pc is not None and pc not in CORRECTION_CODES:
+            out.append(("invalid-enum", w, f"prior correction must be null or a CORRECTION_CODES value; got {pc!r}"))
+    return out
+
+
 def _structural_problems(step: object, where: str) -> list[tuple[str, str, str]]:
-    """Shape of ONE llm_step: mapping, unknown-key, scalar-only, required strings/ints, pinned enums, and
-    the step_kind/capture_mode field-presence consistency. Returns findings (single-fault friendly)."""
+    """Shape of ONE llm_step: mapping, unknown-key, scalar-only (except the vetted prior_attempts container),
+    required strings/ints, pinned enums, the step_kind/capture_mode consistency, and the retry-field floor.
+    Returns findings (single-fault friendly)."""
     problems: list[tuple[str, str, str]] = []
 
     def add(code: str, msg: str) -> None:
@@ -133,8 +179,11 @@ def _structural_problems(step: object, where: str) -> list[tuple[str, str, str]]
         if k not in ALLOWED_STEP:
             add("unknown-key", f"{k!r} is not an allowed llm_step key (allowed: {sorted(ALLOWED_STEP)})")
     for k, v in step.items():
+        if k == "prior_attempts":               # the one vetted container (shape-checked below)
+            continue
         if not isinstance(v, _SCALAR):
             add("non-scalar-value", f"{k!r} must be a scalar (got {type(v).__name__})")
+    problems.extend(_retry_shape_problems(step, where))
     if problems:
         return problems     # don't read fields off a structurally-broken step
     for f in REQUIRED_STR:
@@ -214,16 +263,17 @@ def _structural_problems(step: object, where: str) -> list[tuple[str, str, str]]
     return problems
 
 
-def _envelope_binding(step: dict, scenario_dir: Path, where: str) -> tuple[int, object]:
-    """Tier-3 request-envelope BINDING (§2.3-2.4), dispatched on prompt_version. Returns (rc, payload):
-      rc 2 -> a fail-closed reason string (unknown / registered-but-unapproved version);
-      rc 1 -> a single (code, where, msg) problem (the re-render did not match the recorded sha);
-      rc 0 -> bound (template re-render matched) or integrity-only (no re-render owed).
-    A REGISTERED+APPROVED template version is re-rendered from the committed decision head's fog view and
-    bound by sha256 -- catching a self-consistent request tamper (bytes re-hash fine, but are NOT the render
-    of the authorized template applied to the authorized fog view). The reserved INTEGRITY_ONLY versions are
-    Tier-1 only (re-hash, done by the caller). Any other version is unknown -> fail closed."""
-    pv = step["prompt_version"]
+def _bind_request_envelope(pv: str, turn: int, slot: str, correction: str | None, target_sha: str,
+                           scenario_dir: Path, where: str) -> tuple[int, object]:
+    """Tier-3 request-envelope BINDING (§2.3-2.4), dispatched on prompt_version, for ONE rendered request
+    (the decisive step OR a retry prior_attempt). ``correction`` is the reject code the request was rendered
+    with (None for a first attempt); it must reproduce ``target_sha``. Returns (rc, payload):
+      rc 2 -> fail-closed reason string (unknown / unapproved version, or un-re-renderable record);
+      rc 1 -> a single (code, where, msg) problem (re-render != target_sha);
+      rc 0 -> bound (template re-render matched) or integrity-only (offline synthetic envelope, no re-render).
+    A REGISTERED+APPROVED template version is re-rendered from the committed decision head's fog view (WITH
+    the correction) and bound by sha256 -- catching a self-consistent request tamper. INTEGRITY_ONLY versions
+    are Tier-1 only (re-hash, done by the caller)."""
     if pv in INTEGRITY_ONLY_PROMPT_VERSIONS:
         return 0, None                                  # offline synthetic envelope: Tier-1 re-hash only
     if pv not in PROMPT_TEMPLATES:
@@ -231,26 +281,31 @@ def _envelope_binding(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
                   f"integrity-only sentinel {INTEGRITY_ONLY_PROMPT_VERSIONS} — fail closed"
     if pv not in APPROVED_PROMPT_VERSIONS:              # registered != audited (§2.2 leg 1)
         return 2, f"{where}: prompt_version {pv!r} is registered but NOT on APPROVED_PROMPT_VERSIONS (unaudited)"
-    rec_path = scenario_dir / "run" / "turns" / f"{step['turn']:04d}.json"
+    rec_path = scenario_dir / "run" / "turns" / f"{turn:04d}.json"
     if not rec_path.is_file():
         return 1, ("turn-record-missing", where, f"run/turns/{rec_path.name} absent for the envelope binding")
-    # The decision head is the single-turn T=0 head: the player decided on the PRE-turn state (start_state)
-    # with no events yet. Re-render that slot's fog projection and bind it (the EXISTING projector + template).
-    # A malformed/unparseable record (missing start_state, bad entities) means we CANNOT re-render -> fail
-    # CLOSED (exit 2) with a clean message, matching the gate's other "cannot reproduce" paths -- never a raw
-    # traceback (which would still exit non-zero, but inconsistently with the v1 path's clean finding).
+    # The decision head is the slot's fog of the PRE-turn state (start_state, no events). Re-render it WITH the
+    # recorded correction (a retry's request differs only by its appended public-reject clause). An
+    # un-re-renderable record fails CLOSED (exit 2), matching the gate's other "cannot reproduce" paths.
     try:
         rec = json.loads(rec_path.read_text(encoding="utf-8"))
-        decision_head = {"turn": step["turn"], "resulting_state": rec["start_state"], "event_batch": []}
-        view = project_turn_record(step["calling_slot"], decision_head)
-        rerendered = hashlib.sha256(canonical_request_bytes(pv, view)).hexdigest()
+        decision_head = {"turn": turn, "resulting_state": rec["start_state"], "event_batch": []}
+        view = project_turn_record(slot, decision_head)
+        rerendered = hashlib.sha256(canonical_request_bytes(pv, view, correction)).hexdigest()
     except (KeyError, ValueError, TypeError) as exc:   # ValueError covers JSONDecodeError + CanonError
         return 2, f"{where}: cannot re-render the request envelope from the committed record " \
                   f"({type(exc).__name__}: {exc}) — fail closed"
-    if rerendered != step["request_envelope_sha256"]:
+    if rerendered != target_sha:
         return 1, ("request-envelope-binding-mismatch", where,
                    "re-rendered request envelope sha != recorded request_envelope_sha256 (Tier-3 template binding)")
     return 0, None
+
+
+def _envelope_binding(step: dict, scenario_dir: Path, where: str) -> tuple[int, object]:
+    """The decisive step's Tier-3 binding: re-render with the step's own ``correction`` (set iff it was itself
+    a retry attempt) and bind the recorded request_envelope_sha256."""
+    return _bind_request_envelope(step["prompt_version"], step["turn"], step["calling_slot"],
+                                  step.get("correction"), step["request_envelope_sha256"], scenario_dir, where)
 
 
 def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, list]:
@@ -390,6 +445,84 @@ def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
     return (1 if problems else 0), problems
 
 
+def _retry_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, list]:
+    """Verify the OPTIONAL WP-A2 retry audit trail (a no-retry step is a no-op). For a retry:
+    (1) the correction CHAIN is consistent -- attempt 0 carries no correction, each retry carries the PRIOR
+        attempt's reject code, and the decisive step's correction == the last prior's reject code;
+    (2) EACH prior attempt's committed bytes re-extract to a GENUINE reject of the recorded kind+code -- so a
+        fabricated retry, or a LEGAL attempt smuggled in as a discarded prior (hiding a legal move), is caught;
+    (3) each prior's request envelope binds (re-rendered WITH its correction).
+    Returns (rc, problems): rc 2 fail-closed if a prior's prompt_version is unreproducible by this build."""
+    problems: list[tuple[str, str, str]] = []
+
+    def add(code: str, msg: str, w: str = where) -> None:
+        problems.append((code, w, msg))
+
+    priors = step.get("prior_attempts") or []
+    step_corr = step.get("correction")
+    if priors:                                            # (1) decisive <-> last prior coherence
+        if step_corr != priors[-1]["reject_code"]:
+            add("retry-correction-chain",
+                f"decisive correction {step_corr!r} != last prior reject_code {priors[-1]['reject_code']!r}")
+    elif step_corr is not None:
+        add("retry-correction-without-prior",
+            f"a correction {step_corr!r} with no prior_attempts (a correction implies a prior reject)")
+    for i, p in enumerate(priors):                        # (1) the chain across priors
+        expected = None if i == 0 else priors[i - 1]["reject_code"]
+        if p["correction"] != expected:
+            add("retry-correction-chain", f"correction {p['correction']!r} != expected {expected!r}",
+                f"{where}.prior_attempts[{i}]")
+    if not priors:
+        return 0, problems
+    llm_dir = scenario_dir / "run" / "llm"
+    rec_path = scenario_dir / "run" / "turns" / f"{step['turn']:04d}.json"
+    start_state: dict = {}
+    if rec_path.is_file():
+        try:
+            start_state = json.loads(rec_path.read_text(encoding="utf-8")).get("start_state", {})
+        except ValueError:
+            start_state = {}
+    for i, p in enumerate(priors):                        # (2) + (3) re-verify each prior's bytes + bind request
+        w = f"{where}.prior_attempts[{i}]"
+        rpath = llm_dir / f"{p['response_sha256']}.json"
+        if not rpath.is_file():
+            add("prior-artifact-missing", f"prior response bytes {rpath.name} not committed under run/llm/", w)
+            continue
+        if _sha256(rpath) != p["response_sha256"]:
+            add("prior-response-tampered", f"sha256(run/llm/{rpath.name}) != recorded response_sha256", w)
+            continue
+        if not (llm_dir / f"{p['request_envelope_sha256']}.json").is_file():
+            add("prior-artifact-missing", f"prior request bytes {p['request_envelope_sha256']}.json not committed", w)
+        res = extract_command(rpath.read_bytes())
+        if p["attempt_kind"] == "FORFEIT":
+            if res.ok:
+                add("prior-not-genuinely-rejected", "a FORFEIT prior's bytes actually extract one clean command", w)
+            elif res.reject_code != p["reject_code"]:
+                add("prior-forfeit-code-mismatch",
+                    f"recompute reject_code {res.reject_code!r} != recorded {p['reject_code']!r}", w)
+        else:                                             # ILLEGAL_FORFEIT
+            if not res.ok:
+                add("prior-not-genuinely-rejected",
+                    f"an ILLEGAL_FORFEIT prior's bytes do not extract a command ({res.reject_code})", w)
+            else:
+                bound = {"actor_id": step["calling_slot"], **project_semantic(res.command)}
+                legality = command_legality(bound, start_state)
+                if legality is None:
+                    add("prior-legal-not-rejected",
+                        "a prior attempt is actually LEGAL for the slot -- a legal order cannot be a discarded "
+                        "prior (a retry must never hide a legal move)", w)
+                elif legality != p["reject_code"]:
+                    add("prior-illegal-code-mismatch",
+                        f"recomputed legality {legality!r} != recorded reject_code {p['reject_code']!r}", w)
+        erc, epay = _bind_request_envelope(step["prompt_version"], step["turn"], step["calling_slot"],
+                                           p["correction"], p["request_envelope_sha256"], scenario_dir, w)
+        if erc == 2:
+            return 2, epay
+        if epay:
+            problems.append(epay)
+    return (1 if problems else 0), problems
+
+
 def _judge_scenario(scenario_dir: Path) -> tuple[int, object]:
     """Validate every llm_step in scenario_dir/run_ledger.yaml. Returns (rc, payload): rc 0/1/2; payload is
     an (n_steps) count (0), a problems list (1), or a fail-closed reason (2)."""
@@ -413,6 +546,10 @@ def _judge_scenario(scenario_dir: Path) -> tuple[int, object]:
         if rc == 2:
             return 2, bproblems            # a version this build can't reproduce taints the gate
         all_problems.extend(bproblems)
+        rrc, rproblems = _retry_problems(step, scenario_dir, where)   # WP-A2 retry audit trail (no-op if none)
+        if rrc == 2:
+            return 2, rproblems
+        all_problems.extend(rproblems)
     # CARDINALITY: at most ONE step per (turn, calling_slot). Rejects a PADDED log (two COMMAND steps
     # binding the same command) or a CONTRADICTORY FORFEIT+COMMAND pair for one slot -- a provenance log
     # must be a function, not a multiset. (A FORFEIT for a slot that DID commit a command is separately

@@ -69,12 +69,13 @@ from prompt_templates import (  # noqa: E402
     PROMPT_TEMPLATES,
     canonical_request_bytes,
 )
+from resolver import LEGALITY_REJECT_CODES, command_legality  # noqa: E402
 from validate_claims import load_registry  # noqa: E402
 from validate_run_ledger import _sha256  # noqa: E402
 from validate_schemas import REPO_ROOT, _display, _is_nonempty_str  # noqa: E402
 
 CALLING_SLOT_ENUM = ("BLUE", "RED")
-STEP_KIND_ENUM = ("COMMAND", "FORFEIT")
+STEP_KIND_ENUM = ("COMMAND", "FORFEIT", "ILLEGAL_FORFEIT")
 CAPTURE_MODE_ENUM = ("LIVE", "HAND_AUTHORED_FIXTURE")
 PROVIDER_ENUM = ("anthropic",)
 SAMPLING_ENUM = ("PROVIDER_DEFAULT_NO_SEED",)
@@ -189,18 +190,27 @@ def _structural_problems(step: object, where: str) -> list[tuple[str, str, str]]
         if step["prompt_version"] in INTEGRITY_ONLY_PROMPT_VERSIONS:
             add("live-integrity-only-pv",
                 "a LIVE step must bind a registered template prompt_version, never the integrity-only sentinel")
-    # COMMAND <-> FORFEIT field presence: a COMMAND carries a digest + null reject_code; a FORFEIT the inverse.
+    # Field presence by disposition: a COMMAND carries a digest + null reject_code; a FORFEIT (bytes not
+    # well-formed) the inverse with an EXTRACTOR code; an ILLEGAL_FORFEIT (well-formed but engine-illegal)
+    # carries BOTH a digest (the command WAS extracted) AND a LEGALITY reject code.
     kind, digest, rc = step["step_kind"], step.get("extracted_command_digest"), step.get("reject_code")
     if kind == "COMMAND":
         if not (isinstance(digest, str) and _SHA256_RE.fullmatch(digest)):
             add("digest-presence-mismatch", "a COMMAND step needs a 64-hex extracted_command_digest")
         if rc is not None:
             add("digest-presence-mismatch", f"a COMMAND step must have reject_code null; got {rc!r}")
-    else:  # FORFEIT
+    elif kind == "FORFEIT":
         if digest is not None:
             add("digest-presence-mismatch", f"a FORFEIT step must have extracted_command_digest null; got {digest!r}")
         if rc not in REJECT_CODES:
             add("invalid-enum", f"a FORFEIT step's reject_code must be one of {sorted(REJECT_CODES)}; got {rc!r}")
+    else:  # ILLEGAL_FORFEIT
+        if not (isinstance(digest, str) and _SHA256_RE.fullmatch(digest)):
+            add("digest-presence-mismatch", "an ILLEGAL_FORFEIT step needs a 64-hex extracted_command_digest "
+                "(the command WAS extracted; the engine ruled it illegal)")
+        if rc not in LEGALITY_REJECT_CODES:
+            add("invalid-enum",
+                f"an ILLEGAL_FORFEIT step's reject_code must be one of {sorted(LEGALITY_REJECT_CODES)}; got {rc!r}")
     return problems
 
 
@@ -289,6 +299,42 @@ def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
             add("forfeit-code-mismatch",
                 f"recompute reject_code {res.reject_code!r} != recorded {step['reject_code']!r}")
         erc, epay = _envelope_binding(step, scenario_dir, where)   # Tier-3 (a forfeit still rendered a request)
+        if erc == 2:
+            return 2, epay
+        if epay:
+            problems.append(epay)
+        return (1 if problems else 0), problems
+    if step["step_kind"] == "ILLEGAL_FORFEIT":
+        # the bytes MUST extract a well-formed command (a non-well-formed body is a plain FORFEIT)...
+        if not res.ok:
+            add("spurious-illegal-forfeit",
+                f"an ILLEGAL_FORFEIT step's bytes do not extract a command ({res.reject_code}); "
+                "a non-well-formed body is a plain FORFEIT")
+            return 1, problems
+        # ...the recorded digest must equal the re-extract...
+        if canonical_digest(project_semantic(res.command))["value"] != step["extracted_command_digest"]:
+            add("recorded-digest-mismatch",
+                "recorded extracted_command_digest != re-extract from bytes (ILLEGAL_FORFEIT)")
+        rec_path = scenario_dir / "run" / "turns" / f"{step['turn']:04d}.json"
+        if not rec_path.is_file():
+            add("turn-record-missing", f"run/turns/{rec_path.name} absent for the illegal-forfeit check")
+            return 1, problems
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        # ...the engine must ACTUALLY rule the HARNESS-BOUND command (actor_id == slot) illegal with the
+        # recorded code (re-verify, never trust the stored reason)...
+        bound = {"actor_id": step["calling_slot"], **project_semantic(res.command)}
+        legality = command_legality(bound, rec.get("start_state", {}))
+        if legality is None:
+            add("spurious-illegal-forfeit",
+                f"an ILLEGAL_FORFEIT command is actually LEGAL for slot {step['calling_slot']!r}; no forfeit warranted")
+        elif legality != step["reject_code"]:
+            add("illegal-forfeit-code-mismatch",
+                f"recomputed legality {legality!r} != recorded reject_code {step['reject_code']!r}")
+        # ...and the slot must have FORFEITED -- NO command in the committed batch.
+        if any(c.get("actor_id") == step["calling_slot"] for c in rec.get("command_batch", [])):
+            add("illegal-forfeit-has-command",
+                f"an ILLEGAL_FORFEIT slot {step['calling_slot']!r} must have no command in the turn record")
+        erc, epay = _envelope_binding(step, scenario_dir, where)
         if erc == 2:
             return 2, epay
         if epay:

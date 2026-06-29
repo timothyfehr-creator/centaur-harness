@@ -438,3 +438,82 @@ def test_fixture_must_not_carry_live_fields(tmp_path: Path) -> None:
     step["provider_request_id"] = "req_borrowed"   # a fixture can't borrow LIVE provenance
     _write_ledger(scn, [step])
     _expect_code(scn, "fixture-live-field")
+
+
+# --- ILLEGAL_FORFEIT: a well-formed but engine-illegal command forfeits the slot (WP-A2a) ------------
+
+def _illegal_response(params: dict | None = None, action_type: str = "DISPATCH_SUPPLY") -> bytes:
+    from response_redact import redact
+    return redact(json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "submit_command",
+        "input": {"action_type": action_type, "params": params or {"quantity": 50, "route": "r1"}}}]}).encode())
+
+
+def _build_illegal_forfeit(tmp_path: Path, *, response: bytes | None = None,
+                           reject_code: str = "out-of-range", digest: str | None = None) -> tuple[Path, dict]:
+    """A binding ILLEGAL_FORFEIT scenario: BLUE's bytes extract a well-formed but engine-illegal command, so
+    BLUE forfeits -> the committed turn record has an EMPTY batch (a legal no-op turn)."""
+    scn = tmp_path / "scn"
+    (scn / "run" / "turns").mkdir(parents=True)
+    (scn / "run" / "llm").mkdir(parents=True)
+    start = _make_state()
+    response = _illegal_response() if response is None else response
+    res = extract_command(response)
+    out = tr.assemble(turn=0, start_state=start, commands=[], master_seed=0,   # forfeited slot -> empty batch
+                      runtime_fingerprint=FP, successor_slot="run/turns/0001.json", resolver=al)
+    assert out["status"] == "resolved"
+    tr.commit(out["turn_record"], str(scn / "run" / "turns" / "0000.json"))
+    resp_sha = hashlib.sha256(response).hexdigest()
+    (scn / "run" / "llm" / f"{resp_sha}.json").write_bytes(response)
+    request = json.dumps({"model": "x", "tools": ["submit_command"]}).encode()
+    req_sha = hashlib.sha256(request).hexdigest()
+    (scn / "run" / "llm" / f"{req_sha}.json").write_bytes(request)
+    if digest is None:
+        digest = canonical_digest(project_semantic(res.command))["value"] if res.ok else "0" * 64
+    step = {
+        "schema_version": "1.0", "run_id": RUN_ID, "turn": 0, "recorded_turn": 0, "calling_slot": "BLUE",
+        "command_id": f"{RUN_ID}:0:BLUE", "step_kind": "ILLEGAL_FORFEIT",
+        "capture_mode": "HAND_AUTHORED_FIXTURE", "provider": "anthropic",
+        "model": "N/A_FIXTURE", "model_version": "N/A_FIXTURE", "served_model": "N/A_FIXTURE",
+        "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": "v1",
+        "extractor_version": EXTRACTOR_VERSION, "canon_version": CANON_VERSION,
+        "response_sha256": resp_sha, "request_envelope_sha256": req_sha,
+        "extracted_command_digest": digest, "reject_code": reject_code, "as_of": "2026-06-28",
+    }
+    _write_ledger(scn, [step])
+    return scn, step
+
+
+def test_illegal_forfeit_binds(tmp_path: Path) -> None:
+    scn, _ = _build_illegal_forfeit(tmp_path)   # BLUE issued DISPATCH q50 (out-of-range) -> forfeited, no-op
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr
+
+
+def test_illegal_forfeit_on_a_legal_command_is_rejected(tmp_path: Path) -> None:
+    # a LEGAL command dressed as an ILLEGAL_FORFEIT (claiming a forfeit that was not warranted) must fail
+    scn, _ = _build_illegal_forfeit(tmp_path, response=_illegal_response(params={"quantity": 30, "route": "r1"}))
+    _expect_code(scn, "spurious-illegal-forfeit")
+
+
+def test_illegal_forfeit_wrong_code_is_rejected(tmp_path: Path) -> None:
+    scn, step = _build_illegal_forfeit(tmp_path)
+    step["reject_code"] = "role-action-mismatch"   # the real illegality is out-of-range
+    _write_ledger(scn, [step])
+    _expect_code(scn, "illegal-forfeit-code-mismatch")
+
+
+def test_illegal_forfeit_with_a_backing_command_is_rejected(tmp_path: Path) -> None:
+    # a forfeited slot must have NO command in the record; injecting one must be caught
+    scn, _ = _build_illegal_forfeit(tmp_path)
+    _mutate_record(scn, lambda rec: rec["command_batch"].append(
+        {"command_id": f"{RUN_ID}:0:BLUE", "turn": 0, "actor_id": "BLUE",
+         "action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}}))
+    _expect_code(scn, "illegal-forfeit-has-command")
+
+
+def test_illegal_forfeit_bytes_must_extract_a_command(tmp_path: Path) -> None:
+    # an ILLEGAL_FORFEIT whose bytes do NOT extract a command is a plain FORFEIT, not this disposition
+    no_cmd = json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "other_tool",
+                                                           "input": {}}]}).encode()
+    scn, _ = _build_illegal_forfeit(tmp_path, response=no_cmd, digest="a" * 64)
+    _expect_code(scn, "spurious-illegal-forfeit")

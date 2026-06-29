@@ -54,6 +54,15 @@ def is_non_negative(state: dict) -> bool:
     bs = _fields(state, "blue_supply")
     return all(bs[k]["value"] >= 0 for k in ("origin", "in_transit", "delivered", "loss_sink"))
 
+def _remaining_origin(state: dict) -> int | None:
+    """BLUE's remaining dispatchable supply, or None if the state lacks it (then the supply check is skipped
+    and reduce()'s is_non_negative invariant is the backstop)."""
+    try:
+        origin = _fields(state, "blue_supply")["origin"]["value"]
+    except (ResolveError, KeyError, TypeError):
+        return None
+    return origin if isinstance(origin, int) and not isinstance(origin, bool) else None
+
 
 # --- validate_all: deterministic legality, ZERO mutation, reject-all-or-resolve ------
 
@@ -80,6 +89,10 @@ def validate_all(commands: list, start_state: dict, ruleset: object = None):
             qty = params.get("quantity")
             if isinstance(qty, bool) or not isinstance(qty, int) or not (MIN_QTY <= qty <= MAX_QTY):
                 rejections.append(("out-of-range", f"quantity {qty!r} not in [{MIN_QTY},{MAX_QTY}]"))
+            elif (origin := _remaining_origin(start_state)) is not None and qty > origin:
+                # can't dispatch more supply than remains (else reduce drives origin negative -> a crash);
+                # this makes legality STATE-DEPENDENT, so command_legality must be re-run on the same state.
+                rejections.append(("insufficient-supply", f"quantity {qty} > remaining origin {origin}"))
             if params.get("route") not in ROUTES:
                 rejections.append(("unknown-route", f"route {params.get('route')!r}"))
         elif action == "BLOCK_ROUTE":
@@ -97,7 +110,7 @@ def validate_all(commands: list, start_state: dict, ruleset: object = None):
 # the rules.
 LEGALITY_REJECT_CODES = (
     "unknown-actor", "role-action-mismatch", "too-many-commands",
-    "out-of-range", "unknown-route", "invalid-enum",
+    "out-of-range", "unknown-route", "invalid-enum", "insufficient-supply",
 )
 
 

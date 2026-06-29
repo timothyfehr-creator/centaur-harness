@@ -449,13 +449,14 @@ def _illegal_response(params: dict | None = None, action_type: str = "DISPATCH_S
 
 
 def _build_illegal_forfeit(tmp_path: Path, *, response: bytes | None = None,
-                           reject_code: str = "out-of-range", digest: str | None = None) -> tuple[Path, dict]:
+                           reject_code: str = "out-of-range", digest: str | None = None,
+                           start: dict | None = None) -> tuple[Path, dict]:
     """A binding ILLEGAL_FORFEIT scenario: BLUE's bytes extract a well-formed but engine-illegal command, so
     BLUE forfeits -> the committed turn record has an EMPTY batch (a legal no-op turn)."""
     scn = tmp_path / "scn"
     (scn / "run" / "turns").mkdir(parents=True)
     (scn / "run" / "llm").mkdir(parents=True)
-    start = _make_state()
+    start = _make_state() if start is None else start
     response = _illegal_response() if response is None else response
     res = extract_command(response)
     out = tr.assemble(turn=0, start_state=start, commands=[], master_seed=0,   # forfeited slot -> empty batch
@@ -509,6 +510,16 @@ def test_illegal_forfeit_with_a_backing_command_is_rejected(tmp_path: Path) -> N
         {"command_id": f"{RUN_ID}:0:BLUE", "turn": 0, "actor_id": "BLUE",
          "action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}}))
     _expect_code(scn, "illegal-forfeit-has-command")
+
+
+def test_illegal_forfeit_insufficient_supply_uses_start_state(tmp_path: Path) -> None:
+    # WP-A3 M1: the STATE-DEPENDENT leg — a legal-range dispatch (q30) that exceeds the committed start_state's
+    # remaining origin (5) is insufficient-supply; the gate re-verifies legality on rec.start_state (closes A2a R2).
+    scn, _ = _build_illegal_forfeit(
+        tmp_path, start=_make_state_with_origin(5),
+        response=_illegal_response(params={"quantity": 30, "route": "r1"}), reject_code="insufficient-supply")
+    r = _run(scn)
+    assert r.returncode == 0, r.stderr
 
 
 def test_illegal_forfeit_turn_binding(tmp_path: Path) -> None:

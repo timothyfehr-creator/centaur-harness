@@ -67,15 +67,17 @@ def test_unregistered_version_refuses_to_render() -> None:
 # --- the differential-PURITY invariant (§2.2 leg 3 — "a leaky template binds green") ----------------
 
 def test_fixed_part_is_invariant_across_secret_and_public_variation() -> None:
-    # vary the SECRET (block_threshold): the whole request is byte-identical (fog excludes the secret)...
-    full_a = pt.canonical_request_bytes(PV, _fog_view(threshold=1))
-    full_b = pt.canonical_request_bytes(PV, _fog_view(threshold=99))
-    assert full_a == full_b, "secret leaked into the request"
-    # ...and across a MATERIALLY DIFFERENT public view, the FIXED part (system+tools+pins) is unchanged,
-    # proving the fixed part is a pure function of prompt_version alone (no view/secret access).
-    fixed_1 = canonical_bytes(pt.fixed_part(pt.render_request_envelope(PV, _fog_view(threshold=5, blue_origin=100))))
-    fixed_2 = canonical_bytes(pt.fixed_part(pt.render_request_envelope(PV, _fog_view(threshold=5, blue_origin=7))))
-    assert fixed_1 == fixed_2
+    # EVERY approved version must be pure (the versioned registry now holds >1; A1b landing-review residual).
+    for pv in pt.APPROVED_PROMPT_VERSIONS:
+        # vary the SECRET (block_threshold): the whole request is byte-identical (fog excludes the secret)...
+        full_a = pt.canonical_request_bytes(pv, _fog_view(threshold=1))
+        full_b = pt.canonical_request_bytes(pv, _fog_view(threshold=99))
+        assert full_a == full_b, f"secret leaked into the request for {pv}"
+        # ...and across a MATERIALLY DIFFERENT public view, the FIXED part (system+tools+pins) is unchanged,
+        # proving the fixed part is a pure function of prompt_version alone (no view/secret access).
+        fixed_1 = canonical_bytes(pt.fixed_part(pt.render_request_envelope(pv, _fog_view(threshold=5, blue_origin=100))))
+        fixed_2 = canonical_bytes(pt.fixed_part(pt.render_request_envelope(pv, _fog_view(threshold=5, blue_origin=7))))
+        assert fixed_1 == fixed_2, f"fixed part not invariant for {pv}"
 
 
 # --- the secret-sentinel request scan (amendment 5) -------------------------------------------------
@@ -96,7 +98,8 @@ def _sentinel_state() -> dict:
 def test_no_hidden_sentinel_reaches_the_request() -> None:
     view = project_turn_record("BLUE", {"turn": 0, "resulting_state": _sentinel_state(), "event_batch": []})
     sentinels = ["SENTINELthreshold7Q2", "SENTINELsubjroute8K4", "SENTINELhidid9Z1", "SENTINELlabel3X8"]
-    assert pt.request_contains_any(PV, view, sentinels) == []   # none reach the wire
+    for pv in pt.APPROVED_PROMPT_VERSIONS:                        # no hidden value reaches ANY approved template
+        assert pt.request_contains_any(pv, view, sentinels) == []
 
 
 def test_sentinel_scan_has_teeth_on_a_leaky_template() -> None:

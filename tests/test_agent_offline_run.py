@@ -68,6 +68,19 @@ def test_drive_turn_illegal_command_forfeits_to_noop() -> None:
     assert step["extracted_command_digest"] is not None        # the command WAS extracted, just illegal
 
 
+def test_drive_turn_over_dispatch_forfeits_not_crash() -> None:
+    # WP-A3 M1: dispatching more than remaining origin -> ILLEGAL_FORFEIT insufficient-supply (NOT the
+    # invariant-violation crash a multi-turn deliver-streak would otherwise hit once origin runs low).
+    import copy
+    low = copy.deepcopy(drive.INITIAL_STATE)
+    low["state"]["entities"][0]["fields"]["origin"]["value"] = 5    # blue_supply origin = 5
+    out = drive.drive_turn(low, {"BLUE": _tool_use("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"})},
+                           run_id="t", turn=0)
+    assert out["turn_record"]["command_batch"] == []               # forfeited, turn still resolves
+    step = out["llm_steps"][0]
+    assert step["step_kind"] == "ILLEGAL_FORFEIT" and step["reject_code"] == "insufficient-supply"
+
+
 def test_drive_turn_wrong_role_forfeits() -> None:
     # RED issuing DISPATCH_SUPPLY (RED may only BLOCK_ROUTE) -> ILLEGAL_FORFEIT role-action-mismatch
     out = drive.drive_turn(drive.INITIAL_STATE,

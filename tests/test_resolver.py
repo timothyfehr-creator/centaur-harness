@@ -122,11 +122,13 @@ def test_command_legality_per_command_check() -> None:
                                  "params": {"quantity": 30, "route": "r1"}}, s) == "role-action-mismatch"
     assert rsv.command_legality({**legal_blue, "params": {"quantity": 30, "route": "r9"}}, s) == "unknown-route"
     assert rsv.command_legality({**legal_blue, "actor_id": "GREEN"}, s) == "unknown-actor"
-    # every code command_legality can return is declared in the public namespace
-    for cmd in (legal_blue,):
-        assert rsv.command_legality(cmd, s) is None
+    # WP-A3 M1: legality is now STATE-DEPENDENT — over-dispatching more than remaining origin is rejected
+    low = make_state(origin=5)
+    assert rsv.command_legality(legal_blue, low) == "insufficient-supply"          # dispatch 30 > origin 5
+    assert rsv.command_legality({**legal_blue, "params": {"quantity": 5, "route": "r1"}}, low) is None  # 5 <= 5 OK
     assert set(rsv.LEGALITY_REJECT_CODES) >= {"out-of-range", "role-action-mismatch", "unknown-route",
-                                              "unknown-actor", "invalid-enum", "too-many-commands"}
+                                              "unknown-actor", "invalid-enum", "too-many-commands",
+                                              "insufficient-supply"}
 
 
 # --- invariants & rejections --------------------------------------------------------

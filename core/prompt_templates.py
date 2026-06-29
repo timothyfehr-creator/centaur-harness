@@ -52,7 +52,7 @@ _SYSTEM_PROSE = (
     "You are a commander in a turn-based contested-logistics exercise. You command the side named by the "
     "`viewer` field in the state JSON below. There are two roles, each with exactly ONE legal action:\n"
     "- BLUE (the logistics force) may ONLY issue DISPATCH_SUPPLY, moving an integer quantity between 1 and "
-    "30 units along route r1 or r2.\n"
+    "30 units along route r1 or r2 — and never more than its remaining origin supply (shown in the state).\n"
     "- RED (the interdiction force) may ONLY issue BLOCK_ROUTE, choosing route r1 or r2 to block.\n"
     "Supply moves from origin to the front along routes r1 and r2; an adversary may attempt to block a route. "
     "You see only the current public state; hidden adversary parameters are not disclosed. Issue exactly one "
@@ -122,14 +122,31 @@ def prompt_version_of(spec: dict) -> str:
     return "ptmpl-" + canonical_digest(payload)["value"][:16]
 
 
-# The single A1b template + its derived, content-pinned version id.
-_A1B_SPEC = _spec(system=_SYSTEM_PROSE, tool=_SUBMIT_COMMAND_TOOL)
-A1B_PROMPT_VERSION = prompt_version_of(_A1B_SPEC)
+# FROZEN historical template prose: the WP-A1b L5 prompt (before WP-A3 M1 added the supply-constraint rule).
+# Kept verbatim so the EXISTING committed live capture (rendered with it) stays verifiable — a versioned
+# registry never orphans or silently re-stamps history (the model saw THIS prompt). Editing it is forbidden.
+_SYSTEM_PROSE_V1_FROZEN = (
+    "You are a commander in a turn-based contested-logistics exercise. You command the side named by the "
+    "`viewer` field in the state JSON below. There are two roles, each with exactly ONE legal action:\n"
+    "- BLUE (the logistics force) may ONLY issue DISPATCH_SUPPLY, moving an integer quantity between 1 and "
+    "30 units along route r1 or r2.\n"
+    "- RED (the interdiction force) may ONLY issue BLOCK_ROUTE, choosing route r1 or r2 to block.\n"
+    "Supply moves from origin to the front along routes r1 and r2; an adversary may attempt to block a route. "
+    "You see only the current public state; hidden adversary parameters are not disclosed. Issue exactly one "
+    "order that is LEGAL FOR YOUR ROLE by calling the submit_command tool: an order with the wrong action for "
+    "your role, or a quantity outside 1-30, forfeits your turn. Do not narrate; the tool call is the entire "
+    "output the exercise records."
+)
 
-# The registry: prompt_version -> spec. APPROVED is the human-curated allowlist the binding gate requires
-# (a merely-registered version is NOT enough — §2.2 leg 1). Both are this single audited template for A1b.
-PROMPT_TEMPLATES: dict[str, dict] = {A1B_PROMPT_VERSION: _A1B_SPEC}
-APPROVED_PROMPT_VERSIONS: tuple[str, ...] = (A1B_PROMPT_VERSION,)
+# The VERSIONED registry: prompt_version -> spec. New captures use the CURRENT template (A1B_PROMPT_VERSION);
+# superseded versions stay registered + APPROVED so historical captures rendered with them still re-render +
+# bind. APPROVED is the human-curated allowlist the binding gate requires (registered != audited, §2.2 leg 1).
+_A1B_SPEC = _spec(system=_SYSTEM_PROSE, tool=_SUBMIT_COMMAND_TOOL)              # current (WP-A3 M1, supply rule)
+_A1B_SPEC_V1 = _spec(system=_SYSTEM_PROSE_V1_FROZEN, tool=_SUBMIT_COMMAND_TOOL)  # frozen prior (WP-A1b L5)
+A1B_PROMPT_VERSION = prompt_version_of(_A1B_SPEC)                              # the CURRENT version for new captures
+_A1B_PROMPT_VERSION_V1 = prompt_version_of(_A1B_SPEC_V1)
+PROMPT_TEMPLATES: dict[str, dict] = {A1B_PROMPT_VERSION: _A1B_SPEC, _A1B_PROMPT_VERSION_V1: _A1B_SPEC_V1}
+APPROVED_PROMPT_VERSIONS: tuple[str, ...] = (A1B_PROMPT_VERSION, _A1B_PROMPT_VERSION_V1)
 
 
 def _render_user(user_prefix: str, fog_view: dict) -> str:

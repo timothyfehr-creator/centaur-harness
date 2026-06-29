@@ -9,8 +9,11 @@ non-deterministic -- that is why record-and-replay is forced. Thereafter the com
 deterministic INPUT the offline gates validate; the model is NEVER re-called.
 
 Refuses to run without BOTH --live and --i-am-spending-real-money, without ANTHROPIC_API_KEY, or with a
---raw-wire-dir inside the repo. Hard --max-calls cap. Proactive token spend guard BEFORE each call. A
-served-model drift or a transport error is recorded EXCLUDED (run-local), never a committed binding step.
+--raw-wire-dir inside the repo. A bad/illegal order is re-asked with its public reject code up to
+--max-retries times before forfeiting (WP-A2); the worst-case call count (slots x (1+retries)) bounds it, plus
+a proactive token spend guard BEFORE each call. A served-model drift or a transport error is recorded EXCLUDED
+(run-local), never a committed binding step. The retry loop (run_slot_attempts) is the SAME one the offline
+tests exercise; the live `fetch` is the only network seam.
 
 This module imports core.live_client (the network) and is therefore @live: allowlisted in
 validate_no_network_imports, NEVER imported by a test.
@@ -31,9 +34,16 @@ import agent_logistics as al  # noqa: E402
 import live_client  # noqa: E402
 import spend_guard as sg  # noqa: E402
 import turn_record as tr  # noqa: E402
-from agent_offline_run import FP, INITIAL_STATE, commit_turn, write_ledger_with_steps  # noqa: E402
-from canon import CANON_VERSION, canonical_digest  # noqa: E402
-from command_extractor import EXTRACTOR_VERSION, extract_command, project_semantic  # noqa: E402
+from agent_offline_run import (  # noqa: E402
+    FP,
+    INITIAL_STATE,
+    _prior_attempt,
+    commit_turn,
+    run_slot_attempts,
+    write_ledger_with_steps,
+)
+from canon import CANON_VERSION  # noqa: E402
+from command_extractor import EXTRACTOR_VERSION  # noqa: E402
 from engine_projection import project_turn_record  # noqa: E402
 from prompt_templates import (  # noqa: E402
     A1B_PROMPT_VERSION,
@@ -49,24 +59,21 @@ MODEL_ID_STABILITY = "PROVIDER_DOCUMENTED_PINNED_MODEL_ID_INFRA_MAY_CHANGE"
 AUTHENTICITY = "RUNNER_ATTESTED_NOT_PROVEN"
 
 
-def _decision_view(slot: str) -> dict:
-    """The fog projection the player decides on: the PRE-turn state (turn-0 start), no events yet."""
-    head = {"turn": 0, "resulting_state": INITIAL_STATE, "event_batch": []}
-    return project_turn_record(slot, head)
-
-
 def _live_step(slot: str, run_id: str, served_model: str, request_id: str, response: bytes, request: bytes,
-               digest: str | None, reject_code: str | None, turn: int = 0) -> dict:
+               digest: str | None, reject_code: str | None, turn: int = 0, prompt_version: str = A1B_PROMPT_VERSION,
+               *, correction: str | None = None, prior_attempts: list | None = None) -> dict:
     """One LIVE llm_step (matches validate_agent_provenance's LIVE checks). turn defaults to 0 for the
-    single-turn capture; the multi-turn campaign passes the actual turn (shared step builder, one source)."""
-    return {
+    single-turn capture; the multi-turn campaign passes the actual turn (shared step builder, one source).
+    correction / prior_attempts (WP-A2 retry) are OMITTED when absent, so a no-retry step is byte-identical
+    to the pre-retry producer."""
+    step = {
         "schema_version": "1.0", "run_id": run_id, "turn": turn, "recorded_turn": turn, "calling_slot": slot,
         "command_id": f"{run_id}:{turn}:{slot}",
         "step_kind": ("COMMAND" if digest is not None and reject_code is None
                       else "ILLEGAL_FORFEIT" if digest is not None else "FORFEIT"),
         "capture_mode": "LIVE", "provider": "anthropic",
         "model": MODEL, "model_version": served_model, "served_model": served_model,
-        "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": A1B_PROMPT_VERSION,
+        "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": prompt_version,
         "extractor_version": EXTRACTOR_VERSION, "canon_version": CANON_VERSION,
         "response_sha256": hashlib.sha256(response).hexdigest(),
         "request_envelope_sha256": hashlib.sha256(request).hexdigest(),
@@ -74,6 +81,68 @@ def _live_step(slot: str, run_id: str, served_model: str, request_id: str, respo
         "provider_request_id": request_id, "anthropic_api_version": ANTHROPIC_API_VERSION,
         "model_id_stability": MODEL_ID_STABILITY, "authenticity": AUTHENTICITY,
     }
+    if correction is not None:
+        step["correction"] = correction
+    if prior_attempts:
+        step["prior_attempts"] = prior_attempts
+    return step
+
+
+def live_drive_slot(slot: str, head: dict, turn: int, *, run_id: str, raw_wire_dir: Path, prompt_version: str,
+                    max_retries: int, spend_ok, on_spent) -> dict:
+    """Run the live retry loop for ONE (turn, slot): render the slot's fog of the CURRENT head, call Opus up
+    to 1+max_retries times (correcting on each model REJECT), classify via the SAME run_slot_attempts loop the
+    offline tests exercise. ``spend_ok(in_tokens, max_tokens) -> bool`` is the PROACTIVE per-attempt gate
+    (checked BEFORE each call); ``on_spent(in_tokens, out_tokens)`` accumulates after each call. Returns
+    {command, step, artifacts, excluded, refused}: the DECISIVE attempt binds a LIVE step carrying its
+    correction + the gate-verified prior_attempts; rejected priors keep their committed bytes; EXCLUDED
+    (served-model drift / no request-id) and transport refusals never become a committed step."""
+    view = project_turn_record(slot, {"turn": turn, "resulting_state": head, "event_batch": []})
+    artifacts: dict = {}
+    excluded: list = []
+    meta: dict = {}                                   # response_sha -> (served_model, request_id) for the step
+    flags = {"refused_before_any": False}
+
+    def fetch(idx: int, correction: str | None):
+        body = render_request_envelope(prompt_version, view, correction)
+        request = canonical_request_bytes(prompt_version, view, correction)
+        try:
+            in_tokens = live_client.count_input_tokens(body)
+        except Exception as exc:  # noqa: BLE001 — a count_tokens failure means we cannot bound spend -> refuse
+            raise SystemExit(_fail(f"count_tokens failed (turn {turn} {slot}: {type(exc).__name__}); no spend")) from exc
+        if not spend_ok(in_tokens, body["max_tokens"]):
+            flags["refused_before_any"] = (idx == 0)   # cap hit before ANY attempt -> the whole slot is refused
+            return None
+        tag = f"{turn:04d}.{slot}" + (f".retry{idx}" if idx else "")
+        result = live_client.call(body)
+        on_spent(result.input_tokens, result.output_tokens)
+        if result.served_model != MODEL:               # capture-integrity failure -> EXCLUDED (run-local)
+            (raw_wire_dir / f"{tag}.EXCLUDED.drift.json").write_bytes(result.wire_response_bytes)
+            excluded.append({"turn": turn, "slot": slot, "reason": "served-model-drift", "served": result.served_model})
+            return None
+        if not result.provider_request_id:
+            (raw_wire_dir / f"{tag}.EXCLUDED.noreqid.json").write_bytes(result.wire_response_bytes)
+            excluded.append({"turn": turn, "slot": slot, "reason": "missing-request-id"})
+            return None
+        (raw_wire_dir / f"{tag}.wire.json").write_bytes(result.wire_response_bytes)   # prose stays run-local
+        response = redact(result.wire_response_bytes)
+        assert contains_prose(response) == [], f"redaction left prose for {slot} turn {turn} attempt {idx}"
+        meta[hashlib.sha256(response).hexdigest()] = (result.served_model, result.provider_request_id)
+        return (response, request)
+
+    res = run_slot_attempts(slot, turn, run_id, head, fetch, max_retries)
+    if res is None:                                    # no committed attempt (spend cap or all EXCLUDED)
+        return {"command": None, "step": None, "artifacts": artifacts, "excluded": excluded,
+                "refused": flags["refused_before_any"]}
+    dec, priors = res["decisive"], res["priors"]
+    for a in (dec, *priors):
+        artifacts[hashlib.sha256(a["response"]).hexdigest()] = a["response"]
+        artifacts[hashlib.sha256(a["request"]).hexdigest()] = a["request"]
+    sm, rid = meta[hashlib.sha256(dec["response"]).hexdigest()]
+    step = _live_step(slot, run_id, sm, rid, dec["response"], dec["request"], dec["digest"], dec["reject"],
+                      turn=turn, prompt_version=prompt_version, correction=dec["correction"],
+                      prior_attempts=[_prior_attempt(a) for a in priors])
+    return {"command": dec["command"], "step": step, "artifacts": artifacts, "excluded": excluded, "refused": False}
 
 
 def _fail(msg: str) -> int:
@@ -82,76 +151,45 @@ def _fail(msg: str) -> int:
 
 
 def capture(slots: list[str], *, run_id: str, raw_wire_dir: Path, max_calls: int, token_cap: int,
-            prompt_version: str) -> dict:
-    """Make the live calls (bounded) and build {turn_record, llm_steps, artifacts, spend, excluded}."""
+            prompt_version: str, max_retries: int = 0) -> dict:
+    """Make the live calls (bounded, retry-capable) and build {turn_record, llm_steps, artifacts, spend,
+    excluded}. Spend is a per-attempt call-count + token cap (the proactive guard, fail-closed on count)."""
     commands: list = []
     steps: list = []
     artifacts: dict = {}
-    spent_tokens = 0
-    spend_micro = 0
     excluded: list = []
-    calls = 0
+    spend = {"tokens": 0, "micro": 0, "calls": 0}
+
+    def spend_ok(in_tokens: int, max_tokens: int) -> bool:
+        if spend["calls"] >= max_calls:
+            return False
+        return sg.affordable(spend["tokens"], sg.call_ceiling_tokens(in_tokens, max_tokens), token_cap)
+
+    def on_spent(in_t: int, out_t: int) -> None:
+        spend["calls"] += 1
+        spend["tokens"] += in_t + out_t
+        spend["micro"] += sg.micro_usd(in_t, out_t)
+
     for slot in slots:
-        view = _decision_view(slot)
-        body = render_request_envelope(prompt_version, view)
-        # canonical request bytes = OUR re-renderable serialization (the Tier-3 binding subject), float-free.
-        request = canonical_request_bytes(prompt_version, view)
-        # proactive spend guard (§4.1, §9: token-count fail-closed -> refuse, no estimate, no spend).
-        try:
-            in_tokens = live_client.count_input_tokens(body)
-        except Exception as exc:  # noqa: BLE001 — any count_tokens failure means we cannot bound spend
-            raise SystemExit(_fail(f"count_tokens failed for {slot} ({type(exc).__name__}: {exc}); no spend")) from exc
-        ceiling = sg.call_ceiling_tokens(in_tokens, body["max_tokens"])
-        if calls >= max_calls:
-            raise SystemExit(_fail(f"--max-calls {max_calls} reached before {slot}"))
-        if not sg.affordable(spent_tokens, ceiling, token_cap):
-            raise SystemExit(_fail(f"spend guard: {slot} ceiling {ceiling} + spent {spent_tokens} > cap {token_cap}"))
-        print(f"  [{slot}] calling {MODEL} (input ~{in_tokens} tok, ceiling {ceiling} tok)…", file=sys.stderr)
-        result = live_client.call(body)
-        calls += 1
-        spent_tokens += result.input_tokens + result.output_tokens
-        spend_micro += sg.micro_usd(result.input_tokens, result.output_tokens)
-        # served-model drift -> EXCLUDED (no usable binding; retain run-local, never a committed step).
-        if result.served_model != MODEL:
-            (raw_wire_dir / f"{slot}.EXCLUDED.drift.json").write_bytes(result.wire_response_bytes)
-            excluded.append({"slot": slot, "reason": "served-model-drift", "served": result.served_model})
-            print(f"  [{slot}] EXCLUDED: served model {result.served_model!r} != {MODEL!r}", file=sys.stderr)
+        r = live_drive_slot(slot, INITIAL_STATE, 0, run_id=run_id, raw_wire_dir=raw_wire_dir,
+                            prompt_version=prompt_version, max_retries=max_retries, spend_ok=spend_ok, on_spent=on_spent)
+        artifacts.update(r["artifacts"])
+        excluded.extend(r["excluded"])
+        if r["refused"]:
+            raise SystemExit(_fail(f"spend/call cap reached before {slot} (calls {spend['calls']}/{max_calls})"))
+        if r["step"] is None:                              # all attempts EXCLUDED -> no committed step this slot
             continue
-        if not result.provider_request_id:
-            (raw_wire_dir / f"{slot}.EXCLUDED.noreqid.json").write_bytes(result.wire_response_bytes)
-            excluded.append({"slot": slot, "reason": "missing-request-id"})
-            print(f"  [{slot}] EXCLUDED: no provider request-id", file=sys.stderr)
-            continue
-        # keep the FULL wire bytes run-local (operator authenticity glance); they carry prose.
-        (raw_wire_dir / f"{slot}.wire.json").write_bytes(result.wire_response_bytes)
-        response = redact(result.wire_response_bytes)        # prose-stripped committed body (§1.4)
-        assert contains_prose(response) == [], f"redaction left prose for {slot}"   # belt: never commit prose
-        artifacts[hashlib.sha256(response).hexdigest()] = response
-        artifacts[hashlib.sha256(request).hexdigest()] = request
-        res = extract_command(response)
-        if res.ok:
-            cmd = {"command_id": f"{run_id}:0:{slot}", "turn": 0, "actor_id": slot,
-                   "action_type": res.command["action_type"], "params": res.command["params"]}
-            digest = canonical_digest(project_semantic(res.command))["value"]
-            legality = al.command_legality(cmd, INITIAL_STATE)   # the engine's verdict on the bound command
-            if legality is None:                          # legal -> COMMAND
-                commands.append(cmd)
-                steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
-                                        response, request, digest, None))
-            else:                                          # well-formed but engine-illegal -> ILLEGAL_FORFEIT (NO_OP)
-                steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
-                                        response, request, digest, legality))
-                print(f"  [{slot}] ILLEGAL_FORFEIT: {legality}", file=sys.stderr)
-        else:  # a 200 OK that is not exactly one well-formed command -> recorded FORFEIT (NO_OP), bytes committed.
-            steps.append(_live_step(slot, run_id, result.served_model, result.provider_request_id,
-                                    response, request, None, res.reject_code))
-            print(f"  [{slot}] FORFEIT: {res.reject_code}", file=sys.stderr)
+        steps.append(r["step"])
+        if r["command"]:
+            commands.append(r["command"])
+        else:
+            print(f"  [{slot}] {r['step']['step_kind']} {r['step'].get('reject_code')}", file=sys.stderr)
     out = tr.assemble(turn=0, start_state=INITIAL_STATE, commands=commands, master_seed=0,
                       runtime_fingerprint=FP, successor_slot="run/turns/0001.json", resolver=al)
     if out["status"] != "resolved":
         raise SystemExit(_fail(f"turn rejected by the engine: {out.get('rejections')}"))
     return {"turn_record": out["turn_record"], "llm_steps": steps, "artifacts": artifacts,
-            "spend_micro": spend_micro, "spent_tokens": spent_tokens, "excluded": excluded}
+            "spend_micro": spend["micro"], "spent_tokens": spend["tokens"], "excluded": excluded}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -160,7 +198,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--raw-wire-dir", required=True, help="where the FULL wire bytes go — MUST be OUTSIDE the repo")
     p.add_argument("--run-id", default="contested-live-001")
     p.add_argument("--two-player", action="store_true", help="capture BLUE + RED (a contested turn)")
-    p.add_argument("--max-calls", type=int, default=2)
+    p.add_argument("--max-retries", type=int, default=2,
+                   help="corrected retries per (turn,slot) before forfeit (WP-A2; 0 = the old one-shot capture)")
     p.add_argument("--token-cap", type=int, default=sg.DEFAULT_TOKEN_CAP)
     p.add_argument("--prompt-version", default=A1B_PROMPT_VERSION)
     p.add_argument("--live", action="store_true", help="required: confirm this makes a real network call")
@@ -174,8 +213,8 @@ def main(argv: list[str] | None = None) -> int:
         return _fail("ANTHROPIC_API_KEY is not set in the environment")
     if os.environ.get("ANTHROPIC_AUTH_TOKEN"):
         return _fail("both ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN are set (ambiguous credential)")
-    if max(args.max_calls, 0) > 2:
-        return _fail("--max-calls may not exceed 2 (A1b single-turn cap)")
+    if args.max_retries not in range(0, 5):
+        return _fail("--max-retries must be 0..4")
     raw_wire_dir = Path(args.raw_wire_dir).expanduser().resolve()
     try:
         raw_wire_dir.relative_to(REPO_ROOT)
@@ -187,8 +226,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"credential: ANTHROPIC_API_KEY present (…{key[-4:]}); raw-wire -> {raw_wire_dir}", file=sys.stderr)
 
     slots = ["BLUE", "RED"] if args.two_player else ["BLUE"]
-    driven = capture(slots, run_id=args.run_id, raw_wire_dir=raw_wire_dir, max_calls=args.max_calls,
-                     token_cap=args.token_cap, prompt_version=args.prompt_version)
+    max_calls = len(slots) * (1 + args.max_retries)   # worst-case calls for ONE turn (all slots exhaust retries)
+    driven = capture(slots, run_id=args.run_id, raw_wire_dir=raw_wire_dir, max_calls=max_calls,
+                     token_cap=args.token_cap, prompt_version=args.prompt_version, max_retries=args.max_retries)
     scn = Path(args.scenario_dir).resolve()
     commit_turn(scn, driven)
     rc = write_ledger_with_steps(scn, driven["llm_steps"])

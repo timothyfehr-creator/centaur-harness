@@ -101,10 +101,12 @@ NOT_YET_IMPLEMENTED = (
     "calibration scoring (the harness records an external proper-scoring result; "
     "it does not compute one -- no engine)",
     "the @live capture lane (WP-A1b/A2/A3: core/live_client.py + scripts/agent_live_capture.py + "
-    "scripts/agent_live_campaign.py — single-turn captures AND multi-turn two-player live GAMES) EXISTS but "
-    "is non-deterministic and OUT of the green gate -- CI/pytest only REPLAY committed bytes, so a model is "
-    "never re-called IN THE GATE (a committed CAPTURE_ARTIFACT records the real calls). Still unbuilt: live "
-    "model-RETRY on a bad response (WP-A2; forfeit-recovery IS built — an illegal move forfeits to NO_OP)",
+    "scripts/agent_live_campaign.py — single-turn captures, multi-turn two-player live GAMES, AND live "
+    "model-RETRY) EXISTS but is non-deterministic and OUT of the green gate -- CI/pytest only REPLAY committed "
+    "bytes, so a model is never re-called IN THE GATE (a committed CAPTURE_ARTIFACT records the real calls). "
+    "WP-A2 model-RETRY (a bad/illegal order is re-asked with its public reject code, bounded, before "
+    "forfeiting; the rejected prior attempts are a gate-VERIFIED audit trail) is built — the live retry LOOP "
+    "is the SAME run_slot_attempts the offline tests exercise, so only the thin network fetch is out-of-gate",
     "the agent transcript / judge / ENSEMBLE analysis layers: design-frozen and INDEPENDENTLY NO-GO'd "
     "(a decision-facing AI-playthrough transcript is false-validity) -- a captured game is a "
     "MACHINE log only, never a forecast",

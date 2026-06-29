@@ -511,6 +511,13 @@ def test_illegal_forfeit_with_a_backing_command_is_rejected(tmp_path: Path) -> N
     _expect_code(scn, "illegal-forfeit-has-command")
 
 
+def test_illegal_forfeit_turn_binding(tmp_path: Path) -> None:
+    # parity with the COMMAND turn binding (review R1): the step.turn must equal the record's turn + as_of
+    scn, _ = _build_illegal_forfeit(tmp_path)
+    _mutate_record(scn, lambda rec: rec.__setitem__("turn", 9))
+    _expect_code(scn, "turn-mismatch")
+
+
 def test_illegal_forfeit_bytes_must_extract_a_command(tmp_path: Path) -> None:
     # an ILLEGAL_FORFEIT whose bytes do NOT extract a command is a plain FORFEIT, not this disposition
     no_cmd = json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "other_tool",

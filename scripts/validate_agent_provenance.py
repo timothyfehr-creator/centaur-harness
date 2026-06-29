@@ -334,6 +334,11 @@ def _binding_problems(step: dict, scenario_dir: Path, where: str) -> tuple[int, 
         if any(c.get("actor_id") == step["calling_slot"] for c in rec.get("command_batch", [])):
             add("illegal-forfeit-has-command",
                 f"an ILLEGAL_FORFEIT slot {step['calling_slot']!r} must have no command in the turn record")
+        # ...bound to the right turn (parity with the COMMAND H7b turn binding; there is no cmd to bind here).
+        as_of = (rec.get("start_state") or {}).get("state", {}).get("as_of_turn")
+        if not (step["turn"] == rec.get("turn") == as_of):
+            add("turn-mismatch",
+                f"step.turn/{step['turn']} record.turn/{rec.get('turn')} start.as_of_turn/{as_of} must be equal")
         erc, epay = _envelope_binding(step, scenario_dir, where)
         if erc == 2:
             return 2, epay

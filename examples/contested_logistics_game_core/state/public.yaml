@@ -1,0 +1,11 @@
+# ILLUSTRATIVE public state — SYNTHETIC, visible to ALL agents + the adjudicator. Asserts no
+# real-world fact. Part of the WP6 fog-of-war partition (see schemas/state.schema.md).
+schema_version: "1.0"
+as_of_date: "2026-06-22"
+items:
+  - id: pub-001
+    statement: "BLUE may dispatch between 1 and 30 of its 100 supply units this turn over route r1 or r2 (synthetic, public)."
+    label: ILLUSTRATIVE
+  - id: pub-002
+    statement: "Route r2 is unblockable; route r1 may be blocked by RED (synthetic, public)."
+    label: ILLUSTRATIVE

@@ -1,0 +1,50 @@
+schema_version: "1.0"
+title: "Contested logistics — multi-turn two-player LIVE game (CAPTURE_ARTIFACT)"
+label: CAPTURE_ARTIFACT       # a single non-deterministic live game, NOT a model/sample/analysis (WP-A3)
+as_of_date: "2026-06-29"
+description: >
+  CAPTURE_ARTIFACT, not a forecast. This records ONE live, non-deterministic multi-turn game in which Opus
+  4.8 played BOTH sides (BLUE and RED) of a contested-logistics game over several turns; the deterministic
+  engine refereed each turn and the state advanced. Its ONLY purpose is to demonstrate the multi-turn,
+  two-player live game lane mechanically works end-to-end and replays byte-identically with the model never
+  re-called. It is a MACHINE LOG, not a transcript, a forecast, or analysis.
+
+  MEMORYLESS DISCLOSURE: Each player is a memoryless one-shot reasoner; on every turn it is called fresh and
+  sees only the current-turn fog projection — no prior turn, no message history, and no memory of its own
+  past moves. This is weaker than a remembering adversary and must not be presented as a continuous
+  strategist.
+
+  AUTHENTICITY RESIDUAL: capture_mode LIVE is an attestation by the runner, not a proof. A fabricated capture
+  is byte-indistinguishable to a third party and would bind green — the gates prove internal CONSISTENCY, not
+  byte AUTHENTICITY.
+
+  SAMPLE SIZE: n equals 1. This is a single game, not a sample; nothing here is a frequency, a probability,
+  or evidence about the real world. It is NEVER to be aggregated with other games into a distribution. Every
+  constant is ASSUMED and ILLUSTRATIVE.
+
+branches:
+  - id: blue_sustains
+    title: "BLUE sustains delivery over the game"
+    probability: 0.50
+    signposts:
+      - "BLUE routes supply to avoid RED's blocks across turns"
+      - "Most turns end in SUPPLY_DELIVERED"
+      - "BLUE manages its origin supply without over-dispatching into a forfeit"
+    falsifiers:
+      - "A majority of turns end in SUPPLY_LOST"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.
+
+  - id: red_interdicts
+    title: "RED interdicts a meaningful share of supply"
+    probability: 0.50
+    signposts:
+      - "RED blocks the route BLUE uses on multiple turns"
+      - "Several turns end in SUPPLY_LOST"
+      - "BLUE's delivered total lags its dispatched total"
+    falsifiers:
+      - "No turn ends in SUPPLY_LOST"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.

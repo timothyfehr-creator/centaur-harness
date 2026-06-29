@@ -43,10 +43,14 @@ def _fields(state: dict, entity_id: str) -> dict:
     raise ResolveError(f"missing entity {entity_id!r}")
 
 def _block_threshold(state: dict, route: str) -> int | None:
-    """The hidden block threshold for `route`, or None if it has no route_secret (un-blockable)."""
+    """The hidden block threshold for `route`, or None if the route has NO route_secret (un-blockable) --
+    presence-derived blockability. Only the ENTITY-ABSENT case (ResolveError from _fields) returns None; a
+    route_secret that is PRESENT but structurally malformed (missing/ill-typed block_threshold) propagates
+    LOUDLY -- a corrupt adjudicator secret must never silently disable interdiction (fail-closed on corruption,
+    fail-open only on the intended 'no secret here' case)."""
     try:
         return _fields(state, f"route_secret:{route}")["block_threshold"]["value"]
-    except (ResolveError, KeyError, TypeError):
+    except ResolveError:
         return None
 
 def block_thresholds(state: dict) -> dict:

@@ -142,6 +142,26 @@ def test_both_blockable_different_routes_no_draw() -> None:
     assert r["draws"] == []
 
 
+def test_r2_contest_uses_r2_threshold_not_r1() -> None:
+    # DISCRIMINATING: seed 1 -> r2 d100 63, which falls in the [50, 72] band where r2's threshold 50 and the
+    # OLD hardcoded r1 threshold 73 DISAGREE. 63 >= 50 -> DELIVERED (r2's own threshold); a regression that
+    # indexed the wrong route's threshold (73) would force 63 < 73 -> LOST. Gives resolve()'s per-route
+    # block_thresholds[dispatched_route] indexing genuine teeth.
+    r = rsv.transition(make_state(r2_threshold=R2_THRESHOLD), [dispatch(30, "r2"), block("r2")], master_seed=1)
+    assert r["draws"][0]["d100"] == 63
+    assert seq(r)[-1] == ("SUPPLY_DELIVERED", "r2", 30)   # r2's threshold 50, NOT r1's 73 (which would LOSE)
+
+
+def test_malformed_route_secret_is_loud_not_silently_unblockable() -> None:
+    # a PRESENT but corrupt route_secret:r1 (block_threshold value missing) must NOT silently become
+    # un-blockable (fail-open) -- it propagates loudly. Only an ABSENT route_secret is treated as un-blockable.
+    bad = make_state()
+    secret = next(e for e in bad["state"]["entities"] if e["id"] == "route_secret:r1")
+    del secret["fields"]["block_threshold"]
+    with pytest.raises(KeyError):
+        rsv.transition(bad, [dispatch(30, "r1"), block("r1")], master_seed=0)
+
+
 def test_r1_and_r2_contested_draws_are_route_distinct() -> None:
     # the contested d100 is addressed per DISPATCHED route, so at the same seed the two roads are
     # INDEPENDENT gambles (r1-on-r1 vs r2-on-r2 draw different d100). Adding route_secret:r2 does not

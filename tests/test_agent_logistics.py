@@ -20,16 +20,24 @@ import validate_turn_replay as vtr  # noqa: E402
 THRESHOLD = 73
 
 
-def make_state(as_of_turn: int = 0, origin: int = 100) -> dict:
-    return {"schema_version": "1.0", "state": {"as_of_turn": as_of_turn, "entities": [
+def make_state(as_of_turn: int = 0, origin: int = 100, r2_threshold: int | None = None) -> dict:
+    entities = [
         {"id": "blue_supply", "type": "FORCE", "fields": {
             "origin": {"value": origin, "unit": "units"}, "in_transit": {"value": 0, "unit": "units"},
             "delivered": {"value": 0, "unit": "units"}, "loss_sink": {"value": 0, "unit": "units"}}},
         {"id": "route:r1", "type": "ROUTE", "fields": {
             "capacity": {"value": 50, "unit": "units"}, "blockable": {"value": True, "unit": "bool"}}},
+        {"id": "route:r2", "type": "ROUTE", "fields": {
+            "capacity": {"value": 50, "unit": "units"},
+            "blockable": {"value": r2_threshold is not None, "unit": "bool"}}},
         {"id": "route_secret:r1", "type": "ROUTE_SECRET", "fields": {
             "subject_route": {"value": "r1", "unit": "id"},
-            "block_threshold": {"value": THRESHOLD, "unit": "d100"}}}]}}
+            "block_threshold": {"value": THRESHOLD, "unit": "d100"}}}]
+    if r2_threshold is not None:                              # add route_secret:r2 -> both roads blockable
+        entities.append({"id": "route_secret:r2", "type": "ROUTE_SECRET", "fields": {
+            "subject_route": {"value": "r2", "unit": "id"},
+            "block_threshold": {"value": r2_threshold, "unit": "d100"}}})
+    return {"schema_version": "1.0", "state": {"as_of_turn": as_of_turn, "entities": entities}}
 
 
 def dispatch(qty: int, route: str = "r1") -> dict:
@@ -62,6 +70,15 @@ def test_contested_delivered_seed3() -> None:
     r = al.transition(make_state(), [dispatch(30), block("r1")], master_seed=3)
     assert types(r)[2] == "SUPPLY_DELIVERED" and types(r)[-1] == "TURN_ADVANCED"
     assert r["draws"][0]["d100"] == 79 and as_of(r) == 1
+
+
+def test_r2_blockable_contested_lost_advances() -> None:
+    # "RED matters": with a route_secret:r2 BOTH roads are blockable. dispatch r2 + block r2, seed 2 ->
+    # r2 d100 45 < 50 -> block succeeds -> LOST, and the turn still advances. (Same address as base.resolve,
+    # so the RNG-oracle values carry over: seed 2 -> 45.)
+    r = al.transition(make_state(r2_threshold=50), [dispatch(30, "r2"), block("r2")], master_seed=2)
+    assert types(r) == ["SUPPLY_DISPATCHED", "ROUTE_BLOCK_ATTEMPTED", "SUPPLY_LOST", "TURN_ADVANCED"]
+    assert len(r["draws"]) == 1 and r["draws"][0]["d100"] == 45 and as_of(r) == 1
 
 
 def test_dispatch_only_no_draw_still_advances() -> None:

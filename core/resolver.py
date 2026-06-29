@@ -27,7 +27,6 @@ ACTORS = ("BLUE", "RED")
 # RED BLOCK_ROUTE). Closes the "legal-but-inert" trapdoor (independent red-team finding §1).
 ACTION_BY_ACTOR = {"BLUE": "DISPATCH_SUPPLY", "RED": "BLOCK_ROUTE"}
 ROUTES = ("r1", "r2")
-BLOCKABLE_WITH_THRESHOLD = ("r1",)  # r2 is unblockable (no route_secret)
 MIN_QTY, MAX_QTY = 1, 30
 
 
@@ -43,8 +42,19 @@ def _fields(state: dict, entity_id: str) -> dict:
             return ent["fields"]
     raise ResolveError(f"missing entity {entity_id!r}")
 
-def _block_threshold(state: dict) -> int:
-    return _fields(state, "route_secret:r1")["block_threshold"]["value"]
+def _block_threshold(state: dict, route: str) -> int | None:
+    """The hidden block threshold for `route`, or None if it has no route_secret (un-blockable)."""
+    try:
+        return _fields(state, f"route_secret:{route}")["block_threshold"]["value"]
+    except (ResolveError, KeyError, TypeError):
+        return None
+
+def block_thresholds(state: dict) -> dict:
+    """Map each BLOCKABLE route -> its hidden threshold. A route is blockable IFF a `route_secret:{route}`
+    entity exists for it (presence-derived); routes without one are un-blockable. A state carrying only
+    route_secret:r1 therefore yields {"r1": <t>}, byte-identical to the prior single-secret behavior; a
+    scenario that adds route_secret:r2 makes r2 contestable too (both roads blockable)."""
+    return {r: t for r in ROUTES if (t := _block_threshold(state, r)) is not None}
 
 def conservation_total(state: dict) -> int:
     bs = _fields(state, "blue_supply")
@@ -133,9 +143,10 @@ def sort_commands(accepted: list) -> list:
 def _by_actor(accepted: list, actor: str):
     return next((c for c in accepted if c.get("actor_id") == actor), None)
 
-def resolve(accepted: list, *, block_threshold: int, master_seed: int, turn: int = 0):
+def resolve(accepted: list, *, block_thresholds: dict, master_seed: int, turn: int = 0):
     """Map an accepted batch to an ordered event batch + draw records, per the table.
-    A d100 is consumed iff a block targets a DISPATCHED route that has a threshold (only r1)."""
+    A d100 is consumed iff a block targets a DISPATCHED route that is blockable (has a threshold in
+    `block_thresholds` -- its keys are exactly the blockable routes; absent routes are un-blockable)."""
     blue = _by_actor(accepted, "BLUE")
     red = _by_actor(accepted, "RED")
     events: list[dict] = []
@@ -162,7 +173,7 @@ def resolve(accepted: list, *, block_threshold: int, master_seed: int, turn: int
         })
 
     if dispatched_route is not None:
-        contested = (blocked_route == dispatched_route) and (dispatched_route in BLOCKABLE_WITH_THRESHOLD)
+        contested = (blocked_route == dispatched_route) and (dispatched_route in block_thresholds)
         lost = False
         terminal = {
             "event_id": f"ev-{len(events) + 1:03d}", "turn": turn,
@@ -179,7 +190,7 @@ def resolve(accepted: list, *, block_threshold: int, master_seed: int, turn: int
                 "draw_id": "draw-001", "address": address, "raw_uint": d["raw_uint"],
                 "d100": d["d100"], "consuming_rule_id": "block-resolve",
             })
-            lost = d["d100"] < block_threshold   # block SUCCEEDS iff d100 < threshold
+            lost = d["d100"] < block_thresholds[dispatched_route]   # block SUCCEEDS iff d100 < threshold
             terminal["draw_ref"] = "draw-001"
         terminal["event_type"] = "SUPPLY_LOST" if lost else "SUPPLY_DELIVERED"
         events.append(terminal)
@@ -236,7 +247,7 @@ def transition(start_state: dict, commands: list, *, master_seed: int, turn: int
                 "events": [], "draws": [], "resulting_state": start_state}
     ordered = sort_commands(accepted)
     events, draws = resolve(
-        ordered, block_threshold=_block_threshold(start_state),
+        ordered, block_thresholds=block_thresholds(start_state),
         master_seed=master_seed, turn=turn,
     )
     new_state = reduce(start_state, events)

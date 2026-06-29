@@ -32,7 +32,7 @@ __all__ = ["RESOLVER_ID", "RESOLVER_VERSION", "RULESET_VERSION", "STOCHASTIC_TER
            "resolve", "reduce", "transition", "ResolveError"]
 
 
-def resolve(accepted: list, *, block_threshold: int, master_seed: int, turn: int = 0):
+def resolve(accepted: list, *, block_thresholds: dict, master_seed: int, turn: int = 0):
     """base.resolve + one terminal TURN_ADVANCED event (``to_turn == turn + 1``).
 
     NOTE: the contested d100's draw ADDRESS embeds ``resolver_id="contested_logistics"`` (base.resolve
@@ -42,7 +42,7 @@ def resolve(accepted: list, *, block_threshold: int, master_seed: int, turn: int
     address), so a committed agent_logistics draw address self-identifies as ``contested_logistics`` by
     design, not by accident.
     """
-    events, draws = base.resolve(accepted, block_threshold=block_threshold,
+    events, draws = base.resolve(accepted, block_thresholds=block_thresholds,
                                  master_seed=master_seed, turn=turn)
     events.append({"event_id": f"ev-{len(events) + 1:03d}", "turn": turn,
                    "event_type": "TURN_ADVANCED", "to_turn": turn + 1})
@@ -67,7 +67,7 @@ def transition(start_state: dict, commands: list, *, master_seed: int, turn: int
         return {"status": "rejected", "rejections": rejections,
                 "events": [], "draws": [], "resulting_state": start_state}
     ordered = sort_commands(accepted)
-    events, draws = resolve(ordered, block_threshold=base._block_threshold(start_state),
+    events, draws = resolve(ordered, block_thresholds=base.block_thresholds(start_state),
                             master_seed=master_seed, turn=turn)
     new_state = reduce(start_state, events)
     if base.conservation_total(new_state) != base.conservation_total(start_state) \

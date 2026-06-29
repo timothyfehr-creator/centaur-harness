@@ -17,27 +17,30 @@ import resolver as rsv  # noqa: E402
 THRESHOLD = 73  # block succeeds iff d100 < 73
 
 
-def make_state(threshold: int = THRESHOLD, origin: int = 100) -> dict:
-    return {
-        "schema_version": "1.0",
-        "state": {
-            "as_of_turn": 0,
-            "entities": [
-                {"id": "blue_supply", "type": "FORCE", "fields": {
-                    "origin": {"value": origin, "unit": "units"},
-                    "in_transit": {"value": 0, "unit": "units"},
-                    "delivered": {"value": 0, "unit": "units"},
-                    "loss_sink": {"value": 0, "unit": "units"}}},
-                {"id": "route:r1", "type": "ROUTE", "fields": {
-                    "capacity": {"value": 50, "unit": "units"}, "blockable": {"value": True, "unit": "bool"}}},
-                {"id": "route:r2", "type": "ROUTE", "fields": {
-                    "capacity": {"value": 50, "unit": "units"}, "blockable": {"value": False, "unit": "bool"}}},
-                {"id": "route_secret:r1", "type": "ROUTE_SECRET", "fields": {
-                    "subject_route": {"value": "r1", "unit": "id"},
-                    "block_threshold": {"value": threshold, "unit": "d100"}}},
-            ],
-        },
-    }
+def make_state(threshold: int = THRESHOLD, origin: int = 100, r2_threshold: int | None = None) -> dict:
+    """Default: only r1 is blockable (r2 has no route_secret -> a free route), the shipped single-secret
+    topology. Pass `r2_threshold` to add a route_secret:r2 so BOTH roads are blockable -- the
+    'RED matters' game (blockability is presence-derived from the route_secret, see resolver.block_thresholds)."""
+    entities = [
+        {"id": "blue_supply", "type": "FORCE", "fields": {
+            "origin": {"value": origin, "unit": "units"},
+            "in_transit": {"value": 0, "unit": "units"},
+            "delivered": {"value": 0, "unit": "units"},
+            "loss_sink": {"value": 0, "unit": "units"}}},
+        {"id": "route:r1", "type": "ROUTE", "fields": {
+            "capacity": {"value": 50, "unit": "units"}, "blockable": {"value": True, "unit": "bool"}}},
+        {"id": "route:r2", "type": "ROUTE", "fields": {
+            "capacity": {"value": 50, "unit": "units"},
+            "blockable": {"value": r2_threshold is not None, "unit": "bool"}}},
+        {"id": "route_secret:r1", "type": "ROUTE_SECRET", "fields": {
+            "subject_route": {"value": "r1", "unit": "id"},
+            "block_threshold": {"value": threshold, "unit": "d100"}}},
+    ]
+    if r2_threshold is not None:
+        entities.append({"id": "route_secret:r2", "type": "ROUTE_SECRET", "fields": {
+            "subject_route": {"value": "r2", "unit": "id"},
+            "block_threshold": {"value": r2_threshold, "unit": "d100"}}})
+    return {"schema_version": "1.0", "state": {"as_of_turn": 0, "entities": entities}}
 
 
 def dispatch(qty: int, route: str, cid: str = "cmd-blue-1") -> dict:
@@ -95,10 +98,58 @@ def test_block_different_route_no_draw() -> None:
 
 
 def test_r2_is_unblockable_no_draw() -> None:
-    # dispatch r2 + block r2: routes match BUT r2 has no threshold -> no draw -> delivered
+    # BACKWARD-COMPAT cell: without a route_secret:r2, dispatch r2 + block r2 -> routes match BUT r2 has no
+    # threshold -> no draw -> delivered. This is exactly how every pre-existing committed game stays byte-identical.
     r = rsv.transition(make_state(), [dispatch(20, "r2"), block("r2")], master_seed=0)
     assert seq(r) == [("SUPPLY_DISPATCHED", "r2", 20), ("ROUTE_BLOCK_ATTEMPTED", "r2", None), ("SUPPLY_DELIVERED", "r2", 20)]
     assert r["draws"] == []
+
+
+# --- "RED matters": BOTH roads blockable when each carries a route_secret ------------
+# (seed->r2-d100 at threshold 50: seed 0 -> 85 DELIVERED, seed 2 -> 45 LOST; independently RNG-oracle-verified.
+# The r2 draw address embeds target_route="r2", so it draws a DIFFERENT d100 than r1 at the same seed.)
+
+R2_THRESHOLD = 50  # the new scenario's ASSUMED, ILLUSTRATIVE r2 block threshold (block succeeds iff d100 < 50)
+
+
+def test_block_thresholds_is_presence_derived() -> None:
+    # the shipped single-secret state -> only r1 blockable (the dict that reproduces the old behavior)...
+    assert rsv.block_thresholds(make_state()) == {"r1": THRESHOLD}
+    # ...adding a route_secret:r2 makes BOTH roads blockable.
+    assert rsv.block_thresholds(make_state(r2_threshold=R2_THRESHOLD)) == {"r1": THRESHOLD, "r2": R2_THRESHOLD}
+
+
+def test_r2_blockable_contested_supply_lost() -> None:
+    # both blockable: dispatch r2 + block r2, seed 2 -> r2 d100 45 < 50 -> block succeeds -> LOST
+    r = rsv.transition(make_state(r2_threshold=R2_THRESHOLD), [dispatch(30, "r2"), block("r2")], master_seed=2)
+    assert seq(r) == [("SUPPLY_DISPATCHED", "r2", 30), ("ROUTE_BLOCK_ATTEMPTED", "r2", None), ("SUPPLY_LOST", "r2", 30)]
+    assert supply(r) == {"origin": 70, "in_transit": 0, "delivered": 0, "loss_sink": 30}
+    assert len(r["draws"]) == 1 and r["draws"][0]["d100"] == 45
+    assert r["events"][-1]["draw_ref"] == "draw-001"
+
+
+def test_r2_blockable_contested_supply_delivered() -> None:
+    # both blockable: dispatch r2 + block r2, seed 0 -> r2 d100 85 >= 50 -> block fails -> DELIVERED
+    r = rsv.transition(make_state(r2_threshold=R2_THRESHOLD), [dispatch(30, "r2"), block("r2")], master_seed=0)
+    assert seq(r) == [("SUPPLY_DISPATCHED", "r2", 30), ("ROUTE_BLOCK_ATTEMPTED", "r2", None), ("SUPPLY_DELIVERED", "r2", 30)]
+    assert len(r["draws"]) == 1 and r["draws"][0]["d100"] == 85
+
+
+def test_both_blockable_different_routes_no_draw() -> None:
+    # both blockable, but dispatch r1 + block r2 -> routes differ -> not contested -> no draw (RED guessed wrong)
+    r = rsv.transition(make_state(r2_threshold=R2_THRESHOLD), [dispatch(20, "r1"), block("r2")], master_seed=0)
+    assert seq(r) == [("SUPPLY_DISPATCHED", "r1", 20), ("ROUTE_BLOCK_ATTEMPTED", "r2", None), ("SUPPLY_DELIVERED", "r1", 20)]
+    assert r["draws"] == []
+
+
+def test_r1_and_r2_contested_draws_are_route_distinct() -> None:
+    # the contested d100 is addressed per DISPATCHED route, so at the same seed the two roads are
+    # INDEPENDENT gambles (r1-on-r1 vs r2-on-r2 draw different d100). Adding route_secret:r2 does not
+    # perturb r1's draw (the address embeds the route, not the state), so seed 0 r1 stays 11.
+    st = make_state(r2_threshold=R2_THRESHOLD)
+    d_r1 = rsv.transition(st, [dispatch(30, "r1"), block("r1")], master_seed=0)["draws"][0]["d100"]
+    d_r2 = rsv.transition(st, [dispatch(30, "r2"), block("r2")], master_seed=0)["draws"][0]["d100"]
+    assert d_r1 == 11 and d_r2 == 85 and d_r1 != d_r2
 
 
 def test_empty_turn_is_legal_and_noop() -> None:

@@ -16,6 +16,7 @@ Run as a script, it (re)generates the committed example scenario examples/contes
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import sys
@@ -45,6 +46,23 @@ INITIAL_STATE = {"schema_version": "1.0", "state": {"as_of_turn": 0, "entities":
     {"id": "route_secret:r1", "type": "ROUTE_SECRET", "fields": {
         "subject_route": {"value": "r1", "unit": "id"},
         "block_threshold": {"value": 73, "unit": "d100"}}}]}}
+
+
+def both_blockable_state(*, origin: int = 100, r1_threshold: int = 73, r2_threshold: int = 50) -> dict:
+    """INITIAL_STATE recast as the 'RED matters' game: route:r2 becomes public-blockable and gains a
+    route_secret:r2 (an ASSUMED, ILLUSTRATIVE hidden threshold), so BOTH roads are contestable -- a real
+    BLUE-vs-RED guessing duel. Blockability is presence-derived (resolver.block_thresholds), so old
+    scenarios (which carry no route_secret:r2) are entirely unaffected. route_secret:r2 is a ROUTE_SECRET,
+    hence adjudicator-only and fog-filtered like route_secret:r1."""
+    s = copy.deepcopy(INITIAL_STATE)
+    ents = s["state"]["entities"]
+    ents[0]["fields"]["origin"]["value"] = origin                       # blue_supply
+    ents[2]["fields"]["blockable"]["value"] = True                      # route:r2 now blockable (public)
+    ents[3]["fields"]["block_threshold"]["value"] = r1_threshold        # route_secret:r1 (adjudicator-only)
+    ents.append({"id": "route_secret:r2", "type": "ROUTE_SECRET", "fields": {
+        "subject_route": {"value": "r2", "unit": "id"},
+        "block_threshold": {"value": r2_threshold, "unit": "d100"}}})   # adjudicator-only
+    return s
 
 FP = {"engine_source_hash": "offline-fixture", "python": "fixture", "pyyaml_version": "fixture",
       "serializer_version": "1", "persistence_profile": "fixture"}

@@ -130,3 +130,38 @@ def test_campaign_fog_holds_across_turns() -> None:
         blob = json.dumps(blue_view)
         assert "block_threshold" not in blob and "ROUTE_SECRET" not in blob   # the secret never reaches BLUE
         assert "ROUTE_BLOCK_ATTEMPTED" not in blob                            # BLUE never sees RED's block
+
+
+# --- "RED matters": both roads blockable, driven end-to-end through the offline pipeline -------------
+
+def _both_blockable() -> dict:
+    return {"BLUE": _tool_use("DISPATCH_SUPPLY", {"quantity": 10, "route": "r2"}),
+            "RED": _tool_use("BLOCK_ROUTE", {"route": "r2"})}
+
+
+def test_campaign_both_blockable_r2_is_now_contested() -> None:
+    # On a both-blockable start state (route_secret:r2 present), BLUE dispatches r2 and RED blocks r2 ->
+    # the r2 contest now DRAWS a d100 and resolves, where the old game would have free-delivered. Seed 0
+    # (drive_turn): turn 0 d100 85 -> DELIVERED, turn 1 d100 40 -> LOST (independently RNG-oracle-verified)
+    # -- i.e. RED interdicts on the previously-free road. The chain advances byte-identically.
+    drivens = camp.run_campaign(drive.both_blockable_state(r2_threshold=50), [_both_blockable()] * 2, run_id="bb")
+    assert len(drivens) == 2
+    for d in drivens:                                            # both turns: 2 COMMAND steps + one r2 draw
+        assert {s["calling_slot"] for s in d["llm_steps"]} == {"BLUE", "RED"}
+        assert all(s["step_kind"] == "COMMAND" for s in d["llm_steps"])
+        assert len(d["turn_record"]["draw_records"]) == 1
+    terms = [next(e["event_type"] for e in d["turn_record"]["event_batch"]
+                  if e["event_type"] in ("SUPPLY_DELIVERED", "SUPPLY_LOST")) for d in drivens]
+    assert terms == ["SUPPLY_DELIVERED", "SUPPLY_LOST"]          # a contested delivery THEN a contested loss on r2
+    assert drivens[1]["turn_record"]["start_state"]["state_digest"] == \
+           drivens[0]["turn_record"]["resulting_state"]["state_digest"]   # byte-identical head handoff
+
+
+def test_campaign_both_blockable_fog_hides_r2_secret() -> None:
+    # the new road's hidden threshold (route_secret:r2) must be just as invisible to BOTH players as r1's.
+    from engine_projection import project_turn_record
+    drivens = camp.run_campaign(drive.both_blockable_state(r2_threshold=50), [_both_blockable()] * 2, run_id="bb")
+    for d in drivens:
+        for viewer in ("BLUE", "RED"):
+            blob = json.dumps(project_turn_record(viewer, d["turn_record"]))
+            assert "ROUTE_SECRET" not in blob and "block_threshold" not in blob and "route_secret:r2" not in blob

@@ -101,12 +101,18 @@ def _sentinel_state() -> dict:
     # deliberate fake sentinel; pragma it (the scanner's documented test-fixture escape hatch).
     s["state"]["entities"][2]["id"] = "route_secret:SENTINELhidid9Z1"  # pragma: allowlist secret
     s["state"]["scenario_label"] = "SENTINELlabel3X8"             # a scenario label
+    # a SECOND hidden threshold (the 'RED matters' both-blockable game adds route_secret:r2) -- its value
+    # must be just as unreachable. Same ROUTE_SECRET type, so the type-filter must drop it too.
+    s["state"]["entities"].append({"id": "route_secret:r2", "type": "ROUTE_SECRET", "fields": {
+        "subject_route": {"value": "r2", "unit": "id"},
+        "block_threshold": {"value": "SENTINELr2thresh5N3", "unit": "d100"}}})
     return s
 
 
 def test_no_hidden_sentinel_reaches_the_request() -> None:
     view = project_turn_record("BLUE", {"turn": 0, "resulting_state": _sentinel_state(), "event_batch": []})
-    sentinels = ["SENTINELthreshold7Q2", "SENTINELsubjroute8K4", "SENTINELhidid9Z1", "SENTINELlabel3X8"]
+    sentinels = ["SENTINELthreshold7Q2", "SENTINELsubjroute8K4", "SENTINELhidid9Z1", "SENTINELlabel3X8",
+                 "SENTINELr2thresh5N3"]
     for pv in pt.APPROVED_PROMPT_VERSIONS:                        # no hidden value reaches ANY approved template
         assert pt.request_contains_any(pv, view, sentinels) == []
 

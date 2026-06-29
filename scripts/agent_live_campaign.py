@@ -41,7 +41,7 @@ from agent_live_capture import (  # noqa: E402 — shared constants + the LIVE s
     _fail,
     _live_step,
 )
-from agent_offline_run import FP, INITIAL_STATE, write_ledger_with_steps  # noqa: E402
+from agent_offline_run import FP, INITIAL_STATE, both_blockable_state, write_ledger_with_steps  # noqa: E402
 from canon import canonical_digest  # noqa: E402
 from command_extractor import extract_command, project_semantic  # noqa: E402
 from engine_projection import project_turn_record  # noqa: E402
@@ -55,8 +55,12 @@ from response_redact import contains_prose, redact  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _start_state(*, origin: int, threshold: int) -> dict:
-    """INITIAL_STATE with the curated-condition overrides (BLUE's starting supply + the hidden block threshold)."""
+def _start_state(*, origin: int, threshold: int, r2_threshold: int | None = None) -> dict:
+    """INITIAL_STATE with the curated-condition overrides (BLUE's starting supply + the hidden block
+    threshold). With r2_threshold set, BOTH roads are blockable (the 'RED matters' game) -- reusing the same
+    agent_offline_run.both_blockable_state builder the offline coverage exercises, so the topology cannot drift."""
+    if r2_threshold is not None:
+        return both_blockable_state(origin=origin, r1_threshold=threshold, r2_threshold=r2_threshold)
     s = copy.deepcopy(INITIAL_STATE)
     s["state"]["entities"][0]["fields"]["origin"]["value"] = origin            # blue_supply.origin
     s["state"]["entities"][3]["fields"]["block_threshold"]["value"] = threshold  # route_secret:r1 (adjudicator-only)
@@ -176,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--turns", type=int, default=5)
     p.add_argument("--start-origin", type=int, default=100, help="BLUE starting supply (a curated condition)")
     p.add_argument("--threshold", type=int, default=73, help="hidden r1 block threshold; block succeeds iff d100 < it")
+    p.add_argument("--r2-threshold", type=int, default=None,
+                   help="hidden r2 block threshold; if set, BOTH roads are blockable (the 'RED matters' game)")
     p.add_argument("--max-spend-usd", type=float, default=2.0, help="per-game proactive $ cap")
     p.add_argument("--prompt-version", default=A1B_PROMPT_VERSION)
     p.add_argument("--live", action="store_true")
@@ -203,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
           f"two_player={args.two_player} cap={args.max_spend_usd}", file=sys.stderr)
 
     slots = ["BLUE", "RED"] if args.two_player else ["BLUE"]
-    start = _start_state(origin=args.start_origin, threshold=args.threshold)
+    start = _start_state(origin=args.start_origin, threshold=args.threshold, r2_threshold=args.r2_threshold)
     game = run_game(slots, run_id=args.run_id, raw_wire_dir=raw_wire_dir, turns=args.turns, start_state=start,
                     prompt_version=args.prompt_version, max_spend_micro=int(round(args.max_spend_usd * 1_000_000)))
     scn = Path(args.scenario_dir).resolve()

@@ -5,6 +5,7 @@ example examples/contested_logistics_agents/ must bind under the provenance gate
 """
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -48,6 +49,33 @@ def test_drive_turn_forfeit_is_noop() -> None:
     step = out["llm_steps"][0]
     assert step["step_kind"] == "FORFEIT" and step["reject_code"] == "no-command"
     assert step["extracted_command_digest"] is None
+
+
+def _tool_use(action_type: str, params: dict) -> bytes:
+    return json.dumps({"role": "assistant", "content": [{"type": "tool_use", "name": "submit_command",
+        "input": {"action_type": action_type, "params": params}}]}).encode()
+
+
+def test_drive_turn_illegal_command_forfeits_to_noop() -> None:
+    # WP-A2a: a WELL-FORMED but engine-illegal command (quantity 50 > 30) -> an ILLEGAL_FORFEIT step + NO
+    # command in the batch (the slot forfeits, the turn still RESOLVES -- the live-call crash is fixed).
+    out = drive.drive_turn(drive.INITIAL_STATE,
+                           {"BLUE": _tool_use("DISPATCH_SUPPLY", {"quantity": 50, "route": "r1"})},
+                           run_id="t", turn=0)
+    assert out["turn_record"]["command_batch"] == []          # forfeited -> no command; turn still resolved
+    step = out["llm_steps"][0]
+    assert step["step_kind"] == "ILLEGAL_FORFEIT" and step["reject_code"] == "out-of-range"
+    assert step["extracted_command_digest"] is not None        # the command WAS extracted, just illegal
+
+
+def test_drive_turn_wrong_role_forfeits() -> None:
+    # RED issuing DISPATCH_SUPPLY (RED may only BLOCK_ROUTE) -> ILLEGAL_FORFEIT role-action-mismatch
+    out = drive.drive_turn(drive.INITIAL_STATE,
+                           {"RED": _tool_use("DISPATCH_SUPPLY", {"quantity": 30, "route": "r1"})},
+                           run_id="t", turn=0)
+    assert out["turn_record"]["command_batch"] == []
+    step = out["llm_steps"][0]
+    assert step["step_kind"] == "ILLEGAL_FORFEIT" and step["reject_code"] == "role-action-mismatch"
 
 
 def test_commit_turn_writes_record_and_bytes(tmp_path: Path) -> None:

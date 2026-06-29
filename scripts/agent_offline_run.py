@@ -63,7 +63,10 @@ def _llm_step(slot: str, turn: int, run_id: str, response: bytes, request: bytes
     return {
         "schema_version": "1.0", "run_id": run_id, "turn": turn, "recorded_turn": turn,
         "calling_slot": slot, "command_id": f"{run_id}:{turn}:{slot}",
-        "step_kind": "COMMAND" if reject_code is None else "FORFEIT",
+        # disposition by (digest, reject_code): COMMAND (legal), FORFEIT (no well-formed command),
+        # ILLEGAL_FORFEIT (a well-formed command the engine ruled illegal -> the slot forfeits).
+        "step_kind": ("COMMAND" if extracted_digest is not None and reject_code is None
+                      else "ILLEGAL_FORFEIT" if extracted_digest is not None else "FORFEIT"),
         "capture_mode": "HAND_AUTHORED_FIXTURE", "provider": "anthropic",
         "model": "N/A_FIXTURE", "model_version": "N/A_FIXTURE", "served_model": "N/A_FIXTURE",
         "sampling": "PROVIDER_DEFAULT_NO_SEED", "prompt_version": prompt_version,
@@ -91,11 +94,16 @@ def drive_turn(start_state: dict, byte_by_slot: dict, *, run_id: str, turn: int,
         artifacts[hashlib.sha256(request).hexdigest()] = request
         res = extract_command(response)
         if res.ok:
-            commands.append({"command_id": f"{run_id}:{turn}:{slot}", "turn": turn, "actor_id": slot,
-                             "action_type": res.command["action_type"], "params": res.command["params"]})
+            cmd = {"command_id": f"{run_id}:{turn}:{slot}", "turn": turn, "actor_id": slot,
+                   "action_type": res.command["action_type"], "params": res.command["params"]}
             digest = canonical_digest(project_semantic(res.command))["value"]
-            steps.append(_llm_step(slot, turn, run_id, response, request, digest, None, prompt_version))
-        else:                                          # FORFEIT -> NO_OP (no command in the batch)
+            legality = al.command_legality(cmd, start_state)   # the engine's verdict on the HARNESS-BOUND command
+            if legality is None:                           # legal -> COMMAND (enters the batch)
+                commands.append(cmd)
+                steps.append(_llm_step(slot, turn, run_id, response, request, digest, None, prompt_version))
+            else:                                          # well-formed but engine-illegal -> ILLEGAL_FORFEIT (NO_OP)
+                steps.append(_llm_step(slot, turn, run_id, response, request, digest, legality, prompt_version))
+        else:                                          # not well-formed -> FORFEIT -> NO_OP (no command in the batch)
             steps.append(_llm_step(slot, turn, run_id, response, request, None, res.reject_code, prompt_version))
     out = tr.assemble(turn=turn, start_state=start_state, commands=commands, master_seed=0,
                       runtime_fingerprint=FP, successor_slot=f"run/turns/{turn + 1:04d}.json", resolver=al)

@@ -32,9 +32,30 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from canon import canonical_bytes, canonical_digest  # noqa: E402
+from command_extractor import REJECT_CODES as _EXTRACTOR_CODES  # noqa: E402
+from resolver import LEGALITY_REJECT_CODES as _LEGALITY_CODES  # noqa: E402
 
 # Bumps when render_user's logic changes (so a render change moves prompt_version even with identical pins).
+# NOTE: the OPTIONAL retry CORRECTION clause (below) is NOT covered by RENDER_VERSION / prompt_version: a
+# `correction=None` render is byte-identical to the pre-retry render, so existing captures are unaffected and
+# no version moves. The correction clause is instead tamper-evident through the BINDING gate -- a change to
+# CORRECTION_CLAUSE re-renders every historical retry capture differently and breaks its sha256 binding
+# (a LOUD gate failure), which is the proportionate control for the honest-use threat model.
 RENDER_VERSION = 1
+
+# The closed set of reject codes a retry correction may cite (well-formedness OR legality). A correction is
+# restricted to THIS enum so the retry can never carry a free-form coaching string -- only the public,
+# secret-free reason the engine actually returned. (Union of the two distinct reject namespaces.)
+CORRECTION_CODES: tuple[str, ...] = tuple(_EXTRACTOR_CODES) + tuple(_LEGALITY_CODES)
+
+# The fixed retry-correction clause appended to the user content on a retry attempt (parameterized ONLY by the
+# closed reject code). It names no secret -- every CORRECTION_CODES value is a well-formedness/public-legality
+# reason (e.g. out-of-range, insufficient-supply, role-action-mismatch), never the hidden threshold or a draw.
+CORRECTION_CLAUSE = (
+    "\n\nNOTE: your previous order this turn was REJECTED by the exercise engine as `{code}` and was NOT "
+    "applied. It was not a legal, well-formed order for your role under the rules above. Submit ONE order "
+    "that is legal for your role and within all the stated limits."
+)
 
 # Pins (§1.3, amended). model/max_tokens/anthropic_version are part of the version digest; anthropic_version
 # rides as a header (not a body param) so it is absent from the rendered body, present in the version hash.
@@ -149,17 +170,27 @@ PROMPT_TEMPLATES: dict[str, dict] = {A1B_PROMPT_VERSION: _A1B_SPEC, _A1B_PROMPT_
 APPROVED_PROMPT_VERSIONS: tuple[str, ...] = (A1B_PROMPT_VERSION, _A1B_PROMPT_VERSION_V1)
 
 
-def _render_user(user_prefix: str, fog_view: dict) -> str:
+def _render_user(user_prefix: str, fog_view: dict, correction: str | None = None) -> str:
     """The user content = the template's fixed prefix + the canonical bytes of the PUBLIC fog view (the only
-    variable part). The prefix is part of the content-pinned spec, so a prefix edit moves prompt_version."""
-    return user_prefix + canonical_bytes(fog_view).decode("utf-8")
+    variable part). The prefix is part of the content-pinned spec, so a prefix edit moves prompt_version.
+    On a RETRY (``correction`` is a reject code), the fixed CORRECTION_CLAUSE for that code is appended -- a
+    single user turn (no echoed prior output), so the request stays prose-free + secret-free."""
+    content = user_prefix + canonical_bytes(fog_view).decode("utf-8")
+    if correction is not None:
+        if correction not in CORRECTION_CODES:
+            raise KeyError(f"unknown correction code {correction!r} (not a reject code)")  # no free-form coaching
+        content += CORRECTION_CLAUSE.format(code=correction)
+    return content
 
 
-def render_request_envelope(prompt_version: str, fog_view: dict) -> dict:
+def render_request_envelope(prompt_version: str, fog_view: dict, correction: str | None = None) -> dict:
     """Render the Messages request BODY for ``prompt_version`` applied to ``fog_view``. Pure/deterministic.
 
-    Raises ``KeyError`` for an unregistered version — the CALLER (the binding gate) fails closed (exit 2)
-    on an unknown/unapproved version; this module does not decide policy, it just refuses to invent a body.
+    ``correction`` (a reject code from a prior rejected attempt this turn, or None) appends the fixed retry
+    clause; ``correction=None`` is BYTE-IDENTICAL to the pre-retry render, so existing captures are unaffected.
+
+    Raises ``KeyError`` for an unregistered version OR an unknown correction code — the CALLER (the binding
+    gate) fails closed (exit 2); this module does not decide policy, it just refuses to invent a body.
     """
     spec = PROMPT_TEMPLATES[prompt_version]
     return {
@@ -168,13 +199,13 @@ def render_request_envelope(prompt_version: str, fog_view: dict) -> dict:
         "system": spec["system"],
         "tools": [spec["tool"]],
         "tool_choice": spec["tool_choice"],
-        "messages": [{"role": "user", "content": _render_user(spec["user_prefix"], fog_view)}],
+        "messages": [{"role": "user", "content": _render_user(spec["user_prefix"], fog_view, correction)}],
     }
 
 
-def canonical_request_bytes(prompt_version: str, fog_view: dict) -> bytes:
+def canonical_request_bytes(prompt_version: str, fog_view: dict, correction: str | None = None) -> bytes:
     """The canon-v1 bytes the live producer commits + the binding gate re-hashes (§1.4 step 4 / §2.3)."""
-    return canonical_bytes(render_request_envelope(prompt_version, fog_view))
+    return canonical_bytes(render_request_envelope(prompt_version, fog_view, correction))
 
 
 def fixed_part(envelope: dict) -> dict:
@@ -183,8 +214,10 @@ def fixed_part(envelope: dict) -> dict:
     return {k: v for k, v in envelope.items() if k != "messages"}
 
 
-def request_contains_any(prompt_version: str, fog_view: dict, needles: list[str]) -> list[str]:
+def request_contains_any(prompt_version: str, fog_view: dict, needles: list[str],
+                         correction: str | None = None) -> list[str]:
     """Return any ``needles`` (hidden-surface sentinels) that appear in the rendered request bytes (amend 5).
-    A non-empty result means a secret reached the wire — the request is NOT secret-pure."""
-    raw = canonical_request_bytes(prompt_version, fog_view)
+    A non-empty result means a secret reached the wire — the request is NOT secret-pure. ``correction``
+    covers the retry path (a retry clause must be just as secret-free as the base request)."""
+    raw = canonical_request_bytes(prompt_version, fog_view, correction)
     return [n for n in needles if n.encode("utf-8") in raw]

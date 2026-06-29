@@ -7,10 +7,25 @@ turn-replay gate needs zero edits. It is the audit trail that binds the model's 
 to the committed command (see `validate_agent_provenance.py`, the H7 binding).
 
 The raw byte artifacts (the response, including a forfeit's, and the request envelope) are content-
-addressed under the scenario's `run/llm/{sha}.json`. Every `llm_step` field is a SCALAR (the only
-container is the `llm_steps` list itself). (A separate, human-readable `run/forfeits/` audit record per
-forfeit is a deferred follow-up; today a forfeit is fully reconstructible from its `response_sha256`
-bytes + `reject_code`, which the gate re-derives.)
+addressed under the scenario's `run/llm/{sha}.json`. Every `llm_step` field is a SCALAR **except the one
+nested container `prior_attempts`** (the retry audit trail, below); the only other container is the
+`llm_steps` list itself. (A separate, human-readable `run/forfeits/` audit record per forfeit is a
+deferred follow-up; today a forfeit is fully reconstructible from its `response_sha256` bytes +
+`reject_code`, which the gate re-derives.)
+
+### Retry (WP-A2): the decisive attempt binds; rejected prior attempts are an audit trail
+
+When live model-RETRY is enabled, a (turn, slot) may take several attempts: a rejected order is handed back
+to the model with the public reject code (a `correction`) and re-asked, up to a bounded budget, before
+falling back to FORFEIT/ILLEGAL_FORFEIT. The `llm_step` still records exactly the **DECISIVE** attempt (the
+one that produced the COMMAND, or — if the budget is exhausted — the final forfeit), so the gate's 1:1
+(turn, slot) cardinality and command coverage are unchanged. The earlier REJECTED attempts are recorded in a
+**non-binding, gate-VERIFIED** `prior_attempts` list: each carries its own content-addressed redacted bytes,
+and `validate_agent_provenance.py` re-extracts each one and confirms it GENUINELY rejects (so a retry cannot
+be fabricated, and a legal-but-discarded attempt cannot be hidden). The `correction` field (on the step and
+on each prior attempt) is the reject code that prompted **that** attempt (`null` for the first attempt); the
+gate checks the correction chain is consistent (attempt K's `correction == ` attempt K-1's `reject_code`) and
+re-renders each request with its `correction` to bind `request_envelope_sha256`.
 
 ## Example (a HAND_AUTHORED_FIXTURE COMMAND step)
 
@@ -61,6 +76,8 @@ llm_steps:
 | `request_envelope_sha256` | 64-hex; sha256 of the raw request body (integrity-only offline) |
 | `extracted_command_digest` | 64-hex for **COMMAND + ILLEGAL_FORFEIT** (the command WAS extracted); **null iff** `step_kind == FORFEIT`; `canonical_digest(project_semantic(extract(bytes)))` |
 | `reject_code` | **null iff COMMAND**; an EXTRACTOR code iff FORFEIT; a RESOLVER LEGALITY code iff ILLEGAL_FORFEIT (the gate re-derives it from the harness-bound command) |
+| `correction` | **null** on the first attempt; else the reject code that prompted this (retry) attempt — a member of `CORRECTION_CODES` (extractor ∪ legality). The decisive request was rendered with it; the gate re-renders + binds |
+| `prior_attempts` | absent or a (possibly empty) list of the REJECTED attempts before the decisive one this turn; each `{response_sha256, request_envelope_sha256, attempt_kind (FORFEIT\|ILLEGAL_FORFEIT), reject_code, correction}`. NON-binding but gate-VERIFIED (each must re-extract to a genuine reject; a LEGAL prior attempt is rejected) |
 | `as_of` | ISO-8601 date |
 
 ## Pinned enums
@@ -71,7 +88,8 @@ llm_steps:
 - `provider`: `anthropic`
 - `sampling`: `PROVIDER_DEFAULT_NO_SEED`
 - `reject_code` (FORFEIT): `malformed-bytes`, `no-command`, `ambiguous-command`, `semantic-field-invalid`, `non-canon-command`, `unknown-action`, `params-schema-mismatch` (the `core.command_extractor.REJECT_CODES`)
-- `reject_code` (ILLEGAL_FORFEIT): `unknown-actor`, `role-action-mismatch`, `too-many-commands`, `out-of-range`, `unknown-route`, `invalid-enum` (the `core.resolver.LEGALITY_REJECT_CODES` — a DISTINCT namespace; legality, not well-formedness)
+- `reject_code` (ILLEGAL_FORFEIT): `unknown-actor`, `role-action-mismatch`, `too-many-commands`, `out-of-range`, `unknown-route`, `invalid-enum`, `insufficient-supply` (the `core.resolver.LEGALITY_REJECT_CODES` — a DISTINCT namespace; legality, not well-formedness)
+- `correction` (retry): `null` (first attempt) or any `core.prompt_templates.CORRECTION_CODES` value (the extractor ∪ legality reject codes — the public reason a retry was prompted, never a secret)
 
 ## Validation split
 

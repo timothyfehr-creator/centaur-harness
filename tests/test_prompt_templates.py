@@ -115,6 +115,38 @@ def test_no_hidden_sentinel_reaches_the_request() -> None:
                  "SENTINELr2thresh5N3"]
     for pv in pt.APPROVED_PROMPT_VERSIONS:                        # no hidden value reaches ANY approved template
         assert pt.request_contains_any(pv, view, sentinels) == []
+        # ...and the RETRY correction path is just as secret-free (the clause names only the public code)
+        for code in ("insufficient-supply", "out-of-range", "role-action-mismatch"):
+            assert pt.request_contains_any(pv, view, sentinels, correction=code) == []
+
+
+# --- the retry CORRECTION clause (WP-A2 / Build 2) --------------------------------------------------
+
+def test_correction_none_is_byte_identical_to_base_render() -> None:
+    # the retry parameter is opt-in: correction=None must reproduce the pre-retry render EXACTLY, so every
+    # already-committed (non-retry) capture binds unchanged.
+    view = _fog_view(threshold=73)
+    for pv in pt.APPROVED_PROMPT_VERSIONS:
+        assert pt.canonical_request_bytes(pv, view) == pt.canonical_request_bytes(pv, view, correction=None)
+
+
+def test_correction_appends_the_fixed_clause_for_a_known_code() -> None:
+    view = _fog_view(threshold=73)
+    base = pt.canonical_request_bytes(PV, view)
+    corr = pt.canonical_request_bytes(PV, view, correction="insufficient-supply")
+    assert corr != base and len(corr) > len(base)
+    msg = pt.render_request_envelope(PV, view, correction="insufficient-supply")["messages"][0]["content"]
+    assert "insufficient-supply" in msg and "REJECTED" in msg            # the public code is stated
+    assert len(pt.render_request_envelope(PV, view)["messages"]) == 1     # still ONE user turn (no echoed output)
+
+
+def test_correction_refuses_a_free_form_string() -> None:
+    # the correction is restricted to the closed reject-code enum -- a retry can never carry coaching prose.
+    import pytest
+    view = _fog_view(threshold=73)
+    with pytest.raises(KeyError):
+        pt.render_request_envelope(PV, view, correction="dispatch on r2, RED is camping r1")
+    assert set(pt.CORRECTION_CODES) and "insufficient-supply" in pt.CORRECTION_CODES
 
 
 def test_sentinel_scan_has_teeth_on_a_leaky_template() -> None:

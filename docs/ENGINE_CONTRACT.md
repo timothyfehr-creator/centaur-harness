@@ -161,8 +161,15 @@ and replayable.
   {actor_id}"`, `turn = head.as_of_turn`. The model authors the SEMANTIC choice; the harness stamps the
   IDENTITY.
 - **Referee**: `agent_logistics` (the turn-advancing contested-logistics resolver) adjudicates;
-  `validate_all` enforces actor-enum + role/action capability so a cross-role or unknown-actor command
-  is REJECTED, never accepted-then-inert.
+  `validate_all` enforces actor-enum + role/action capability + value ranges (strict, all-or-nothing) so a
+  cross-role / out-of-range / unknown-actor command is REJECTED, never accepted-then-inert.
+- **Forfeit-recovery** (WP-A2a): a well-formed command the referee rules ILLEGAL (e.g. an out-of-range
+  quantity, or RED issuing DISPATCH_SUPPLY) does NOT crash the turn — the DRIVE pre-screens legality
+  (`resolver.command_legality` on the harness-bound command) and forfeits just that slot to NO_OP, recorded
+  as the third disposition **`ILLEGAL_FORFEIT`** (it carries the extracted-command digest + the resolver
+  legality code, both re-verified by the provenance gate). The resolver stays the strict authority + backstop;
+  the policy "an illegal move forfeits the mover" lives in the drive. So `step_kind` is one of **COMMAND**
+  (legal) / **FORFEIT** (bytes not well-formed) / **ILLEGAL_FORFEIT** (well-formed but engine-illegal).
 - **Provenance** (NON-CAUSAL): a flat `llm_step` per (turn, slot) in `run_ledger.llm_steps`, with the
   raw bytes content-addressed under `run/llm/{sha}.json`. Absent from `transition_input_hash`, so it
   cannot change replay.

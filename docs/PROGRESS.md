@@ -730,3 +730,13 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   ensemble/transcript/judge layers
   stay INDEPENDENTLY NO-GO'd (a `verify.py`-reporting guard test now pins that verbatim). Disclosed residual
   unchanged: a fully self-consistent fabricated capture binds green (consistency, not authenticity).
+- **WP-A2a (illegal-move forfeit-recovery) — BUILT.** The first live capture exposed that a well-formed but
+  engine-illegal AI move (BLUE `quantity 50` > 30; RED issuing `DISPATCH_SUPPLY`) made the resolver reject the
+  WHOLE turn and the drive crash. Fixed by a third, VERIFIED disposition: `core/resolver.command_legality`
+  (reuses `validate_all`); the drive (offline + the @live capture) pre-screens each command's legality on the
+  harness-bound command and forfeits just the illegal mover to NO_OP, recorded as `ILLEGAL_FORFEIT` (digest +
+  the resolver legality code). `validate_agent_provenance` re-verifies it: the bytes must re-extract, the
+  recomputed legality must equal the recorded code, and the slot must have no command in the record
+  (spurious-illegal-forfeit / illegal-forfeit-code-mismatch / illegal-forfeit-has-command). The resolver stays
+  the strict authority (NOT weakened); model-RETRY is out of scope. So a live game now survives an illegal
+  move instead of crashing.

@@ -34,8 +34,8 @@ llm_steps:
     canon_version: "canon-v1"
     response_sha256: "<64 hex>"
     request_envelope_sha256: "<64 hex>"
-    extracted_command_digest: "<64 hex>"   # null iff step_kind == FORFEIT
-    reject_code: null                       # non-null iff step_kind == FORFEIT
+    extracted_command_digest: "<64 hex>"   # present for COMMAND + ILLEGAL_FORFEIT; null iff FORFEIT
+    reject_code: null                       # null iff COMMAND; extractor code (FORFEIT) | legality code (ILLEGAL_FORFEIT)
     as_of: "2026-06-27"
 ```
 
@@ -49,7 +49,7 @@ llm_steps:
 | `recorded_turn` | int; `== turn` (a redundant cross-check that catches a misfiled step) |
 | `calling_slot` | enum **BLUE \| RED** — harness-set, never authored by the model |
 | `command_id` | `f"{run_id}:{turn}:{calling_slot}"` (harness-derived; the H7b identity binding asserts this literally) |
-| `step_kind` | enum **COMMAND \| FORFEIT** |
+| `step_kind` | enum **COMMAND \| FORFEIT \| ILLEGAL_FORFEIT** — the three content dispositions (legal / not-well-formed / well-formed-but-engine-illegal) |
 | `capture_mode` | enum **LIVE \| HAND_AUTHORED_FIXTURE** — the offline substrate MUST be `HAND_AUTHORED_FIXTURE` (a fixture cannot masquerade as a real call) |
 | `provider` | enum **anthropic** |
 | `model` / `model_version` / `served_model` | string; pinned to `"N/A_FIXTURE"` when `capture_mode == HAND_AUTHORED_FIXTURE` (a fixture cannot claim a served model); free strings when LIVE |
@@ -59,18 +59,19 @@ llm_steps:
 | `canon_version` | string; `== canon.CANON_VERSION` |
 | `response_sha256` | 64-hex; sha256 of the raw response bytes, hashed ONCE at record time |
 | `request_envelope_sha256` | 64-hex; sha256 of the raw request body (integrity-only offline) |
-| `extracted_command_digest` | 64-hex, or **null iff** `step_kind == FORFEIT`; `canonical_digest(project_semantic(extract(bytes)))` |
-| `reject_code` | one of the extractor's pinned reject codes, or **null iff** `step_kind == COMMAND` |
+| `extracted_command_digest` | 64-hex for **COMMAND + ILLEGAL_FORFEIT** (the command WAS extracted); **null iff** `step_kind == FORFEIT`; `canonical_digest(project_semantic(extract(bytes)))` |
+| `reject_code` | **null iff COMMAND**; an EXTRACTOR code iff FORFEIT; a RESOLVER LEGALITY code iff ILLEGAL_FORFEIT (the gate re-derives it from the harness-bound command) |
 | `as_of` | ISO-8601 date |
 
 ## Pinned enums
 
 - `calling_slot`: `BLUE`, `RED`
-- `step_kind`: `COMMAND`, `FORFEIT`
+- `step_kind`: `COMMAND` (a legal command), `FORFEIT` (bytes not well-formed), `ILLEGAL_FORFEIT` (a well-formed command the engine ruled illegal → the slot forfeits to NO_OP)
 - `capture_mode`: `LIVE`, `HAND_AUTHORED_FIXTURE`
 - `provider`: `anthropic`
 - `sampling`: `PROVIDER_DEFAULT_NO_SEED`
-- `reject_code`: `malformed-bytes`, `no-command`, `ambiguous-command`, `semantic-field-invalid`, `non-canon-command` (the `core.command_extractor.REJECT_CODES`)
+- `reject_code` (FORFEIT): `malformed-bytes`, `no-command`, `ambiguous-command`, `semantic-field-invalid`, `non-canon-command`, `unknown-action`, `params-schema-mismatch` (the `core.command_extractor.REJECT_CODES`)
+- `reject_code` (ILLEGAL_FORFEIT): `unknown-actor`, `role-action-mismatch`, `too-many-commands`, `out-of-range`, `unknown-route`, `invalid-enum` (the `core.resolver.LEGALITY_REJECT_CODES` — a DISTINCT namespace; legality, not well-formedness)
 
 ## Validation split
 

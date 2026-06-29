@@ -103,7 +103,8 @@ NOT_YET_IMPLEMENTED = (
     "the @live capture lane (WP-A1b: core/live_client.py + scripts/agent_live_capture.py) EXISTS but is "
     "non-deterministic and OUT of the green gate -- CI/pytest only REPLAY committed bytes, so a model is "
     "never re-called IN THE GATE (a committed CAPTURE_ARTIFACT records one real call). Still unbuilt: live "
-    "retry/forfeit-recovery (WP-A2), two-player live GAMES, and multi-turn live campaigns",
+    "model-RETRY on a bad response (WP-A2; forfeit-recovery IS built — an illegal move forfeits to NO_OP), "
+    "two-player live GAMES, and multi-turn live campaigns",
     "the agent transcript / judge / ENSEMBLE analysis layers: design-frozen and INDEPENDENTLY NO-GO'd "
     "(a decision-facing AI-playthrough transcript is false-validity) -- a captured game is a "
     "MACHINE log only, never a forecast",

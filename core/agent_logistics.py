@@ -14,7 +14,13 @@ RULESET_VERSION, STOCHASTIC_TERMINALS, validate_all, sort_commands, transition, 
 from __future__ import annotations
 
 import resolver as base
-from resolver import ResolveError, sort_commands, validate_all  # unchanged legality + ordering surface
+from resolver import (  # unchanged legality + ordering surface
+    LEGALITY_REJECT_CODES,
+    ResolveError,
+    command_legality,
+    sort_commands,
+    validate_all,
+)
 
 RESOLVER_ID = "agent_logistics"
 RESOLVER_VERSION = "1"
@@ -22,7 +28,8 @@ RULESET_VERSION = base.RULESET_VERSION
 STOCHASTIC_TERMINALS = base.STOCHASTIC_TERMINALS  # ("SUPPLY_DELIVERED", "SUPPLY_LOST") — drawn terminals
 
 __all__ = ["RESOLVER_ID", "RESOLVER_VERSION", "RULESET_VERSION", "STOCHASTIC_TERMINALS",
-           "validate_all", "sort_commands", "resolve", "reduce", "transition", "ResolveError"]
+           "validate_all", "command_legality", "LEGALITY_REJECT_CODES", "sort_commands",
+           "resolve", "reduce", "transition", "ResolveError"]
 
 
 def resolve(accepted: list, *, block_threshold: int, master_seed: int, turn: int = 0):

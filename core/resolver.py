@@ -91,6 +91,25 @@ def validate_all(commands: list, start_state: dict, ruleset: object = None):
     return accepted, rejections
 
 
+# The legality reject codes validate_all can emit -- the VALUE-legality + role/actor namespace, DISTINCT from
+# command_extractor's well-formedness REJECT_CODES. Sourced here so the agent layer (the drive + the
+# provenance gate) can recognize + RE-VERIFY an engine-illegal-but-well-formed command without re-implementing
+# the rules.
+LEGALITY_REJECT_CODES = (
+    "unknown-actor", "role-action-mismatch", "too-many-commands",
+    "out-of-range", "unknown-route", "invalid-enum",
+)
+
+
+def command_legality(command: dict, start_state: dict, ruleset: object = None) -> str | None:
+    """The FIRST legality reject code for ONE harness-bound command (its actor_id included), or None if legal.
+    Reuses validate_all (the single legality authority) on a one-command batch -- so the drive can forfeit just
+    an illegal mover and the gate can RE-VERIFY the illegality, neither forking the rules. (`too-many-commands`
+    is a cross-command code a single-command batch cannot raise.)"""
+    _, rejections = validate_all([command], start_state, ruleset)
+    return rejections[0][0] if rejections else None
+
+
 def sort_commands(accepted: list) -> list:
     """Total order: lexicographic over each command's canon-v1 bytes (file order irrelevant)."""
     return sorted(accepted, key=canonical_bytes)

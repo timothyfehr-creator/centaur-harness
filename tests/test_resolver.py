@@ -108,6 +108,27 @@ def test_empty_turn_is_legal_and_noop() -> None:
     assert supply(r) == {"origin": 100, "in_transit": 0, "delivered": 0, "loss_sink": 0}
 
 
+def test_command_legality_per_command_check() -> None:
+    # WP-A2a: command_legality returns the FIRST legality reject code (or None) for ONE harness-bound command,
+    # reusing validate_all so the agent layer can forfeit/re-verify an illegal move without forking the rules.
+    s = make_state()
+    legal_blue = {"actor_id": "BLUE", "action_type": "DISPATCH_SUPPLY", "params": {"quantity": 30, "route": "r1"}}
+    legal_red = {"actor_id": "RED", "action_type": "BLOCK_ROUTE", "params": {"route": "r1"}}
+    assert rsv.command_legality(legal_blue, s) is None
+    assert rsv.command_legality(legal_red, s) is None
+    # each illegal shape -> its code (the codes the live models actually tripped + the route/actor cases)
+    assert rsv.command_legality({**legal_blue, "params": {"quantity": 50, "route": "r1"}}, s) == "out-of-range"
+    assert rsv.command_legality({"actor_id": "RED", "action_type": "DISPATCH_SUPPLY",
+                                 "params": {"quantity": 30, "route": "r1"}}, s) == "role-action-mismatch"
+    assert rsv.command_legality({**legal_blue, "params": {"quantity": 30, "route": "r9"}}, s) == "unknown-route"
+    assert rsv.command_legality({**legal_blue, "actor_id": "GREEN"}, s) == "unknown-actor"
+    # every code command_legality can return is declared in the public namespace
+    for cmd in (legal_blue,):
+        assert rsv.command_legality(cmd, s) is None
+    assert set(rsv.LEGALITY_REJECT_CODES) >= {"out-of-range", "role-action-mismatch", "unknown-route",
+                                              "unknown-actor", "invalid-enum", "too-many-commands"}
+
+
 # --- invariants & rejections --------------------------------------------------------
 
 def red_dispatch(qty: int = 10, route: str = "r1") -> dict:

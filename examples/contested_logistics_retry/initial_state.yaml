@@ -1,0 +1,14 @@
+# ILLUSTRATIVE initial-state registry for the live-RETRY demo (both roads blockable) — every item is a
+# SYNTHETIC placeholder, NOT a real-world assertion. No item is labeled REAL_WORLD_BASELINE.
+schema_version: "1.0"
+as_of_date: "2026-06-29"
+items:
+  - id: state-001
+    statement: "BLUE holds a modest abstract supply at origin (synthetic, ASSUMED) so it can deplete and meet a supply limit within a few turns."
+    label: ASSUMPTION
+  - id: state-002
+    statement: "Two abstract routes r1 and r2 connect origin to destination; BOTH are blockable, each with its own hidden threshold (synthetic)."
+    label: ILLUSTRATIVE
+  - id: state-003
+    statement: "A rejected order (malformed or engine-illegal) is handed back to the player with its PUBLIC reject code and re-asked up to a bounded number of times before the player forfeits the turn (WP-A2 live retry)."
+    label: ILLUSTRATIVE

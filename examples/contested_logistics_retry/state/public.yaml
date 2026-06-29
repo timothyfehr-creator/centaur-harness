@@ -1,0 +1,13 @@
+# ILLUSTRATIVE public state — SYNTHETIC, visible to ALL agents + the adjudicator. Asserts no real-world fact.
+schema_version: "1.0"
+as_of_date: "2026-06-29"
+items:
+  - id: pub-001
+    statement: "BLUE may dispatch between 1 and 30 of its remaining supply units this turn over route r1 or r2, and never more than its remaining origin supply (synthetic, public)."
+    label: ILLUSTRATIVE
+  - id: pub-002
+    statement: "BOTH routes r1 and r2 may be blocked by RED; neither is a free route (synthetic, public)."
+    label: ILLUSTRATIVE
+  - id: pub-003
+    statement: "If a submitted order is rejected, the player is told the PUBLIC reject code (e.g. insufficient-supply, out-of-range) and may submit a corrected order; only the final accepted order counts (synthetic, public)."
+    label: ILLUSTRATIVE

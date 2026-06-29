@@ -1,0 +1,53 @@
+schema_version: "1.0"
+title: "Contested logistics — live model-RETRY demo (both roads blockable, CAPTURE_ARTIFACT)"
+label: CAPTURE_ARTIFACT       # a single non-deterministic live game, NOT a model/sample/analysis
+as_of_date: "2026-06-29"
+description: >
+  CAPTURE_ARTIFACT, not a forecast. This records ONE live, non-deterministic multi-turn game in which Opus
+  4.8 played BOTH sides over several turns with LIVE model-RETRY enabled (WP-A2): when a player's order is
+  rejected (malformed, or engine-illegal such as dispatching more than its remaining supply), the engine
+  hands it back with the PUBLIC reject code and the player is re-asked, up to a bounded budget, before
+  forfeiting the turn. Its ONLY purpose is to demonstrate the live-retry lane mechanically works end-to-end:
+  the DECISIVE (final) order binds the turn, the rejected prior attempts are committed as a gate-VERIFIED
+  audit trail, and the whole game replays byte-identically with the model never re-called. It is a MACHINE
+  LOG, not a transcript, a forecast, or analysis.
+
+  MEMORYLESS DISCLOSURE: Each player is a memoryless one-shot reasoner ACROSS turns; on every turn it is
+  called fresh on the current-turn fog projection. WITHIN a turn, a retry additionally sees the public reject
+  code of its own just-rejected order (a rules correction, not strategy). It is weaker than a remembering
+  adversary and must not be presented as a continuous strategist.
+
+  AUTHENTICITY RESIDUAL: capture_mode LIVE is an attestation by the runner, not a proof. A fabricated capture
+  is byte-indistinguishable to a third party and would bind green — the gates prove internal CONSISTENCY, not
+  byte AUTHENTICITY.
+
+  SAMPLE SIZE: n equals 1. This is a single game, not a sample; nothing here is a frequency, a probability,
+  or evidence about the real world. It is NEVER to be aggregated with other games into a distribution. Every
+  constant (both hidden thresholds, BLUE's supply, the retry budget) is ASSUMED and ILLUSTRATIVE.
+
+branches:
+  - id: blue_recovers
+    title: "BLUE recovers rejected orders via retry instead of forfeiting"
+    probability: 0.50
+    signposts:
+      - "A turn shows a rejected attempt followed by a corrected, accepted order (prior_attempts present)"
+      - "BLUE delivers more by correcting a too-large dispatch down to its remaining supply"
+      - "The decisive COMMAND step carries a correction equal to its prior attempt's reject code"
+    falsifiers:
+      - "Every rejected order forfeits with no successful correction"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.
+
+  - id: retries_exhaust
+    title: "A player exhausts its retry budget and still forfeits"
+    probability: 0.50
+    signposts:
+      - "A turn records the budget of prior attempts then a terminal forfeit"
+      - "A player at zero remaining supply cannot produce a legal dispatch on any retry"
+      - "The forfeit step carries prior_attempts equal to the retry budget"
+    falsifiers:
+      - "No turn exhausts the retry budget"
+    rationale: >
+      Placeholder only: a CAPTURE_ARTIFACT asserts no probability. 0.50 is a synthetic, non-analytic
+      placeholder for schema completeness, not an estimate.

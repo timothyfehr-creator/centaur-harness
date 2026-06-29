@@ -1,0 +1,8 @@
+# ILLUSTRATIVE adjudicator-only state — SYNTHETIC; asserts no real-world fact. Only the adjudicator sees this;
+# it must never appear in any agent's compiled context. The NUMERIC block thresholds live in the typed engine
+# state (the turn records' start_state), not in this prose registry; the retry CORRECTION codes are public.
+schema_version: "1.0"
+items:
+  - id: adj-001
+    statement: "BOTH routes r1 and r2 carry hidden block thresholds known only to the adjudicator (synthetic). A retry's correction names only the PUBLIC reject code and never reveals a threshold or a draw."
+    label: GAMED_FUTURE

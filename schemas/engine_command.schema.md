@@ -40,7 +40,7 @@ commands:
 | action_type | params | Rule |
 |---|---|---|
 | `DISPATCH_SUPPLY` | `{quantity: int, route: str}` | `1 ≤ quantity ≤ 30`; `route ∈ {r1, r2}` |
-| `BLOCK_ROUTE` | `{route: str}` | `route ∈ {r1, r2}` (blocking the unblockable `r2` is **legal but has no effect**) |
+| `BLOCK_ROUTE` | `{route: str}` | `route ∈ {r1, r2}` (blocking a route that has no `route_secret` is **legal but has no effect** — e.g. `r2` in the base single-secret scenarios; with `route_secret:r2` present, blocking r2 is contested) |
 
 ## Legality (deterministic `validate_all`, zero mutation, reject-all-or-resolve)
 

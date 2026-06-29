@@ -738,5 +738,29 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   the resolver legality code). `validate_agent_provenance` re-verifies it: the bytes must re-extract, the
   recomputed legality must equal the recorded code, and the slot must have no command in the record
   (spurious-illegal-forfeit / illegal-forfeit-code-mismatch / illegal-forfeit-has-command). The resolver stays
-  the strict authority (NOT weakened); model-RETRY is out of scope. So a live game now survives an illegal
-  move instead of crashing.
+  the strict authority (NOT weakened); model-RETRY was out of scope HERE (built later — see RED MATTERS +
+  WP-A2 below). So a live game now survives an illegal move instead of crashing.
+
+- **RED MATTERS — both roads blockable (a game-design refinement).** The WP-A3 games exposed a blind-spot: r2
+  was a free un-blockable route, so BLUE always took it and RED was idle. Blockability is now PRESENCE-DERIVED:
+  a road is blockable IFF a `route_secret:{route}` entity exists for it (`resolver.block_thresholds(state)`
+  replaces the hardcoded `BLOCKABLE_WITH_THRESHOLD=("r1",)`; `resolve()` indexes the dispatched route's
+  threshold). BACKWARD-COMPATIBLE by construction (old states lack `route_secret:r2` → identical behavior; all
+  committed records replay byte-identically) and needs NO prompt change. A new `both_blockable_state()` builder
+  + `agent_live_campaign --r2-threshold` add `route_secret:r2`; the committed LIVE game
+  `examples/contested_logistics_both_blockable/` shows RED interdicting on a now-contested r2. The
+  `ROUTE_SECRET` fog-filter hides the second secret automatically (sentinel + fog tests prove it).
+
+- **WP-A2 — live model-RETRY.** When an AI order is rejected (extractor not-well-formed OR engine-illegal), the
+  drive re-asks the model up to `--max-retries` (default 2) times, each retry appending a fixed CORRECTION
+  clause naming ONLY the public reject code (`prompt_templates` `CORRECTION_CODES` = the extractor ∪ legality
+  reject codes; no free-form coaching; the clause never names a hidden threshold). The shared loop
+  `agent_offline_run.run_slot_attempts` is network-free (the live drive injects a network `fetch`), so offline
+  + live cannot drift. Only the DECISIVE attempt (first legal COMMAND else the last) binds the 1:1 `llm_step`
+  (with a `correction` field); the rejected PRIOR attempts are a non-binding, gate-VERIFIED `prior_attempts`
+  list. `validate_agent_provenance._retry_problems` re-extracts each prior → it must GENUINELY reject (so a
+  retry can't be fabricated and a legal move can't hide as a discarded prior), checks the correction chain, and
+  re-hashes + (for a template version) re-renders each prior's bytes. The committed LIVE demo
+  `examples/contested_logistics_retry/` shows retries firing (turn 3's chain: out-of-range → insufficient-supply
+  → forfeit) — retry-EXHAUSTION, not recovery (an honest CAPTURE_ARTIFACT, n=1). The live scripts stay @live;
+  the honesty work is offline-tested; a 3-lens adversarial-verify + a whole-increment review both ACCEPT.

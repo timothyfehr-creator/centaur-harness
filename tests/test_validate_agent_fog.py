@@ -72,10 +72,25 @@ def test_draw_field_guard_fires_if_a_short_draw_value_leaks_onto_an_event(monkey
     assert "draw-field-in-view" in _codes(vaf._leak_problems(_rec(), "x"))
 
 
-def test_gate_vacuous_when_no_agent_records(tmp_path: Path) -> None:
+def test_explicit_empty_scenario_dir_fails_closed(tmp_path: Path) -> None:
+    # an EXPLICIT --scenario-dir with no agent records is "cannot evaluate" -> exit 2 (parity with the sibling
+    # gates validate_agent_provenance / validate_turn_replay), NEVER a silent clean pass.
     r = subprocess.run([sys.executable, str(GATE), "--scenario-dir", str(tmp_path)],
                        cwd=REPO_ROOT, capture_output=True, text=True)
-    assert r.returncode == 0 and "no agent records" in r.stdout
+    assert r.returncode == 2 and "refusing to certify" in r.stderr
+
+
+def test_explicit_missing_scenario_dir_fails_closed(tmp_path: Path) -> None:
+    r = subprocess.run([sys.executable, str(GATE), "--scenario-dir", str(tmp_path / "nope")],
+                       cwd=REPO_ROOT, capture_output=True, text=True)
+    assert r.returncode == 2 and "does not exist" in r.stderr
+
+
+def test_bare_sweep_certifies_committed_records(tmp_path: Path) -> None:
+    # the BARE sweep (no --scenario-dir) over the repo's examples/ still certifies (records present -> exit 0);
+    # the vacuous "no agent records" exit-0 is reserved for the bare sweep of a repo with no agent scenarios.
+    r = subprocess.run([sys.executable, str(GATE)], cwd=REPO_ROOT, capture_output=True, text=True)
+    assert r.returncode == 0 and "hidden state never entered any view" in r.stdout
 
 
 def test_two_player_scenario_binds_under_provenance() -> None:

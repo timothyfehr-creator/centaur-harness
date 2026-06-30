@@ -129,9 +129,20 @@ def main(argv: list[str] | None = None) -> int:
                         help="one scenario's records (default: sweep examples/**/run/turns/*.json)")
     args = parser.parse_args(argv)
     root = Path(args.scenario_dir).resolve() if args.scenario_dir else REPO_ROOT / "examples"
+    # An EXPLICIT --scenario-dir that is missing or carries no agent records FAILS CLOSED (exit 2), like the
+    # sibling gates (validate_agent_provenance / validate_turn_replay) -- a named scenario with nothing to
+    # check is a "cannot evaluate", never a clean pass. Only the BARE sweep treats "no agent scenarios in the
+    # repo" as a legitimate vacuous OK.
+    if args.scenario_dir is not None and not root.is_dir():
+        print(f"error: --scenario-dir {root} does not exist; refusing to report clean.", file=sys.stderr)
+        return 2
     records = _agent_records(root)
     if not records:
-        print("agent-fog OK (no agent records present)")
+        if args.scenario_dir is not None:
+            print(f"error: --scenario-dir {root} has no agent records; refusing to certify a named scenario "
+                  f"with nothing to check.", file=sys.stderr)
+            return 2
+        print("agent-fog OK (no agent records present)")   # bare sweep: a repo with no agent scenarios is vacuous
         return 0
     problems: list[tuple[str, str, str]] = []
     for path in records:

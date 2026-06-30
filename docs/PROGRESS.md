@@ -675,7 +675,7 @@ landed in focused sessions, not the per-WP CI-run cadence above.
   `attestation_reviewers.yaml`; review/signoff → INDEPENDENT/ACCEPT/APPROVED; calibration stays
   UNCALIBRATED/NOT_FEASIBLE — the ACCEPT is of the WORK's soundness, not validity). The repo banner stays
   `SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED` by worst-kind logic (ukraine is still a self-check).
-- **Now:** the full suite passes (~600 tests); `release` exit 0 with the honest `SELF-VERIFIED; NOT INDEPENDENTLY
+- **Now:** the full suite passes (~805 tests); `release` exit 0 with the honest `SELF-VERIFIED; NOT INDEPENDENTLY
   ATTESTED` banner; the feasibility sweep reports `2 scenario(s) checked, 1 record(s) validated`. The lethality
   floors + k are LOCKED (drone 50 / cruise 40 / ballistic 25; k=3). Calibration *scoring* remains the sole
   `[SKIP]` (needs resolved outcomes).

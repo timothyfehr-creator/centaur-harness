@@ -96,4 +96,5 @@ Single-writer, `local-posix-fs-v1`. **Multi-turn chaining (WP-E2b2) is now expre
 fields — the `run/turns/{NNNN}.json` slot tree + the `successor_slot` forward pointer + the in-state
 `as_of_turn` (advanced inside `reduce` via a `TURN_ADVANCED` event) — and enforced by the turn-replay
 gate's chain pass (byte-identical head handoffs); no `schema_version` bump was needed. Multi-host/network-fs
-durability, LLM-step records (`llm_steps`), branching, and the engine→prose `MODEL_OUTPUT` bridge are deferred.
+durability, branching, and the engine→prose `MODEL_OUTPUT` bridge are deferred. The LLM-step records
+(`llm_steps`) have since SHIPPED (WP-A1a, the H7 binding gate; see `schemas/llm_step.schema.md`).

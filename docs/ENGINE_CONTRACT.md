@@ -195,14 +195,17 @@ The three replay/binding tiers (all on recorded bytes — a model is never re-ca
 `validate_agent_fog` adds the differential no-leak check (a viewer's projection is a function of public
 state + outcome, never of the secret threshold value). **Disclosed residual:** a fully self-consistent
 fabrication binds green — the gates prove internal consistency, not that the bytes authentically came
-from a model (authenticity is unprovable under current APIs; the prompt↔envelope binding re-render is
-deferred to the live lane WP-A1b).
+from a model (authenticity is unprovable under current APIs; the prompt↔envelope binding re-render is the
+live lane's Tier-3 check, now built — see below).
 
-## Offline machinery for a live call (WP-A1b) — built + gated; the live CALL is deferred
+## The agent + live lane (WP-A1b → WP-A3) — built, committed, OUT of the green gate
 
-WP-A1b builds, fully offline and green-gated, everything a future single live model call needs — but does
-**not** make the call (no network client, no spend, no Slice-0 probe). The substrate still only replays
-hand-authored bytes; no model is ever called. What landed:
+WP-A1b built, fully offline and green-gated, everything a single live model call needs; the call has since
+**shipped** (`core/live_client.py`, `scripts/agent_live_capture.py`, `scripts/agent_live_campaign.py`), and
+the repo carries committed LIVE captures — multi-turn two-player games, a both-roads-contested variant, and
+live model-RETRY. The live lane is **non-deterministic and OUT of the green gate**: CI/pytest only REPLAY the
+committed bytes, so a model is never re-called *in the gate* (a captured game records the real calls). What
+the offline machinery landed:
 
 - **Prose-free at the SOURCE** (`core/response_redact.py`): a model response's committed bytes are an
   ALLOWLIST — only `tool_use` blocks survive, each PROJECTED to its `{type,id,name,input}` skeleton (a
@@ -216,7 +219,7 @@ hand-authored bytes; no model is ever called. What landed:
   schema (`DISPATCH_SUPPLY {quantity:int, route:enum}`, `BLOCK_ROUTE {route:enum}`) — no free-form/rationale
   field is expressible, so the command channel cannot smuggle prose.
 - **Template registry** (`core/prompt_templates.py`): the versioned, content-pinned request render shared by
-  the (deferred) live producer and the binding gate. PURE — no clock/nonce/network/float. Two structural
+  the live producer and the binding gate. PURE — no clock/nonce/network/float. Two structural
   honesty checks: the **differential-purity invariant** (vary the secret → the fixed system+tools bytes are
   unchanged) and a **secret-sentinel scan** (no hidden-surface value reaches the request bytes).
 - **Tier-3 request-envelope binding** (`validate_agent_provenance`): a step rendered from a registered +
@@ -236,11 +239,11 @@ hand-authored bytes; no model is ever called. What landed:
   SDK-default system augmentation — it is tamper-evidence relative to a *trusted capture pipeline*.
 - **Determinism boundary** (`scripts/validate_no_network_imports.py`, RELEASE-wired): a static AST scan
   fails closed if any `core/`/`scripts/` module imports a network library (static or literal-dynamic); the
-  only exception is the by-path `@live` allowlist (absent today). Complemented by a runtime `sys.modules`
-  guard test.
+  only exception is the by-path `@live` allowlist (now 3 members: `core/live_client.py` + the two
+  `scripts/agent_live_*.py` drives). Complemented by a runtime `sys.modules` guard test.
 
 **Authenticity residual (unchanged, disclosed):** the gates prove internal CONSISTENCY, not byte
-AUTHENTICITY — a fully self-consistent fabricated capture binds green. A captured live game would be a
-`CAPTURE_ARTIFACT` (a deflationary label, not the shared `ILLUSTRATIVE`), single-turn, memoryless, n=1,
+AUTHENTICITY — a fully self-consistent fabricated capture binds green. A captured live game is a
+`CAPTURE_ARTIFACT` (a deflationary label, not the shared `ILLUSTRATIVE`), memoryless-per-turn, n=1,
 never decision-facing. The ensemble/transcript/judge layers stay **INDEPENDENTLY NO-GO'd** (guarded by
 `tests/test_verify_reporting_guard.py`).

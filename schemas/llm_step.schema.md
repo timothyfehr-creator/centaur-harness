@@ -69,7 +69,7 @@ llm_steps:
 | `provider` | enum **anthropic** |
 | `model` / `model_version` / `served_model` | string; pinned to `"N/A_FIXTURE"` when `capture_mode == HAND_AUTHORED_FIXTURE` (a fixture cannot claim a served model); free strings when LIVE |
 | `sampling` | enum **PROVIDER_DEFAULT_NO_SEED** — the sole honest value (a fake `temperature: 0.0` is un-spellable, and it keeps the record float-free) |
-| `prompt_version` | string; content-hashed template id (re-derivation selector; the prompt↔envelope binding re-render is deferred to WP-A1b) |
+| `prompt_version` | string; content-hashed template id (re-derivation selector; the prompt↔envelope binding re-render is the Tier-3 check, now ACTIVE — `validate_agent_provenance` re-renders the template over the committed fog view and binds `request_envelope_sha256`) |
 | `extractor_version` | string; the binding re-derivation selector (Tier-2 dispatches to the RECORDED version or fails closed) |
 | `canon_version` | string; `== canon.CANON_VERSION` |
 | `response_sha256` | 64-hex; sha256 of the raw response bytes, hashed ONCE at record time |

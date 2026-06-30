@@ -35,6 +35,11 @@ every field scalar, every enum pinned — so a tampered/identity-bearing step ca
 self-consistent tamper (re-resolved record) passes turn-replay but FAILS here: only the binding to the
 RECORDED BYTES catches that the committed command no longer matches what the bytes extract to.
 
+WP-A2 RETRY: a step may carry a non-binding `prior_attempts` trail (the rejected attempts before the
+decisive one). The gate RE-VERIFIES each — re-extracts its committed bytes to a GENUINE reject of the
+recorded kind+code, checks the correction chain is consistent, and re-binds the bytes — so a fabricated
+retry, or a legal move smuggled in as a discarded "prior", is caught.
+
 STRUCTURAL + PROVENANCE ONLY: a clean result means the recorded steps are well-formed and bound to the
 committed records + bytes, NOT that anything is analytically valid. Composed into `verify.py --mode release`.
 

@@ -31,7 +31,7 @@ output than over-claim:
 git clone https://github.com/timothyfehr-creator/centaur-harness && cd centaur-harness
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python scripts/verify.py --mode release   # the full composed gate
-.venv/bin/pytest -q                                  # the test suite (~600 tests)
+.venv/bin/pytest -q                                  # the test suite (~805 tests)
 ```
 
 `verify.py` composes the individual gates into three modes — `scaffold` (repo integrity),
@@ -49,8 +49,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 | **Attestation** | per-scenario review + signoff, honest by construction (a self-check can't read as independent) |
 | **Calibration** | `CALIBRATED` must resolve to a scored record; otherwise the model declares `UNCALIBRATED` / `ILLUSTRATIVE`, or records *why* a channel can't be calibrated |
 | **Engine** | a deterministic, reproducible turn engine — typed state, a seeded RNG oracle, and replayable turn records (record-replay + recomputation + an idempotency hash) |
+| **Agent + live layer** | LLMs may *play* the game: an offline command substrate, then a real `@live` model lane (out of the green gate) that captures multi-turn two-player games — every move provably bound to the model's exact bytes, secrets fog-hidden, replayable to the byte. A captured game is a `CAPTURE_ARTIFACT` (a machine log, n=1), **never** a forecast |
 
-A dozen-plus gates, each also a standalone CI step; `verify.py` composes them. ~600 tests,
+A dozen-plus gates, each also a standalone CI step; `verify.py` composes them. ~805 tests,
 green in CI.
 
 ## Repository layout
@@ -62,24 +63,29 @@ green in CI.
 - **`schemas/`** — the `*.schema.md` contracts each artifact must satisfy.
 - **`examples/`** — illustrative scenarios with their engine runs, ledgers, and attestations.
 - **`factbase/` · `knowledge/`** — the sourced evidence and agent knowledge books.
-- **`tests/`** — ~600 tests. **`docs/`** — the design docs (start with the [Constitution](docs/CONSTITUTION.md)).
+- **`tests/`** — ~805 tests. **`docs/`** — the design docs (start with the [Constitution](docs/CONSTITUTION.md)).
 
 ## Status & scope
 
 The **enforceable-plumbing phase is complete** (the evidence, safety, reproducibility,
-attestation, and calibration gates), and the **wargame engine is now in-repo and under active
-build** — a deterministic salvo-combat resolver with replayable turn records. The most recent
-work made the attestation honest by construction and was **independently reviewed (cross-vendor)**
-over three adversarial rounds — which caught a real fail-open that four in-house review passes had
-missed — ending in the harness's **first recorded INDEPENDENT attestation** (the het scenario; the
-reviewer is allow-listed in [`attestation_reviewers.yaml`](attestation_reviewers.yaml)). The
+attestation, and calibration gates), the **wargame engine is in-repo** (a deterministic
+salvo-combat resolver with replayable turn records, `UNCALIBRATED`), and the **agent layer has
+shipped**: LLMs now play the game through an offline command substrate and a real `@live` model
+lane (out of the green gate), which has captured multi-turn two-player games, a both-roads-contested
+variant, and live "retry a bad order" recovery — each a `CAPTURE_ARTIFACT` (a machine log, n=1),
+provably bound and replayable. Earlier, the attestation work was **independently reviewed
+(cross-vendor)** over three adversarial rounds — which caught a real fail-open four in-house passes
+had missed — ending in the harness's **first recorded INDEPENDENT attestation** (the het scenario;
+the reviewer is allow-listed in [`attestation_reviewers.yaml`](attestation_reviewers.yaml)). The
 repo-level banner stays conservative (`SELF-VERIFIED; NOT INDEPENDENTLY ATTESTED`) until *every*
 scenario clears independent review.
 
 **Everything here is `ILLUSTRATIVE` / `UNCALIBRATED` by design.** The models assert nothing
 about the real world; the point of the project is the *discipline*, not a calibrated forecast.
-Non-goals (for now): a full AI-vs-AI engine, multi-run orchestration, dashboards, and a
-release-ready real-world scenario.
+The live games are the mechanical AI-vs-AI lane; the **NO-GO'd non-goal is the analysis engine
+above it** — no tool turns a pile of captured games into a forecast, a probability, or a
+distribution (a captured game is a machine log only). Other non-goals (for now): multi-run
+orchestration, dashboards, and a release-ready real-world scenario.
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for the detailed build ledger and
 [IMPLEMENTATION_PLAN_V2.md](IMPLEMENTATION_PLAN_V2.md) for the plan.

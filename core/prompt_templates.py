@@ -3,8 +3,8 @@
 
 ``render_request_envelope(prompt_version, fog_view) -> dict`` returns the Anthropic Messages request
 BODY (model, max_tokens, system, tools, tool_choice, messages). It is PURE and DETERMINISTIC: no clock,
-no nonce, no request-id, no network, no float. Shared by the (deferred) live producer AND the binding
-gate, so the gate can RE-RENDER the captured request and bind it by sha256 (§2.3-2.4).
+no nonce, no request-id, no network, no float. Shared by the live producer (the @live capture lane) AND
+the binding gate, so the gate can RE-RENDER the captured request and bind it by sha256 (§2.3-2.4).
 
 The honesty leg this module carries (§2.2 leg 3 / §2.5 leg 3 — "a leaky template binds green"):
 the FIXED part of the envelope (system prose, the ``submit_command`` schema, the pins) is a pure

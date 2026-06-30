@@ -8,10 +8,14 @@ un-exercised path). So this STATIC gate AST-parses every module under ``core/`` 
 green-gate + replay surface) and fails closed if any of them imports a network library — by a static
 ``import``/``from`` OR a literal ``importlib.import_module("...")`` / ``__import__("...")``.
 
-The ONLY modules permitted to touch the network are the designated ``live``-lane modules (``core/live_client``,
-``scripts/agent_live_capture``) — which are never imported by a test or a gate and are out of the green gate.
-They do not exist yet (the live call is deferred); they are allowlisted BY PATH so a future live module is
-exempt deliberately, not by accident, and every other green module stays provably network-free.
+The ONLY modules permitted to touch the network are the designated ``live``-lane modules — now built and
+committed: ``core/live_client`` (the sole network module) plus the two drives that wrap it,
+``scripts/agent_live_capture`` and ``scripts/agent_live_campaign`` (the 3-member ``LIVE_ALLOWLIST`` below).
+They are never imported by a test or a gate and are out of the green gate; they are allowlisted BY PATH so the
+live lane is exempt deliberately, not by accident, and every other green module stays provably network-free.
+(Note: the ``NETWORK_MODULES`` denylist names ``live_client`` itself; the two wrapper SCRIPTS are not on the
+denylist — a green module that imported them would not be AST-flagged — but nothing imports them today, and
+the wrappers self-exempt via the path allowlist. Adding them to the denylist is an optional defense-in-depth.)
 
 Denylist precision: ``urllib.request`` / ``http.client`` (network) are flagged but ``urllib.parse`` /
 ``http.HTTPStatus`` (no network) are not, so the gate has no false positive on legitimate stdlib use.

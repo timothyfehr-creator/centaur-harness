@@ -3,7 +3,7 @@
 **Status:** Canonical implementation plan  
 **Version:** 2.0  
 **Date:** 2026-06-18  
-**Immediate next step:** **WP-E2d** (stochastic interception) — a FROZEN-CONTRACT change gated on an external review round, NOT an in-place change. Phases 0–9 (enforceable plumbing) are complete; the engine then began **in-repo** — WP-E0 froze the contract, WP-E1 shipped the turn-record core + the **turn-replay gate** (delivering the once-deferred WP7.2), WP-E2a the first salvo resolver + the engine-state gate, WP-E2b the heterogeneous + multi-turn salvo + the ruleset gate (WP-E2b3 remediated an external red-team NO-GO), and WP-E2c the **calibration-feasibility gate** (the honest "cannot calibrate" record). See [docs/PROGRESS.md](docs/PROGRESS.md) for live status.
+**Status:** Phases 0–9 (enforceable plumbing) complete; the engine shipped in-repo — WP-E0 froze the contract, WP-E1 the turn-record core + the **turn-replay gate** (the once-deferred WP7.2), WP-E2a the first salvo resolver + the engine-state gate, WP-E2b the heterogeneous + multi-turn salvo + the ruleset gate (WP-E2b3 remediated an external red-team NO-GO), WP-E2c the **calibration-feasibility gate**. **WP-E2d** (stochastic interception) was independently reviewed → **NO-GO / shelved** (variance from an assumed `p` = false precision). The **agent layer then shipped** (WP-A1a offline substrate → WP-A1b first live call → WP-A2a illegal-move forfeit → WP-A3 multi-turn two-player live games → RED-matters both-roads-blockable → WP-A2 live model-RETRY), all `@live`/`CAPTURE_ARTIFACT`, out of the green gate. **Next direction (pending approval + external review):** Centaur as a disciplined, contested input to the analyst harness — *not* more engine machinery. See [docs/PROGRESS.md](docs/PROGRESS.md) for live status.
 
 ## 1. Goal
 
@@ -979,7 +979,7 @@ After the first tranche:
     **The enforceable-plumbing phase (Phases 0–9) is complete. The wargame engine then began IN-REPO
     (WP-E0 contract-freeze → WP-E1 turn-record core + turn-replay gate → WP-E2a first salvo resolver +
     engine-state gate → WP-E2b heterogeneous + multi-turn salvo + ruleset gate → WP-E2c
-    calibration-feasibility gate; WP-E2d stochastic — frozen-contract, external-review-gated — next).**
+    calibration-feasibility gate). WP-E2d (stochastic) was independently NO-GO'd/shelved; the AGENT LAYER then shipped (WP-A1a offline substrate → WP-A1b first live call → WP-A2a forfeit → WP-A3 multi-turn two-player games → RED-matters → WP-A2 live retry — all @live/CAPTURE_ARTIFACT, out of the green gate).**
 
 ## 7. Agent operating model
 

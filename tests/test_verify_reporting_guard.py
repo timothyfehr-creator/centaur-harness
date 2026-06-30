@@ -2,8 +2,9 @@
 
 verify.py must keep declaring -- in the NOT_YET_IMPLEMENTED list that BOTH draft and release print -- that
 (a) the agent transcript / judge / ENSEMBLE layers are NO-GO'd (a decision-facing AI-playthrough transcript
-is false-validity), and (b) the LIVE model call itself is unbuilt (no model is ever called; the substrate
-only replays committed bytes). These guards fail loudly if a future edit silently upgrades either claim.
+is false-validity), and (b) the @live model lane is non-deterministic and OUT of the green gate (a model is
+never re-called IN THE GATE -- CI/pytest only replay committed bytes). These guards fail loudly if a future
+edit silently upgrades either claim.
 """
 from __future__ import annotations
 

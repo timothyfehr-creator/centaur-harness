@@ -72,8 +72,14 @@ projection (the existing no-leak test covers it).
 
 `blue_supply` (FORCE: `origin`/`in_transit`/`delivered`/`loss_sink`, units), `route:r1` (ROUTE:
 `capacity`, `blockable: true`), `route:r2` (ROUTE: `capacity`, `blockable: false`), `route_secret:r1`
-(ROUTE_SECRET: `subject_route: "r1"`, `block_threshold` int 0–99, adjudicator-only). **Conservation
-invariant:** `origin + in_transit + delivered + loss_sink` is constant (= 100) across every turn.
+(ROUTE_SECRET: `subject_route: "r1"`, `block_threshold` int 0–99, adjudicator-only). **Blockability is
+PRESENCE-DERIVED:** a route is blockable iff a `route_secret:{route}` entity exists for it
+(`resolver.block_thresholds`); the resolver does **not** read the public `blockable` field — it is a
+vestigial display flag (currently unread by the engine, and not cross-checked against `route_secret`
+presence by any gate). So in this base slice only r1 is contestable; the committed
+`contested_logistics_both_blockable` slice adds a `route_secret:r2` (threshold 50) so **both** roads are
+contestable. **Conservation invariant:** `origin + in_transit + delivered + loss_sink` is constant (= 100)
+across every turn.
 
 ## Slice entities (ru_ua_salvo_homogeneous / ru_ua_salvo_heterogeneous)
 
